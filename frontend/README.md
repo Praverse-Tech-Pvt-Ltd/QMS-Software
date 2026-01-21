@@ -1,75 +1,331 @@
-# React + TypeScript + Vite
+# NexGen Pharma Solutions Pvt. Ltd. — QMS Software (Frontend MVP)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A pharma-friendly, enterprise-grade QMS frontend MVP built with React + TypeScript + MUI.
+This Week-1 sprint focuses on UI + workflows + placeholders using mocked JSON and stub API services (FastAPI integration later).
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Week-1 MVP Scope (Completed)
 
-## React Compiler
+### App Shell
+- Responsive layout with Left Sidebar + Top Header
+- Role Switcher (Admin / QA / QC / Production / Warehouse)
+- Protected routes (login required)
+- Role-based route permissions enforced (Guard)
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+### Auth (Dummy / Local Only)
+- Signup page (localStorage user store)
+- Login page (validates stored user)
+- Logout
 
-Note: This will impact Vite dev & build performances.
+Note: Dummy auth only (no backend). Token stored in localStorage as `qms_token`.
 
-## Expanding the ESLint configuration
+### Dashboards
+- Home Dashboard with KPI cards
+- Quick Actions
+- My Tasks widget
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Modules (UI + Workflows + Pages)
+Modules included in MVP:
+- Document Management (DMS)
+- Training / LMS
+- Deviation / Incident
+- CAPA
+- Change Control
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Each module includes:
+- List page with Search + Filters + Status chips + Table
+- Create page (validated forms)
+- Detail page with:
+  - Overview
+  - Attachments (Upload UI only)
+  - Activity Log (Mock)
+  - Approvals (Mock)
+  - Right-side Status Workflow Timeline
+  - Back button (returns to module list)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### UI Patterns Implemented
+- Status workflow: Draft → In Review → Approved → Effective → Closed
+- Reusable StatusChip
+- Reusable FiltersBar
+- Reusable ModuleTable (with actions menu)
+- DetailTabsLayout (tabs + right status timeline)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## Tech Stack
+
+- React + TypeScript
+- Vite
+- Material UI (MUI)
+- React Router
+- react-hook-form + zod (validation)
+- notistack (toast notifications)
+
+---
+
+## Folder Structure
+
+```
+src/
+├── app/
+│   └── providers/
+│       └── RoleProvider.tsx
+├── components/
+│   ├── common/
+│   │   ├── FiltersBar.tsx
+│   │   ├── FormActions.tsx
+│   │   ├── KpiCard.tsx
+│   │   ├── ModuleTable.tsx
+│   │   └── PageHeader.tsx
+│   ├── dashboard/
+│   │   ├── MyTasksWidget.tsx
+│   │   └── QuickActions.tsx
+│   ├── layout/
+│   │   ├── AppLayout.tsx
+│   │   ├── HeaderActions.tsx
+│   │   ├── RoleSwitcher.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── sidebarConfig.tsx
+│   └── qms/
+│       ├── ActivityLog.tsx
+│       ├── ApprovalsPanel.tsx
+│       ├── AttachmentsUploader.tsx
+│       ├── DetailTabsLayout.tsx
+│       ├── StatusChip.tsx
+│       └── WorkflowTimeline.tsx
+├── mock/
+│   ├── capa.mock.ts
+│   ├── change.mock.ts
+│   ├── dashboard.mock.ts
+│   ├── deviations.mock.ts
+│   ├── dms.mock.ts
+│   └── training.mock.ts
+├── pages/
+│   ├── auth/
+│   │   ├── LoginPage.tsx
+│   │   └── SignupPage.tsx
+│   ├── dashboard/
+│   │   └── DashboardPage.tsx
+│   ├── dms/
+│   │   ├── DmsCreatePage.tsx
+│   │   ├── DmsDetailPage.tsx
+│   │   └── DmsListPage.tsx
+│   ├── training/
+│   │   ├── TrainingCreatePage.tsx
+│   │   ├── TrainingDetailPage.tsx
+│   │   └── TrainingListPage.tsx
+│   ├── deviations/
+│   │   ├── DeviationsCreatePage.tsx
+│   │   ├── DeviationsDetailPage.tsx
+│   │   └── DeviationsListPage.tsx
+│   ├── capa/
+│   │   ├── CapaCreatePage.tsx
+│   │   ├── CapaDetailPage.tsx
+│   │   └── CapaListPage.tsx
+│   └── change-control/
+│       ├── ChangeControlCreatePage.tsx
+│       ├── ChangeControlDetailPage.tsx
+│       └── ChangeControlListPage.tsx
+├── routes/
+│   ├── AppRouter.tsx
+│   └── RequirePermission.tsx
+├── services/
+│   ├── auth.service.ts
+│   ├── capa.service.ts
+│   ├── change.service.ts
+│   ├── dashboard.service.ts
+│   ├── deviations.service.ts
+│   ├── dms.service.ts
+│   └── training.service.ts
+├── types/
+│   ├── permissions.ts
+│   └── qms.ts
+├── App.tsx
+└── main.tsx
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Getting Started (Setup)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1) Install dependencies
+```bash
+npm install
 ```
+
+### 2) Start the dev server
+```bash
+npm run dev
+```
+
+App will run at:
+```
+http://localhost:5173
+```
+
+---
+
+## Demo Authentication Flow (LocalStorage)
+
+### Signup
+- Route: `/signup`
+- Creates a user locally in localStorage
+- Auto-login after signup
+
+### Login
+- Route: `/login`
+- Validates email/password from stored users
+- Stores `qms_token = "demo"`
+
+### Logout
+- Clears token and returns to `/login`
+
+---
+
+## Role-based Access (Frontend Simulation)
+
+Role switcher in header lets you simulate permissions:
+- Admin
+- QA
+- QC
+- Production
+- Warehouse
+
+Permissions are enforced by:
+- Sidebar visibility (only allowed modules show)
+- Route guard (`RequirePermission`) blocks unauthorized URLs
+
+---
+
+## Routes
+
+### Public
+- `/login`
+- `/signup`
+
+### Protected
+- `/` (Dashboard)
+
+#### Document Management (DMS)
+- `/dms`
+- `/dms/new`
+- `/dms/:id`
+
+#### Training / LMS
+- `/training`
+- `/training/new`
+- `/training/:id`
+
+#### Deviations / Incidents
+- `/deviations`
+- `/deviations/new`
+- `/deviations/:id`
+
+#### CAPA
+- `/capa`
+- `/capa/new`
+- `/capa/:id`
+
+#### Change Control
+- `/change-control`
+- `/change-control/new`
+- `/change-control/:id`
+
+---
+
+## Mock Data and API Layer
+
+Backend is not connected yet.
+All data comes from:
+- `src/mock/*.mock.ts`
+
+All future backend integration will be plugged into:
+- `src/services/*.service.ts`
+
+Example:
+```ts
+export const dmsService = {
+  async list() {
+    return dmsMock;
+  },
+};
+```
+
+Later, we will replace with real FastAPI calls.
+
+---
+
+## Components Completed
+
+### Common (Reusable)
+- PageHeader
+- KpiCard
+- FiltersBar
+- ModuleTable
+- FormActions
+
+### QMS Components
+- StatusChip
+- WorkflowTimeline
+- DetailTabsLayout
+- ActivityLog (mock)
+- ApprovalsPanel (mock)
+- AttachmentsUploader (UI only)
+
+---
+
+## Screenshots / Screen Recording (Add Here)
+
+Add screenshots or short screen recording links here.
+
+Suggested screenshots to capture:
+- Login page
+- Signup page
+- Dashboard (KPIs + Tasks)
+- DMS List + Create + Detail
+- Training List + Detail
+- Deviations List + Detail
+- CAPA List + Detail
+- Change Control List + Detail
+- Role switcher + permission blocking demo
+
+---
+
+## What Remains (Next Sprint / Week-2)
+
+### Backend Integration (FastAPI)
+- Replace localStorage auth with JWT backend auth
+- Replace mock service calls with real API calls
+- Add file upload backend integration
+
+### QMS Enhancements
+- Real workflow transitions (Draft → Review → Approved)
+- e-Signature modal + audit trail logging
+- Approval routing + assignment logic
+- Comments with users + timestamps
+- Notifications with real events
+
+### Additional Modules (Upcoming)
+- Internal Audits
+- Supplier Management
+- Complaints
+- Recall
+- Risk Management
+
+### UI Improvements
+- Pagination and sorting in tables
+- Export to PDF/Excel placeholders
+- Global search
+- Better empty states and loaders
+- Dark mode (optional)
+
+### AI Personal Guide Layer (Future)
+- Ask QMS Assistant chatbot in header
+- Guidance for workflows (CAPA/Deviation triage)
+- Smart recommendations based on role + context
+
+---
+
+## License
+Internal / Private Project — NexGen Pharma Solutions Pvt. Ltd.

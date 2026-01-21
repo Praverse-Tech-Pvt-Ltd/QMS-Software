@@ -9,10 +9,16 @@ import {
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { navItems } from "./sidebarConfig";
+import { useRole } from "../../app/providers/RoleProvider";
+import { rolePermissions } from "../../types/permissions";
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // ✅ Hooks must be inside component
+  const { role } = useRole();
+  const allowed = rolePermissions[role];
 
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -29,31 +35,35 @@ export default function Sidebar() {
 
       <Box sx={{ p: 1 }}>
         <List dense>
-          {navItems.map((item) => {
-            const isActive =
-              item.path === "/"
-                ? location.pathname === "/"
-                : location.pathname.startsWith(item.path);
+          {navItems
+            .filter((item) => allowed.includes(item.key))
+            .map((item) => {
+              const isActive =
+                item.path === "/"
+                  ? location.pathname === "/"
+                  : location.pathname.startsWith(item.path);
 
-            return (
-              <ListItemButton
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                selected={isActive}
-                sx={{
-                  borderRadius: 2,
-                  mb: 0.5,
-                  "&.Mui-selected": {
-                    bgcolor: "rgba(31, 111, 235, 0.10)",
-                    "&:hover": { bgcolor: "rgba(31, 111, 235, 0.14)" },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 42 }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            );
-          })}
+              return (
+                <ListItemButton
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  selected={isActive}
+                  sx={{
+                    borderRadius: 2,
+                    mb: 0.5,
+                    "&.Mui-selected": {
+                      bgcolor: "rgba(31, 111, 235, 0.10)",
+                      "&:hover": { bgcolor: "rgba(31, 111, 235, 0.14)" },
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: 42 }}>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.label} />
+                </ListItemButton>
+              );
+            })}
         </List>
       </Box>
 

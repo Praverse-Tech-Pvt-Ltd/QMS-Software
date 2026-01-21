@@ -10,6 +10,8 @@ import {
 import Sidebar from "./Sidebar";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useState } from "react";
+import HeaderActions from "./HeaderActions";
+
 
 const drawerWidth = 260;
 
@@ -46,9 +48,8 @@ export default function AppLayout() {
 
           <Box sx={{ flexGrow: 1 }} />
 
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Header actions tomorrow (role switch, notifications)
-          </Typography>
+          <HeaderActions />
+
         </Toolbar>
       </AppBar>
 

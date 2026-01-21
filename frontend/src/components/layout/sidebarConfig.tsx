@@ -6,16 +6,17 @@ import ChangeCircleOutlinedIcon from "@mui/icons-material/ChangeCircleOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 
 export type NavItem = {
+  key: "dashboard" | "dms" | "training" | "deviations" | "capa" | "change";
   label: string;
   path: string;
   icon: React.ReactNode;
 };
 
 export const navItems: NavItem[] = [
-  { label: "Dashboard", path: "/", icon: <DashboardOutlinedIcon /> },
-  { label: "Document Management", path: "/dms", icon: <DescriptionOutlinedIcon /> },
-  { label: "Training / LMS", path: "/training", icon: <SchoolOutlinedIcon /> },
-  { label: "Deviation / Incident", path: "/deviations", icon: <ReportProblemOutlinedIcon /> },
-  { label: "CAPA", path: "/capa", icon: <FactCheckOutlinedIcon /> },
-  { label: "Change Control", path: "/change-control", icon: <ChangeCircleOutlinedIcon /> },
+  { key: "dashboard", label: "Dashboard", path: "/", icon: <DashboardOutlinedIcon /> },
+  { key: "dms", label: "Document Management", path: "/dms", icon: <DescriptionOutlinedIcon /> },
+  { key: "training", label: "Training / LMS", path: "/training", icon: <SchoolOutlinedIcon /> },
+  { key: "deviations", label: "Deviation / Incident", path: "/deviations", icon: <ReportProblemOutlinedIcon /> },
+  { key: "capa", label: "CAPA", path: "/capa", icon: <FactCheckOutlinedIcon /> },
+  { key: "change", label: "Change Control", path: "/change-control", icon: <ChangeCircleOutlinedIcon /> },
 ];

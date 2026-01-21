@@ -4,31 +4,30 @@ import { useState } from "react";
 import { authService } from "../../services/auth.service";
 import { useSnackbar } from "notistack";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
 
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = () => {
+  const handleSignup = () => {
     try {
-      if (!email || !password) {
-        enqueueSnackbar("Email and password are required.", { variant: "error" });
+      if (!fullName || !email || !password) {
+        enqueueSnackbar("All fields are required.", { variant: "error" });
         return;
       }
 
-      authService.login({ email, password });
+      authService.signup({ fullName, email, password });
 
-      // if role not set, set default
-      if (!localStorage.getItem("qms_role")) {
-        localStorage.setItem("qms_role", "QA");
-      }
+      // set default role on signup
+      localStorage.setItem("qms_role", "QA");
 
-      enqueueSnackbar("Login successful ✅", { variant: "success" });
+      enqueueSnackbar("Signup successful ✅", { variant: "success" });
       navigate("/", { replace: true });
     } catch (err: any) {
-      enqueueSnackbar(err.message || "Login failed", { variant: "error" });
+      enqueueSnackbar(err.message || "Signup failed", { variant: "error" });
     }
   };
 
@@ -44,14 +43,21 @@ export default function LoginPage() {
     >
       <Paper sx={{ p: 4, width: "100%", maxWidth: 420 }}>
         <Typography variant="h5" sx={{ fontWeight: 800 }}>
-          NexGen QMS
+          Create Account
         </Typography>
 
         <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
-          Sign in to continue
+          NexGen QMS • Pharma friendly onboarding
         </Typography>
 
         <Box sx={{ mt: 3, display: "grid", gap: 2 }}>
+          <TextField
+            label="Full Name"
+            fullWidth
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+
           <TextField
             label="Email"
             fullWidth
@@ -67,16 +73,16 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <Button onClick={handleLogin} fullWidth variant="contained">
-            Sign In
+          <Button onClick={handleSignup} fullWidth variant="contained">
+            Sign Up
           </Button>
 
           <Button
-            onClick={() => navigate("/signup")}
+            onClick={() => navigate("/login")}
             fullWidth
             variant="text"
           >
-            Create new account
+            Already have an account? Login
           </Button>
         </Box>
       </Paper>
