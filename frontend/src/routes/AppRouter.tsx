@@ -19,6 +19,8 @@ import DmsDetailPage from "../pages/dms/DmsDetailPage";
 import TrainingListPage from "../pages/training/TrainingListPage";
 import TrainingCreatePage from "../pages/training/TrainingCreatePage";
 import TrainingDetailPage from "../pages/training/TrainingDetailPage";
+import TrainingMatrixPage from "../pages/training/TrainingMatrixPage";
+import EmployeeTrainingProfilePage from "../pages/training/EmployeeTrainingProfilePage";
 
 // Deviations
 import DeviationsListPage from "../pages/deviations/DeviationsListPage";
@@ -100,6 +102,23 @@ export default function AppRouter() {
           element={
             <RequirePermission moduleKey="training">
               <TrainingDetailPage />
+            </RequirePermission>
+          }
+        />
+        <Route
+          path="training/matrix"
+          element={
+            <RequirePermission moduleKey="training_matrix">
+              <TrainingMatrixPage />
+            </RequirePermission>
+          }
+        />
+
+        <Route
+          path="training/employees/:id"
+          element={
+            <RequirePermission moduleKey="training_matrix">
+              <EmployeeTrainingProfilePage />
             </RequirePermission>
           }
         />

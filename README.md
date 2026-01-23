@@ -1,331 +1,247 @@
-# NexGen Pharma Solutions Pvt. Ltd. — QMS Software (Frontend MVP)
+# NexGen QMS Frontend (Sprint Build)
 
-A pharma-friendly, enterprise-grade QMS frontend MVP built with React + TypeScript + MUI.
-This Week-1 sprint focuses on UI + workflows + placeholders using mocked JSON and stub API services (FastAPI integration later).
-
----
-
-## Week-1 MVP Scope (Completed)
-
-### App Shell
-- Responsive layout with Left Sidebar + Top Header
-- Role Switcher (Admin / QA / QC / Production / Warehouse)
-- Protected routes (login required)
-- Role-based route permissions enforced (Guard)
-
-### Auth (Dummy / Local Only)
-- Signup page (localStorage user store)
-- Login page (validates stored user)
-- Logout
-
-Note: Dummy auth only (no backend). Token stored in localStorage as `qms_token`.
-
-### Dashboards
-- Home Dashboard with KPI cards
-- Quick Actions
-- My Tasks widget
-
-### Modules (UI + Workflows + Pages)
-Modules included in MVP:
-- Document Management (DMS)
-- Training / LMS
-- Deviation / Incident
-- CAPA
-- Change Control
-
-Each module includes:
-- List page with Search + Filters + Status chips + Table
-- Create page (validated forms)
-- Detail page with:
-  - Overview
-  - Attachments (Upload UI only)
-  - Activity Log (Mock)
-  - Approvals (Mock)
-  - Right-side Status Workflow Timeline
-  - Back button (returns to module list)
-
-### UI Patterns Implemented
-- Status workflow: Draft → In Review → Approved → Effective → Closed
-- Reusable StatusChip
-- Reusable FiltersBar
-- Reusable ModuleTable (with actions menu)
-- DetailTabsLayout (tabs + right status timeline)
+Frontend UI for NexGen Pharma Solutions Pvt. Ltd. Quality Management System (QMS).
+This build focuses on production-like workflows using mock data, with a clean enterprise UI and future-ready API/service stubs (FastAPI integration later).
 
 ---
 
 ## Tech Stack
 
-- React + TypeScript
-- Vite
+- React + TypeScript (Vite)
 - Material UI (MUI)
 - React Router
-- react-hook-form + zod (validation)
-- notistack (toast notifications)
+- React Hook Form + Zod validation
+- notistack (toasts)
+- LocalStorage mock persistence (workflow/audit/signatures)
 
 ---
 
-## Folder Structure
-
-```
-src/
-├── app/
-│   └── providers/
-│       └── RoleProvider.tsx
-├── components/
-│   ├── common/
-│   │   ├── FiltersBar.tsx
-│   │   ├── FormActions.tsx
-│   │   ├── KpiCard.tsx
-│   │   ├── ModuleTable.tsx
-│   │   └── PageHeader.tsx
-│   ├── dashboard/
-│   │   ├── MyTasksWidget.tsx
-│   │   └── QuickActions.tsx
-│   ├── layout/
-│   │   ├── AppLayout.tsx
-│   │   ├── HeaderActions.tsx
-│   │   ├── RoleSwitcher.tsx
-│   │   ├── Sidebar.tsx
-│   │   └── sidebarConfig.tsx
-│   └── qms/
-│       ├── ActivityLog.tsx
-│       ├── ApprovalsPanel.tsx
-│       ├── AttachmentsUploader.tsx
-│       ├── DetailTabsLayout.tsx
-│       ├── StatusChip.tsx
-│       └── WorkflowTimeline.tsx
-├── mock/
-│   ├── capa.mock.ts
-│   ├── change.mock.ts
-│   ├── dashboard.mock.ts
-│   ├── deviations.mock.ts
-│   ├── dms.mock.ts
-│   └── training.mock.ts
-├── pages/
-│   ├── auth/
-│   │   ├── LoginPage.tsx
-│   │   └── SignupPage.tsx
-│   ├── dashboard/
-│   │   └── DashboardPage.tsx
-│   ├── dms/
-│   │   ├── DmsCreatePage.tsx
-│   │   ├── DmsDetailPage.tsx
-│   │   └── DmsListPage.tsx
-│   ├── training/
-│   │   ├── TrainingCreatePage.tsx
-│   │   ├── TrainingDetailPage.tsx
-│   │   └── TrainingListPage.tsx
-│   ├── deviations/
-│   │   ├── DeviationsCreatePage.tsx
-│   │   ├── DeviationsDetailPage.tsx
-│   │   └── DeviationsListPage.tsx
-│   ├── capa/
-│   │   ├── CapaCreatePage.tsx
-│   │   ├── CapaDetailPage.tsx
-│   │   └── CapaListPage.tsx
-│   └── change-control/
-│       ├── ChangeControlCreatePage.tsx
-│       ├── ChangeControlDetailPage.tsx
-│       └── ChangeControlListPage.tsx
-├── routes/
-│   ├── AppRouter.tsx
-│   └── RequirePermission.tsx
-├── services/
-│   ├── auth.service.ts
-│   ├── capa.service.ts
-│   ├── change.service.ts
-│   ├── dashboard.service.ts
-│   ├── deviations.service.ts
-│   ├── dms.service.ts
-│   └── training.service.ts
-├── types/
-│   ├── permissions.ts
-│   └── qms.ts
-├── App.tsx
-└── main.tsx
-```
-
----
-
-## Getting Started (Setup)
+## Getting Started
 
 ### 1) Install dependencies
 ```bash
 npm install
 ```
 
-### 2) Start the dev server
+### 2) Start dev server
 ```bash
 npm run dev
 ```
 
-App will run at:
-```
-http://localhost:5173
-```
+App runs on:
+- http://localhost:5173
 
 ---
 
-## Demo Authentication Flow (LocalStorage)
+## Authentication (Mock)
 
-### Signup
-- Route: `/signup`
-- Creates a user locally in localStorage
-- Auto-login after signup
+This project currently uses dummy authentication (UI-only).
 
-### Login
-- Route: `/login`
-- Validates email/password from stored users
-- Stores `qms_token = "demo"`
+- Login route: /login
+- Signup route: /signup
 
-### Logout
-- Clears token and returns to `/login`
+A mock token is stored in localStorage:
+- qms_token
+
+Logout clears the token and redirects to /login.
 
 ---
 
-## Role-based Access (Frontend Simulation)
+## Roles & Permissions (Simulation)
 
-Role switcher in header lets you simulate permissions:
+Role switching exists to simulate access control:
+
 - Admin
 - QA
 - QC
 - Production
 - Warehouse
 
-Permissions are enforced by:
-- Sidebar visibility (only allowed modules show)
-- Route guard (`RequirePermission`) blocks unauthorized URLs
+Permissions are enforced on routes using:
+- RequirePermission
+
+Example: Training Matrix is visible only for Admin / QA / QC.
 
 ---
 
-## Routes
+## Modules Included (Week-1 + Sprint Enhancements)
 
-### Public
-- `/login`
-- `/signup`
+### Document Management (DMS)
+- List page with filters/search/status chips/table
+- Create page with validations + back button
+- Detail page with tabs (Overview / Attachments / Activity / Approvals)
+- SOP version history UI (v1.0/v1.1)
+- Periodic review scheduling UI
 
-### Protected
-- `/` (Dashboard)
-
-#### Document Management (DMS)
-- `/dms`
-- `/dms/new`
-- `/dms/:id`
-
-#### Training / LMS
-- `/training`
-- `/training/new`
-- `/training/:id`
-
-#### Deviations / Incidents
-- `/deviations`
-- `/deviations/new`
-- `/deviations/:id`
-
-#### CAPA
-- `/capa`
-- `/capa/new`
-- `/capa/:id`
-
-#### Change Control
-- `/change-control`
-- `/change-control/new`
-- `/change-control/:id`
+Routes:
+- /dms
+- /dms/new
+- /dms/:id
 
 ---
 
-## Mock Data and API Layer
+### Training / LMS
+- List page + Create + Detail screens
+- Training Matrix (Role → SOP mapping)
+- Employee Training Profile (assigned trainings, completion %, overdue)
 
-Backend is not connected yet.
-All data comes from:
-- `src/mock/*.mock.ts`
+Routes:
+- /training
+- /training/new
+- /training/:id
+- /training/matrix
+- /training/employees/:id
 
-All future backend integration will be plugged into:
-- `src/services/*.service.ts`
+---
 
-Example:
-```ts
-export const dmsService = {
-  async list() {
-    return dmsMock;
-  },
-};
+### Deviation / Incident
+- List page + Create + Detail screens
+- Upgraded create form with pharma fields + tabs:
+  - Containment
+  - Investigation
+  - CAPA Linkage
+
+Routes:
+- /deviations
+- /deviations/new
+- /deviations/:id
+
+---
+
+### CAPA
+- List page + Create + Detail screens
+- Effectiveness Check UI + Closure Checklist
+
+Routes:
+- /capa
+- /capa/new
+- /capa/:id
+
+---
+
+### Change Control
+- List page + Create + Detail screens
+- Impact Assessment UI:
+  - Validation / Regulatory / Stability / Docs / Training / Supplier
+- Risk assessment notes + mitigation
+- Implementation Plan (cards)
+
+Routes:
+- /change-control
+- /change-control/new
+- /change-control/:id
+
+---
+
+## Common QMS Workflow Features
+
+### Workflow Lifecycle (UI + Mock persistence)
+Lifecycle implemented across modules:
+- Draft → QA Review → Approved → Effective → Closed
+- Reject supported
+
+Stored per record in LocalStorage via:
+- workflow.service.ts
+
+---
+
+### Workflow Actions (Role Based)
+Actions are enabled based on role + status stage:
+- Submit for QA Review
+- Approve / Reject (with reason)
+- Mark Effective
+- Close
+
+Component:
+- WorkflowActionsPanel
+
+---
+
+### E-Signature (UI only)
+Workflow transitions trigger an E-Sign Modal:
+- Re-auth username/password (placeholder)
+- Signature meaning: Review / Approval / Execution
+- Signature comment
+
+Signatures are logged per record:
+- SignatureLogTable
+
+---
+
+### Audit Trail (Read-only UI)
+Audit Trail table included below Activity Log:
+- action type
+- field
+- old/new values
+- user
+- timestamp
+- reason
+
+Filters:
+- User
+- Action Type
+- Date range
+
+---
+
+## Folder Structure (Recommended)
+
+```
+src/
+  app/
+    providers/
+  components/
+    common/
+    layout/
+    qms/
+    dms/
+    capa/
+    change/
+  pages/
+    auth/
+    dashboard/
+    dms/
+    training/
+    deviations/
+    capa/
+    change-control/
+  routes/
+  services/
+  types/
 ```
 
-Later, we will replace with real FastAPI calls.
+---
+
+## Notes
+
+- This sprint is frontend-only (no backend integration yet).
+- The UI is designed to be enterprise/premium and pharma-friendly.
+- Later integration targets:
+  - FastAPI backend
+  - Real RBAC
+  - Database-backed workflows
+  - Immutable audit logs
+  - 21 CFR Part 11 compliant e-sign controls
 
 ---
 
-## Components Completed
+## Demo Flows (Recommended to Record)
 
-### Common (Reusable)
-- PageHeader
-- KpiCard
-- FiltersBar
-- ModuleTable
-- FormActions
+### DMS
+Create → Submit QA Review → Approve → Mark Effective → Close
 
-### QMS Components
-- StatusChip
-- WorkflowTimeline
-- DetailTabsLayout
-- ActivityLog (mock)
-- ApprovalsPanel (mock)
-- AttachmentsUploader (UI only)
+### Deviation
+Create → Submit QA Review → Approve → Mark Effective → Close
 
 ---
 
-## Screenshots / Screen Recording (Add Here)
+## What Remains (Next Sprint Ideas)
 
-Add screenshots or short screen recording links here.
-
-Suggested screenshots to capture:
-- Login page
-- Signup page
-- Dashboard (KPIs + Tasks)
-- DMS List + Create + Detail
-- Training List + Detail
-- Deviations List + Detail
-- CAPA List + Detail
-- Change Control List + Detail
-- Role switcher + permission blocking demo
-
----
-
-## What Remains (Next Sprint / Week-2)
-
-### Backend Integration (FastAPI)
-- Replace localStorage auth with JWT backend auth
-- Replace mock service calls with real API calls
-- Add file upload backend integration
-
-### QMS Enhancements
-- Real workflow transitions (Draft → Review → Approved)
-- e-Signature modal + audit trail logging
-- Approval routing + assignment logic
-- Comments with users + timestamps
-- Notifications with real events
-
-### Additional Modules (Upcoming)
-- Internal Audits
-- Supplier Management
-- Complaints
-- Recall
-- Risk Management
-
-### UI Improvements
-- Pagination and sorting in tables
-- Export to PDF/Excel placeholders
-- Global search
-- Better empty states and loaders
-- Dark mode (optional)
-
-### AI Personal Guide Layer (Future)
-- Ask QMS Assistant chatbot in header
-- Guidance for workflows (CAPA/Deviation triage)
-- Smart recommendations based on role + context
-
----
-
-## License
-Internal / Private Project — NexGen Pharma Solutions Pvt. Ltd.
+- Controlled document distribution + read acknowledgements
+- Full approver assignment UI (people picker)
+- SOP linking inside Training Matrix from real DMS records
+- Editable implementation plan table (inline row editing)
+- Module-level dashboards and analytics
+- Audit trail generation for field edits (not just status changes)
+- Better mock API layer (async + simulated latency)
+- Export / Print views (PDF placeholder)

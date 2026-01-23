@@ -6,19 +6,48 @@ import {
   ListItemIcon,
   ListItemText,
   Typography,
+  Collapse,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import { navItems } from "./sidebarConfig";
 import { useRole } from "../../app/providers/RoleProvider";
 import { rolePermissions } from "../../types/permissions";
+import { useMemo, useState } from "react";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 export default function Sidebar() {
+  const { role } = useRole();
+  const allowed = rolePermissions[role];
+
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ✅ Hooks must be inside component
-  const { role } = useRole();
-  const allowed = rolePermissions[role];
+  const filteredNav = useMemo(() => {
+    // filter based on allowed keys (including children)
+    return navItems
+      .filter((item) => allowed.includes(item.key))
+      .map((item) => {
+        if (!item.children) return item;
+
+        const filteredChildren = item.children.filter((c) =>
+          allowed.includes(c.key),
+        );
+
+        return {
+          ...item,
+          children: filteredChildren,
+        };
+      });
+  }, [allowed]);
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    training: true,
+  });
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
@@ -35,19 +64,25 @@ export default function Sidebar() {
 
       <Box sx={{ p: 1 }}>
         <List dense>
-          {navItems
-            .filter((item) => allowed.includes(item.key))
-            .map((item) => {
-              const isActive =
-                item.path === "/"
-                  ? location.pathname === "/"
-                  : location.pathname.startsWith(item.path);
+          {filteredNav.map((item) => {
+            const isActive =
+              item.path === "/"
+                ? location.pathname === "/"
+                : location.pathname.startsWith(item.path);
 
-              return (
+            const hasChildren = !!item.children && item.children.length > 0;
+
+            return (
+              <Box key={item.path}>
                 <ListItemButton
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  selected={isActive}
+                  onClick={() => {
+                    // ✅ Parent row always navigates
+                    navigate(item.path);
+                  }}
+                  selected={
+                    isActive &&
+                    !location.pathname.startsWith("/training/matrix")
+                  }
                   sx={{
                     borderRadius: 2,
                     mb: 0.5,
@@ -57,13 +92,73 @@ export default function Sidebar() {
                     },
                   }}
                 >
-                  <ListItemIcon sx={{ minWidth: 42 }}>
-                    {item.icon}
-                  </ListItemIcon>
+                  <ListItemIcon sx={{ minWidth: 42 }}>{item.icon}</ListItemIcon>
                   <ListItemText primary={item.label} />
+
+                  {hasChildren ? (
+                    <Box
+                      onClick={(e) => {
+                        e.stopPropagation(); // ✅ prevents navigation
+                        toggleGroup(item.key);
+                      }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        px: 0.5,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {openGroups[item.key] ? (
+                        <ExpandLessIcon fontSize="small" />
+                      ) : (
+                        <ExpandMoreIcon fontSize="small" />
+                      )}
+                    </Box>
+                  ) : null}
                 </ListItemButton>
-              );
-            })}
+
+                {hasChildren && (
+                  <Collapse
+                    in={openGroups[item.key]}
+                    timeout="auto"
+                    unmountOnExit
+                  >
+                    <List dense sx={{ pl: 2 }}>
+                      {item.children!.map((child) => {
+                        const childActive =
+                          location.pathname === child.path ||
+                          location.pathname.startsWith(child.path);
+
+                        return (
+                          <ListItemButton
+                            key={child.path}
+                            onClick={() => navigate(child.path)}
+                            selected={childActive}
+                            sx={{
+                              borderRadius: 2,
+                              mb: 0.5,
+                              "&.Mui-selected": {
+                                bgcolor: "rgba(31, 111, 235, 0.10)",
+                                "&:hover": {
+                                  bgcolor: "rgba(31, 111, 235, 0.14)",
+                                },
+                              },
+                            }}
+                          >
+                            <ListItemIcon sx={{ minWidth: 42 }}>
+                              {child.icon}
+                            </ListItemIcon>
+                            <ListItemText primary={child.label} />
+                          </ListItemButton>
+                        );
+                      })}
+                    </List>
+                  </Collapse>
+                )}
+              </Box>
+            );
+          })}
         </List>
       </Box>
 
@@ -73,7 +168,7 @@ export default function Sidebar() {
 
       <Box sx={{ p: 2 }}>
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          UI only • Week-1 Sprint
+          UI only • Sprint Build
         </Typography>
       </Box>
     </Box>
