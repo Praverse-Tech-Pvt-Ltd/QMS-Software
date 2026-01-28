@@ -1,74 +1,239 @@
-import { Box, Button } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
-import FiltersBar, { type FiltersState } from "../../components/common/FiltersBar";
-import ModuleTable from "../../components/common/ModuleTable";
-import { dmsService } from "../../services/dms.service";
-import type { ModuleRow } from "../../components/common/ModuleTable";
+import { useState } from "react";
+import {
+  Box,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  Stack,
+  IconButton,
+} from "@mui/material";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { useNavigate } from "react-router-dom";
-import PageHeader from "../../components/common/PageHeader";
-import { useSnackbar } from "notistack";
+
+import StatusChip from "../../components/qms/StatusChip";
+import type { WorkflowStatus } from "../../config/workflows";
+
+type DocumentRow = {
+  id: string;
+  title: string;
+  owner: string;
+  department: string;
+  status: WorkflowStatus;
+  updated: string;
+};
+
+const STATUS_FILTERS: ("All" | WorkflowStatus)[] = [
+  "All",
+  "Draft",
+  "In Review",
+  "Approved",
+  "Effective",
+  "Closed",
+];
 
 export default function DmsListPage() {
   const navigate = useNavigate();
-  const { enqueueSnackbar } = useSnackbar();
+  const [statusFilter, setStatusFilter] = useState<"All" | WorkflowStatus>(
+    "All",
+  );
 
-  const [rows, setRows] = useState<ModuleRow[]>([]);
-  const [filters, setFilters] = useState<FiltersState>({
-    search: "",
-    status: "All",
-    department: "All",
-  });
+  const documents: DocumentRow[] = [
+    {
+      id: "SOP-QA-2024-015",
+      title: "Manufacturing Process Standard Operating Procedure",
+      owner: "Sarah Johnson",
+      department: "Quality Assurance",
+      status: "Effective",
+      updated: "2026-01-15",
+    },
+    {
+      id: "SOP-QA-2024-016",
+      title: "Equipment Qualification and Validation Protocol",
+      owner: "Michael Chen",
+      department: "Quality Control",
+      status: "In Review",
+      updated: "2026-01-20",
+    },
+    {
+      id: "SOP-QA-2024-017",
+      title: "Environmental Monitoring Procedures",
+      owner: "Emily Rodriguez",
+      department: "Quality Assurance",
+      status: "Draft",
+      updated: "2026-01-22",
+    },
+    {
+      id: "SOP-QA-2024-014",
+      title: "Batch Release Documentation Requirements",
+      owner: "David Williams",
+      department: "Production",
+      status: "Approved",
+      updated: "2026-01-18",
+    },
+    {
+      id: "SOP-QA-2023-089",
+      title: "Change Control Management System",
+      owner: "Jennifer Lee",
+      department: "Quality Assurance",
+      status: "Closed",
+      updated: "2025-12-30",
+    },
+  ];
 
-  useEffect(() => {
-    dmsService.list().then((data) => setRows(data as any));
-  }, []);
-
-  const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      const matchesSearch =
-        r.id.toLowerCase().includes(filters.search.toLowerCase()) ||
-        r.title.toLowerCase().includes(filters.search.toLowerCase());
-
-      const matchesStatus =
-        filters.status === "All" ? true : r.status === filters.status;
-
-      const matchesDept =
-        filters.department === "All"
-          ? true
-          : r.department === filters.department;
-
-      return matchesSearch && matchesStatus && matchesDept;
-    });
-  }, [rows, filters]);
+  const filteredDocs =
+    statusFilter === "All"
+      ? documents
+      : documents.filter((d) => d.status === statusFilter);
 
   return (
-    <Box>
-      <PageHeader
-        title="Document Management"
-        subtitle="Controlled documents • SOPs • Templates • Records"
-        actions={
-          <Button variant="contained" onClick={() => navigate("/dms/new")}>
-            + Create New
+    <Box sx={{ p: 4 }}>
+      {/* Header */}
+      <Stack
+        direction="row"
+        alignItems="flex-start"
+        justifyContent="space-between"
+        mb={3}
+      >
+        <Box>
+          <Typography variant="h4" fontWeight={800}>
+            Document Management System
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>
+            Centralized repository for all controlled documents and SOPs
+          </Typography>
+        </Box>
+
+        <Button
+          variant="contained"
+          startIcon={<AddOutlinedIcon />}
+          sx={{ borderRadius: 3, fontWeight: 700 }}
+        >
+          Create New
+        </Button>
+      </Stack>
+
+      {/* Search + Filters */}
+      <Paper sx={{ p: 3, mb: 3, borderRadius: 4 }}>
+        <Stack direction="row" spacing={2} mb={2}>
+          <TextField
+            fullWidth
+            placeholder="Search documents..."
+            InputProps={{
+              startAdornment: <SearchOutlinedIcon sx={{ mr: 1 }} />,
+            }}
+          />
+          <Button
+            variant="outlined"
+            startIcon={<FilterListOutlinedIcon />}
+            sx={{ borderRadius: 3, px: 3 }}
+          >
+            Filters
           </Button>
-        }
-      />
+        </Stack>
 
-      <Box sx={{ mt: 2 }}>
-        <FiltersBar filters={filters} onChange={setFilters} />
-      </Box>
+        {/* Status Filters */}
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body2" fontWeight={600}>
+            Status:
+          </Typography>
 
-      <ModuleTable
-        rows={filteredRows}
-        onView={(id) => navigate(`/dms/${id}`)}
-        onEdit={(id) => {
-          enqueueSnackbar(`Edit ${id} (mock)`, { variant: "info" });
-          navigate(`/dms/${id}`); // for now open detail
-        }}
-        onClone={(id) => {
-          enqueueSnackbar(`Clone ${id} (mock)`, { variant: "info" });
-          console.log("Clone mock:", id);
-        }}
-      />
+          {STATUS_FILTERS.map((s) => (
+            <Button
+              key={s}
+              size="small"
+              variant={statusFilter === s ? "contained" : "outlined"}
+              onClick={() => setStatusFilter(s)}
+              sx={{ borderRadius: 3, textTransform: "none" }}
+            >
+              {s}
+            </Button>
+          ))}
+        </Stack>
+      </Paper>
+
+      {/* Table */}
+      <Paper sx={{ borderRadius: 4, overflow: "hidden" }}>
+        <Box
+          component="table"
+          sx={{ width: "100%", borderCollapse: "collapse" }}
+        >
+          <Box component="thead" sx={{ bgcolor: "grey.50" }}>
+            <Box component="tr">
+              {[
+                "Document ID",
+                "Title",
+                "Owner",
+                "Department",
+                "Status",
+                "Updated",
+                "Actions",
+              ].map((h) => (
+                <Box
+                  key={h}
+                  component="th"
+                  sx={{
+                    textAlign: "left",
+                    px: 3,
+                    py: 2,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "text.secondary",
+                  }}
+                >
+                  {h.toUpperCase()}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          <Box component="tbody">
+            {filteredDocs.map((doc) => (
+              <Box
+                component="tr"
+                key={doc.id}
+                sx={{
+                  borderTop: "1px solid rgba(0,0,0,0.06)",
+                  "&:hover": { bgcolor: "grey.50" },
+                }}
+              >
+                <Box
+                  component="td"
+                  sx={{ px: 3, py: 2, fontWeight: 600, color: "primary.main" }}
+                >
+                  {doc.id}
+                </Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>
+                  {doc.title}
+                </Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>
+                  {doc.owner}
+                </Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>
+                  {doc.department}
+                </Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>
+                  <StatusChip status={doc.status} />
+                </Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>
+                  {doc.updated}
+                </Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>
+                  <IconButton
+                    size="small"
+                    onClick={() => navigate(`/dms/${doc.id}`)}
+                  >
+                    <VisibilityOutlinedIcon />
+                  </IconButton>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      </Paper>
     </Box>
   );
 }
