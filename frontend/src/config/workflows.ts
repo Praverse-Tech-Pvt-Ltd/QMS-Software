@@ -2,14 +2,18 @@ export type ModuleKey = "dms" | "training" | "deviations" | "capa" | "change";
 
 export type WorkflowStatus =
   | "Draft"
-  | "In Review"
-  | "Investigation"
+  | "Submitted"
+  | "QA Review"
   | "Approved"
   | "Effective"
-  | "Implemented"
-  | "Effectiveness Check"
   | "Closed"
   | "Rejected";
+
+export type WorkflowTransition = {
+  from: WorkflowStatus;
+  to: WorkflowStatus;
+  action: "submit" | "approve" | "reject" | "close";
+};
 
 export const workflows: Record<
   ModuleKey,
