@@ -1,175 +1,249 @@
 import {
   Box,
-  Divider,
+  Typography,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Typography,
   Collapse,
+  Divider,
+  Avatar,
+  Button,
 } from "@mui/material";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
+import ChangeCircleOutlinedIcon from "@mui/icons-material/ChangeCircleOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
+import ExpandLessOutlinedIcon from "@mui/icons-material/ExpandLessOutlined";
+import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+
 import { useLocation, useNavigate } from "react-router-dom";
-import { navItems } from "./sidebarConfig";
+import { useState } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
 import { rolePermissions } from "../../types/permissions";
-import { useMemo, useState } from "react";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 export default function Sidebar() {
-  const { role } = useRole();
-  const allowed = rolePermissions[role];
-
-  const location = useLocation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { role } = useRole();
 
-  const filteredNav = useMemo(() => {
-    // filter based on allowed keys (including children)
-    return navItems
-      .filter((item) => allowed.includes(item.key))
-      .map((item) => {
-        if (!item.children) return item;
+  const allowed = rolePermissions[role];
+  const [trainingOpen, setTrainingOpen] = useState(
+    location.pathname.startsWith("/training")
+  );
 
-        const filteredChildren = item.children.filter((c) =>
-          allowed.includes(c.key),
-        );
-
-        return {
-          ...item,
-          children: filteredChildren,
-        };
-      });
-  }, [allowed]);
-
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    training: true,
-  });
-
-  const toggleGroup = (key: string) => {
-    setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+  const isActive = (path: string) =>
+    path === "/"
+      ? location.pathname === "/"
+      : location.pathname.startsWith(path);
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <Box sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>
-          NexGen QMS
-        </Typography>
-        <Typography variant="body2" sx={{ mt: 0.3, color: "text.secondary" }}>
-          Pharma Solutions Pvt. Ltd.
-        </Typography>
+    <Box
+      sx={{
+        width: 280,
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        borderRight: "1px solid rgba(0,0,0,0.08)",
+        bgcolor: "white",
+      }}
+    >
+      {/* Logo */}
+      <Box sx={{ p: 3, borderBottom: "1px solid rgba(0,0,0,0.08)" }}>
+        <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 3,
+              bgcolor: "#1e40af",
+              color: "white",
+              display: "grid",
+              placeItems: "center",
+              fontWeight: 900,
+              fontSize: 20,
+            }}
+          >
+            N
+          </Box>
+          <Box>
+            <Typography fontWeight={900}>NexGen Pharma</Typography>
+            <Typography variant="caption" sx={{ letterSpacing: 1 }}>
+              QUALITY SYSTEMS
+            </Typography>
+          </Box>
+        </Box>
       </Box>
 
-      <Divider />
-
-      <Box sx={{ p: 1 }}>
+      {/* Navigation */}
+      <Box sx={{ flex: 1, p: 2 }}>
         <List dense>
-          {filteredNav.map((item) => {
-            const isActive =
-              item.path === "/"
-                ? location.pathname === "/"
-                : location.pathname.startsWith(item.path);
+          {/* Dashboard */}
+          {allowed.includes("dashboard") && (
+            <ListItemButton
+              selected={isActive("/")}
+              onClick={() => navigate("/")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon>
+                <DashboardOutlinedIcon />
+              </ListItemIcon>
+              <ListItemText primary="Dashboard" />
+            </ListItemButton>
+          )}
 
-            const hasChildren = !!item.children && item.children.length > 0;
+          {/* DMS */}
+          {allowed.includes("dms") && (
+            <ListItemButton
+              selected={isActive("/dms")}
+              onClick={() => navigate("/dms")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon>
+                <DescriptionOutlinedIcon />
+              </ListItemIcon>
+              <ListItemText primary="Document Management" />
+            </ListItemButton>
+          )}
 
-            return (
-              <Box key={item.path}>
-                <ListItemButton
-                  onClick={() => {
-                    // ✅ Parent row always navigates
-                    navigate(item.path);
-                  }}
-                  selected={
-                    isActive &&
-                    !location.pathname.startsWith("/training/matrix")
-                  }
-                  sx={{
-                    borderRadius: 2,
-                    mb: 0.5,
-                    "&.Mui-selected": {
-                      bgcolor: "rgba(31, 111, 235, 0.10)",
-                      "&:hover": { bgcolor: "rgba(31, 111, 235, 0.14)" },
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 42 }}>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} />
-
-                  {hasChildren ? (
-                    <Box
-                      onClick={(e) => {
-                        e.stopPropagation(); // ✅ prevents navigation
-                        toggleGroup(item.key);
-                      }}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        px: 0.5,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {openGroups[item.key] ? (
-                        <ExpandLessIcon fontSize="small" />
-                      ) : (
-                        <ExpandMoreIcon fontSize="small" />
-                      )}
-                    </Box>
-                  ) : null}
-                </ListItemButton>
-
-                {hasChildren && (
-                  <Collapse
-                    in={openGroups[item.key]}
-                    timeout="auto"
-                    unmountOnExit
-                  >
-                    <List dense sx={{ pl: 2 }}>
-                      {item.children!.map((child) => {
-                        const childActive =
-                          location.pathname === child.path ||
-                          location.pathname.startsWith(child.path);
-
-                        return (
-                          <ListItemButton
-                            key={child.path}
-                            onClick={() => navigate(child.path)}
-                            selected={childActive}
-                            sx={{
-                              borderRadius: 2,
-                              mb: 0.5,
-                              "&.Mui-selected": {
-                                bgcolor: "rgba(31, 111, 235, 0.10)",
-                                "&:hover": {
-                                  bgcolor: "rgba(31, 111, 235, 0.14)",
-                                },
-                              },
-                            }}
-                          >
-                            <ListItemIcon sx={{ minWidth: 42 }}>
-                              {child.icon}
-                            </ListItemIcon>
-                            <ListItemText primary={child.label} />
-                          </ListItemButton>
-                        );
-                      })}
-                    </List>
-                  </Collapse>
+          {/* Training */}
+          {allowed.includes("training") && (
+            <>
+              <ListItemButton
+                onClick={() => setTrainingOpen((v) => !v)}
+                selected={isActive("/training")}
+                sx={{ borderRadius: 2 }}
+              >
+                <ListItemIcon>
+                  <SchoolOutlinedIcon />
+                </ListItemIcon>
+                <ListItemText primary="Training / LMS" />
+                {trainingOpen ? (
+                  <ExpandLessOutlinedIcon />
+                ) : (
+                  <ExpandMoreOutlinedIcon />
                 )}
-              </Box>
-            );
-          })}
+              </ListItemButton>
+
+              <Collapse in={trainingOpen} timeout="auto" unmountOnExit>
+                <List dense sx={{ pl: 4 }}>
+                  <ListItemButton
+                    selected={location.pathname === "/training"}
+                    onClick={() => navigate("/training")}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    <ListItemText primary="Training Records" />
+                  </ListItemButton>
+
+                  {allowed.includes("training_matrix") && (
+                    <ListItemButton
+                      selected={location.pathname.startsWith("/training/matrix")}
+                      onClick={() => navigate("/training/matrix")}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      <ListItemText primary="Training Matrix" />
+                    </ListItemButton>
+                  )}
+                </List>
+              </Collapse>
+            </>
+          )}
+
+          {/* Deviations */}
+          {allowed.includes("deviations") && (
+            <ListItemButton
+              selected={isActive("/deviations")}
+              onClick={() => navigate("/deviations")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon>
+                <ReportProblemOutlinedIcon />
+              </ListItemIcon>
+              <ListItemText primary="Deviation / Incident" />
+            </ListItemButton>
+          )}
+
+          {/* CAPA */}
+          {allowed.includes("capa") && (
+            <ListItemButton
+              selected={isActive("/capa")}
+              onClick={() => navigate("/capa")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon>
+                <FactCheckOutlinedIcon />
+              </ListItemIcon>
+              <ListItemText primary="CAPA" />
+            </ListItemButton>
+          )}
+
+          {/* Change Control */}
+          {allowed.includes("change") && (
+            <ListItemButton
+              selected={isActive("/change-control")}
+              onClick={() => navigate("/change-control")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon>
+                <ChangeCircleOutlinedIcon />
+              </ListItemIcon>
+              <ListItemText primary="Change Control" />
+            </ListItemButton>
+          )}
+
+          <Divider sx={{ my: 2 }} />
+
+          <ListItemButton sx={{ borderRadius: 2 }}>
+            <ListItemIcon>
+              <SettingsOutlinedIcon />
+            </ListItemIcon>
+            <ListItemText primary="Settings" />
+          </ListItemButton>
+
+          <ListItemButton sx={{ borderRadius: 2 }}>
+            <ListItemIcon>
+              <HelpOutlineOutlinedIcon />
+            </ListItemIcon>
+            <ListItemText primary="Help Center" />
+          </ListItemButton>
         </List>
       </Box>
 
-      <Box sx={{ flexGrow: 1 }} />
+      {/* User Card */}
+      <Box sx={{ p: 2, borderTop: "1px solid rgba(0,0,0,0.08)" }}>
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            bgcolor: "rgba(30,64,175,0.06)",
+          }}
+        >
+          <Box sx={{ display: "flex", gap: 1.5, mb: 2 }}>
+            <Avatar sx={{ bgcolor: "#1e40af" }}>AP</Avatar>
+            <Box>
+              <Typography fontWeight={700}>Alexander Pierce</Typography>
+              <Typography variant="caption">Chief Quality Officer</Typography>
+            </Box>
+          </Box>
 
-      <Divider />
-
-      <Box sx={{ p: 2 }}>
-        <Typography variant="caption" sx={{ color: "text.secondary" }}>
-          UI only • Sprint Build
-        </Typography>
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<LogoutOutlinedIcon />}
+            sx={{ textTransform: "none", fontWeight: 700 }}
+            onClick={() => {
+              localStorage.removeItem("qms_token");
+              navigate("/login", { replace: true });
+            }}
+          >
+            Sign Out
+          </Button>
+        </Box>
       </Box>
     </Box>
   );

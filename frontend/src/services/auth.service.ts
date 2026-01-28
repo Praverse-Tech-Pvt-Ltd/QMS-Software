@@ -18,6 +18,8 @@ type StoredUser = {
 
 const USERS_KEY = "qms_users";
 const TOKEN_KEY = "qms_token";
+const USER_KEY = "qms_user";
+const TOKEN_VALUE = "mock-token";
 
 function getUsers(): StoredUser[] {
   const raw = localStorage.getItem(USERS_KEY);
@@ -47,31 +49,48 @@ export const authService = {
     users.push(newUser);
     saveUsers(users);
 
-    // create dummy token
-    localStorage.setItem(TOKEN_KEY, "demo");
-    return newUser;
-  },
-
-  login(payload: LoginPayload) {
-    const users = getUsers();
-
-    const user = users.find(
-      (u) => u.email === payload.email && u.password === payload.password
+    // unified auth state
+    localStorage.setItem(TOKEN_KEY, TOKEN_VALUE);
+    localStorage.setItem(
+      USER_KEY,
+      JSON.stringify({
+        email: payload.email,
+        name: payload.fullName,
+        role: "QA",
+      }),
     );
 
-    if (!user) {
-      throw new Error("Invalid email or password.");
+    return true;
+  },
+
+  login(email: string, password: string) {
+    if (!email || !password) {
+      throw new Error("Email and password are required");
     }
 
-    localStorage.setItem(TOKEN_KEY, "demo");
-    return user;
+    localStorage.setItem(TOKEN_KEY, TOKEN_VALUE);
+    localStorage.setItem(
+      USER_KEY,
+      JSON.stringify({
+        email,
+        name: "Demo User",
+        role: "QA",
+      }),
+    );
+
+    return true;
   },
 
   logout() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  },
+  isAuthenticated() {
+    return localStorage.getItem(TOKEN_KEY) === TOKEN_VALUE;
   },
 
-  isAuthenticated() {
-    return localStorage.getItem(TOKEN_KEY) === "demo";
+  getUser() {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
   },
 };

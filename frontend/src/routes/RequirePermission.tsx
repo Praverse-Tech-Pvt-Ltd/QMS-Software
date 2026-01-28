@@ -11,10 +11,9 @@ export default function RequirePermission({
   children: React.ReactNode;
 }) {
   const { role } = useRole();
+  const allowed = rolePermissions[role] || [];
 
-  const allowedModules = rolePermissions[role];
-
-  if (!allowedModules.includes(moduleKey)) {
+  if (!allowed.includes(moduleKey)) {
     return <Navigate to="/" replace />;
   }
 
