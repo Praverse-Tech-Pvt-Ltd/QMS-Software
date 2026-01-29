@@ -1,21 +1,38 @@
-import { Box, Paper, TextField } from "@mui/material";
+import {
+  Box,
+  Paper,
+  TextField,
+  MenuItem,
+  Typography,
+  Divider,
+  Grid,
+} from "@mui/material";
 import PageHeader from "../../components/common/PageHeader";
+import FormActions from "../../components/common/FormActions";
 
 import { useNavigate } from "react-router-dom";
 import { useSnackbar } from "notistack";
-
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormActions from "../../components/common/FormActions";
 
+// Architecture Imports
+import { useRole } from "../../app/providers/RoleProvider";
+import { workflowService } from "../../services/workflow.service";
+import { auditService } from "../../services/audit.service";
+
+// Schema Definition
 const schema = z.object({
-  title: z.string().min(3, "Change title is required"),
-  department: z.string().min(2, "Department is required"),
-  owner: z.string().min(2, "Owner is required"),
-  implementationDate: z.string().min(1, "Implementation date is required"),
-  reason: z.string().min(5, "Reason for change is required"),
-  description: z.string().min(5, "Description is required"),
+  title: z.string().min(5, "Title is required"),
+  changeType: z.string().min(1, "Change Type is required"),
+  priority: z.string().min(1, "Priority is required"),
+  department: z.string().min(1, "Department is required"),
+  owner: z.string().min(2, "Owner name is required"),
+  implementationDate: z
+    .string()
+    .min(1, "Target implementation date is required"),
+  description: z.string().min(10, "Description must be detailed"),
+  justification: z.string().min(10, "Justification is required"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -23,92 +40,238 @@ type FormValues = z.infer<typeof schema>;
 export default function ChangeControlCreatePage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
+  const { role } = useRole();
 
   const {
     register,
+    control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
-      department: "QA",
+      changeType: "Major",
+      priority: "Medium",
+      department: "Engineering",
       owner: "",
       implementationDate: "",
-      reason: "",
       description: "",
+      justification: "",
     },
   });
 
-  const onSaveDraft = (data: FormValues) => {
-    enqueueSnackbar("Change Control saved as Draft (mock)", { variant: "success" });
-    navigate("/change-control");
+  // Reusable Create Logic
+  const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
+    try {
+      // 1. Generate ID (Mock)
+      const newId = `CC-2024-${Math.floor(Math.random() * 1000)}`;
+      const initialStatus = action === "Draft" ? "Draft" : "QA Review";
+
+      // 2. Persist Data
+      workflowService.getOrCreate(newId, "change");
+
+      // 3. Log Audit
+      auditService.add("change", newId, {
+        actionType: "CREATE",
+        field: "Record",
+        oldValue: "N/A",
+        newValue: "Created",
+        user: "Current User",
+        role: role,
+        reason: `Initiated Change Request (${action})`,
+      });
+
+      // 4. Redirect
+      enqueueSnackbar(`Change Control ${newId} initiated successfully`, {
+        variant: "success",
+      });
+      navigate(`/change-control/${newId}`);
+    } catch (err) {
+      console.error(err);
+      enqueueSnackbar("Failed to create record", { variant: "error" });
+    }
   };
 
-  const onSubmitReview = (data: FormValues) => {
-    enqueueSnackbar("Change Control submitted for QA Review (mock)", { variant: "success" });
-    navigate("/change-control");
-  };
+  const onSaveDraft = (data: FormValues) => handleCreate(data, "Draft");
+  const onSubmitReview = (data: FormValues) => handleCreate(data, "Submit");
 
   return (
     <Box>
       <PageHeader
         title="Initiate Change Control"
-        subtitle="Change Control record creation (UI only)"
+        subtitle="Request a change to facility, equipment, process, or document"
         showBack
       />
 
-      <Paper sx={{ mt: 2, p: 3, borderRadius: 3, border: "1px solid rgba(0,0,0,0.06)" }}>
-        <Box component="form" onSubmit={handleSubmit(onSubmitReview)} sx={{ display: "grid", gap: 2 }}>
-          <TextField
-            label="Change Title"
-            {...register("title")}
-            error={!!errors.title}
-            helperText={errors.title?.message}
-          />
+      <Paper
+        sx={{
+          mt: 3,
+          p: 4,
+          borderRadius: 3,
+          border: "1px solid rgba(0,0,0,0.06)",
+          maxWidth: 1200,
+          mx: "auto",
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
+          Change Request Form
+        </Typography>
 
-          <TextField
-            label="Department"
-            {...register("department")}
-            error={!!errors.department}
-            helperText={errors.department?.message}
-          />
+        <Box
+          component="form"
+          onSubmit={handleSubmit(onSubmitReview)}
+          sx={{ display: "grid", gap: 3 }}
+        >
+          {/* Classification Section */}
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <TextField
+                label="Change Title"
+                placeholder="e.g. Installation of new HVAC Unit in Warehouse B"
+                fullWidth
+                {...register("title")}
+                error={!!errors.title}
+                helperText={errors.title?.message}
+              />
+            </Grid>
 
-          <TextField
-            label="Owner"
-            {...register("owner")}
-            error={!!errors.owner}
-            helperText={errors.owner?.message}
-          />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Controller
+                name="department"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    select
+                    label="Department"
+                    fullWidth
+                    error={!!errors.department}
+                  >
+                    <MenuItem value="Engineering">Engineering</MenuItem>
+                    <MenuItem value="Production">Production</MenuItem>
+                    <MenuItem value="QA">Quality Assurance</MenuItem>
+                    <MenuItem value="QC">Quality Control</MenuItem>
+                    <MenuItem value="IT">IT / Systems</MenuItem>
+                  </TextField>
+                )}
+              />
+            </Grid>
 
-          <TextField
-            label="Planned Implementation Date"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            {...register("implementationDate")}
-            error={!!errors.implementationDate}
-            helperText={errors.implementationDate?.message}
-          />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Controller
+                name="changeType"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    select
+                    label="Change Type"
+                    fullWidth
+                    error={!!errors.changeType}
+                  >
+                    <MenuItem value="Minor">Minor (Document/SOP)</MenuItem>
+                    <MenuItem value="Major">Major (Process/Equipment)</MenuItem>
+                    <MenuItem value="Critical">
+                      Critical (Regulatory Impact)
+                    </MenuItem>
+                    <MenuItem value="Emergency">Emergency</MenuItem>
+                  </TextField>
+                )}
+              />
+            </Grid>
 
-          <TextField
-            label="Reason for Change"
-            multiline
-            rows={2}
-            {...register("reason")}
-            error={!!errors.reason}
-            helperText={errors.reason?.message}
-          />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Controller
+                name="priority"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    select
+                    label="Priority"
+                    fullWidth
+                    error={!!errors.priority}
+                  >
+                    <MenuItem value="Low">Low</MenuItem>
+                    <MenuItem value="Medium">Medium</MenuItem>
+                    <MenuItem value="High">High</MenuItem>
+                  </TextField>
+                )}
+              />
+            </Grid>
 
-          <TextField
-            label="Change Description"
-            multiline
-            rows={4}
-            {...register("description")}
-            error={!!errors.description}
-            helperText={errors.description?.message}
-          />
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                label="Target Implementation Date"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                {...register("implementationDate")}
+                error={!!errors.implementationDate}
+                helperText={errors.implementationDate?.message}
+              />
+            </Grid>
+          </Grid>
 
-          <FormActions onSaveDraft={handleSubmit(onSaveDraft)} />
+          <Divider />
+
+          {/* Details Section */}
+          <Typography variant="h6" sx={{ fontWeight: 800, mt: 1 }}>
+            Change Details
+          </Typography>
+
+          <Grid container spacing={3}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Initiator / Owner"
+                fullWidth
+                placeholder="Who is responsible for this change?"
+                {...register("owner")}
+                error={!!errors.owner}
+                helperText={errors.owner?.message}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                label="Description of Change"
+                multiline
+                rows={4}
+                fullWidth
+                placeholder="Describe the current state vs. proposed state in detail..."
+                {...register("description")}
+                error={!!errors.description}
+                helperText={errors.description?.message}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                label="Justification / Reason for Change"
+                multiline
+                rows={3}
+                fullWidth
+                placeholder="Why is this change necessary? (e.g. Regulatory requirement, efficiency improvement, equipment failure)"
+                {...register("justification")}
+                error={!!errors.justification}
+                helperText={errors.justification?.message}
+              />
+            </Grid>
+          </Grid>
+
+          <Divider sx={{ my: 1 }} />
+
+          <Typography variant="body2" color="text.secondary">
+            Note: Impact Assessment and Risk Evaluation will be performed in the
+            next step after creation.
+          </Typography>
+
+          <FormActions
+            onSaveDraft={handleSubmit(onSaveDraft)}
+            isSubmitting={isSubmitting}
+            labels={{ submit: "Initiate Change Request", draft: "Save Draft" }}
+          />
         </Box>
       </Paper>
     </Box>

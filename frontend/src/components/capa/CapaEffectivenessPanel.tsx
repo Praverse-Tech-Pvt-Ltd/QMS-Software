@@ -8,10 +8,16 @@ import {
   Typography,
   Checkbox,
   FormControlLabel,
+  Alert
 } from "@mui/material";
 import { useState } from "react";
 
-export default function CapaEffectivenessPanel() {
+// ✅ 1. Define Props Interface
+interface CapaEffectivenessPanelProps {
+  readOnly?: boolean;
+}
+
+export default function CapaEffectivenessPanel({ readOnly = false }: CapaEffectivenessPanelProps) {
   const [result, setResult] = useState("Pending");
   const [method, setMethod] = useState("Trend Review");
   const [reviewDate, setReviewDate] = useState("");
@@ -39,6 +45,7 @@ export default function CapaEffectivenessPanel() {
         p: 2.5,
         borderRadius: 3,
         border: "1px solid rgba(0,0,0,0.06)",
+        bgcolor: readOnly ? "#fafafa" : "white" // Visual cue
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
@@ -58,12 +65,22 @@ export default function CapaEffectivenessPanel() {
         />
       </Box>
 
+      {/* Helper Alert */}
+      {!readOnly && (
+        <Alert severity="info" sx={{ my: 2 }}>
+           Complete the effectiveness verification below.
+        </Alert>
+      )}
+
+      {/* ✅ 2. Read-Only Inputs */}
       <Box sx={{ mt: 2, display: "grid", gap: 2 }}>
         <TextField
           select
           label="Result"
           value={result}
           onChange={(e) => setResult(e.target.value)}
+          disabled={readOnly} // Locked
+          fullWidth
         >
           <MenuItem value="Pending">Pending</MenuItem>
           <MenuItem value="Effective">Effective</MenuItem>
@@ -75,6 +92,8 @@ export default function CapaEffectivenessPanel() {
           label="Verification Method"
           value={method}
           onChange={(e) => setMethod(e.target.value)}
+          disabled={readOnly} // Locked
+          fullWidth
         >
           <MenuItem value="Trend Review">Trend Review</MenuItem>
           <MenuItem value="Batch Review">Batch Review</MenuItem>
@@ -88,6 +107,8 @@ export default function CapaEffectivenessPanel() {
           InputLabelProps={{ shrink: true }}
           value={reviewDate}
           onChange={(e) => setReviewDate(e.target.value)}
+          disabled={readOnly} // Locked
+          fullWidth
         />
 
         <TextField
@@ -95,6 +116,8 @@ export default function CapaEffectivenessPanel() {
           label="Reviewed By"
           value={reviewer}
           onChange={(e) => setReviewer(e.target.value)}
+          disabled={readOnly} // Locked
+          fullWidth
         >
           <MenuItem value="QA Manager">QA Manager</MenuItem>
           <MenuItem value="QA Lead">QA Lead</MenuItem>
@@ -107,7 +130,9 @@ export default function CapaEffectivenessPanel() {
           onChange={(e) => setEvidence(e.target.value)}
           multiline
           rows={3}
-          placeholder="Attach evidence in Attachments tab (UI only)."
+          placeholder="Attach evidence in Attachments tab."
+          disabled={readOnly} // Locked
+          fullWidth
         />
       </Box>
 
@@ -117,6 +142,7 @@ export default function CapaEffectivenessPanel() {
         Closure Checklist
       </Typography>
 
+      {/* ✅ 3. Read-Only Checkboxes */}
       <Box sx={{ display: "grid", gap: 0.5 }}>
         <FormControlLabel
           control={
@@ -128,6 +154,7 @@ export default function CapaEffectivenessPanel() {
                   actionsImplemented: e.target.checked,
                 }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Corrective/Preventive actions implemented"
@@ -143,6 +170,7 @@ export default function CapaEffectivenessPanel() {
                   trainingCompleted: e.target.checked,
                 }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Training completed for relevant employees"
@@ -158,9 +186,10 @@ export default function CapaEffectivenessPanel() {
                   documentsUpdated: e.target.checked,
                 }))
               }
+              disabled={readOnly} // Locked
             />
           }
-          label="SOP / controlled documents updated (if applicable)"
+          label="SOP / controlled documents updated"
         />
 
         <FormControlLabel
@@ -173,6 +202,7 @@ export default function CapaEffectivenessPanel() {
                   effectivenessVerified: e.target.checked,
                 }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Effectiveness verified and documented"
@@ -188,19 +218,12 @@ export default function CapaEffectivenessPanel() {
                   qaApproved: e.target.checked,
                 }))
               }
+              disabled={readOnly} // Locked
             />
           }
-          label="QA approval for closure completed (e-sign placeholder)"
+          label="QA approval for closure completed"
         />
       </Box>
-
-      <Typography
-        variant="caption"
-        sx={{ color: "text.secondary", mt: 2, display: "block" }}
-      >
-        Closure logic will be enforced once backend and role-based approvals are
-        integrated.
-      </Typography>
     </Paper>
   );
 }

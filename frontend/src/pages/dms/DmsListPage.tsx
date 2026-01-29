@@ -15,7 +15,7 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { useNavigate } from "react-router-dom";
 
 import StatusChip from "../../components/qms/StatusChip";
-import type { WorkflowStatus } from "../../config/workflows";
+import type { WorkflowStatus } from "../../types/workflow.types";
 
 type DocumentRow = {
   id: string;

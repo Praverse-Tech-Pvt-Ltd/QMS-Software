@@ -1,9 +1,29 @@
 import { Box, Button, Paper, Tab, Tabs, Typography } from "@mui/material";
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
-type TabKey = "overview" | "attachments" | "activity" | "approvals";
+// ✅ 1. Update Interface to include optional tabs
+interface DetailTabsLayoutProps {
+  title: string;
+  subtitle?: string;
+  statusChip?: ReactNode;
+
+  showBack?: boolean;
+  backTo?: string;
+
+  rightPanel: ReactNode;
+  
+  // Tab Content
+  overview: ReactNode;
+  attachments: ReactNode;
+  activity: ReactNode;
+  approvals: ReactNode;
+  
+  // Optional Tabs (for Change Control / CAPA)
+  impact?: ReactNode;
+  plan?: ReactNode;
+}
 
 export default function DetailTabsLayout({
   title,
@@ -16,22 +36,22 @@ export default function DetailTabsLayout({
   attachments,
   activity,
   approvals,
-}: {
-  title: string;
-  subtitle?: string;
-  statusChip?: React.ReactNode;
-
-  showBack?: boolean;
-  backTo?: string;
-
-  rightPanel: React.ReactNode;
-  overview: React.ReactNode;
-  attachments: React.ReactNode;
-  activity: React.ReactNode;
-  approvals: React.ReactNode;
-}) {
-  const [tab, setTab] = useState<TabKey>("overview");
+  impact,
+  plan,
+}: DetailTabsLayoutProps) {
+  const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
+
+  // ✅ 2. Dynamic Tab Config
+  // This array builds the tabs based on what props are available
+  const tabs = [
+    { label: "Overview", content: overview },
+    ...(impact ? [{ label: "Impact Assessment", content: impact }] : []),
+    ...(plan ? [{ label: "Implementation Plan", content: plan }] : []),
+    { label: "Attachments", content: attachments },
+    { label: "Activity", content: activity },
+    { label: "Approvals", content: approvals },
+  ];
 
   return (
     <Box>
@@ -86,28 +106,34 @@ export default function DetailTabsLayout({
           alignItems: "start",
         }}
       >
-        {/* Left Content */}
+        {/* Left Content (Tabs) */}
         <Paper
           sx={{
             p: 2.5,
             borderRadius: 3,
             border: "1px solid rgba(0,0,0,0.06)",
+            minHeight: 500
           }}
         >
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-            <Tab label="Overview" value="overview" />
-            <Tab label="Attachments" value="attachments" />
-            <Tab label="Activity" value="activity" />
-            <Tab label="Approvals" value="approvals" />
+          <Tabs 
+            value={tabIndex} 
+            onChange={(_, v) => setTabIndex(v)} 
+            sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+            variant="scrollable"
+            scrollButtons="auto"
+          >
+            {tabs.map((t, i) => (
+                <Tab key={i} label={t.label} />
+            ))}
           </Tabs>
 
-          {tab === "overview" && <Box>{overview}</Box>}
-          {tab === "attachments" && <Box>{attachments}</Box>}
-          {tab === "activity" && <Box>{activity}</Box>}
-          {tab === "approvals" && <Box>{approvals}</Box>}
+          {/* Render Active Tab Content */}
+          <Box sx={{ mt: 2 }}>
+            {tabs[tabIndex]?.content}
+          </Box>
         </Paper>
 
-        {/* Right Panel */}
+        {/* Right Panel (Timeline / Actions) */}
         <Box>{rightPanel}</Box>
       </Box>
     </Box>

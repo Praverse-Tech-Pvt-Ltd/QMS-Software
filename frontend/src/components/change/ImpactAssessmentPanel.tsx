@@ -8,8 +8,14 @@ import {
   TextField,
   Typography,
   Chip,
+  Alert,
 } from "@mui/material";
 import { useMemo, useState } from "react";
+
+// ✅ 1. Define Props Interface
+interface ImpactAssessmentPanelProps {
+  readOnly?: boolean;
+}
 
 type PlanRow = {
   step: string;
@@ -18,7 +24,7 @@ type PlanRow = {
   status: "Pending" | "In Progress" | "Done";
 };
 
-export default function ImpactAssessmentPanel() {
+export default function ImpactAssessmentPanel({ readOnly = false }: ImpactAssessmentPanelProps) {
   const [impact, setImpact] = useState({
     validation: true,
     regulatory: false,
@@ -32,7 +38,8 @@ export default function ImpactAssessmentPanel() {
   const [riskNotes, setRiskNotes] = useState("");
   const [mitigation, setMitigation] = useState("");
 
-  const [planRows, setPlanRows] = useState<PlanRow[]>([
+  // Mock Plan Data
+  const [planRows] = useState<PlanRow[]>([
     {
       step: "Update SOP and controlled documents",
       owner: "QA Lead",
@@ -66,6 +73,7 @@ export default function ImpactAssessmentPanel() {
         p: 2.5,
         borderRadius: 3,
         border: "1px solid rgba(0,0,0,0.06)",
+        bgcolor: readOnly ? "#fafafa" : "white" // Subtle visual cue
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
@@ -85,6 +93,7 @@ export default function ImpactAssessmentPanel() {
         />
       </Box>
 
+      {/* ✅ 2. Read-Only Checkboxes */}
       <Box sx={{ mt: 2, display: "grid", gap: 0.5 }}>
         <FormControlLabel
           control={
@@ -93,6 +102,7 @@ export default function ImpactAssessmentPanel() {
               onChange={(e) =>
                 setImpact((p) => ({ ...p, validation: e.target.checked }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Validation Impact"
@@ -105,6 +115,7 @@ export default function ImpactAssessmentPanel() {
               onChange={(e) =>
                 setImpact((p) => ({ ...p, regulatory: e.target.checked }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Regulatory Impact"
@@ -117,6 +128,7 @@ export default function ImpactAssessmentPanel() {
               onChange={(e) =>
                 setImpact((p) => ({ ...p, stability: e.target.checked }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Stability Impact"
@@ -129,6 +141,7 @@ export default function ImpactAssessmentPanel() {
               onChange={(e) =>
                 setImpact((p) => ({ ...p, documents: e.target.checked }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Document / SOP Updates"
@@ -141,6 +154,7 @@ export default function ImpactAssessmentPanel() {
               onChange={(e) =>
                 setImpact((p) => ({ ...p, training: e.target.checked }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Training Impact"
@@ -153,6 +167,7 @@ export default function ImpactAssessmentPanel() {
               onChange={(e) =>
                 setImpact((p) => ({ ...p, supplier: e.target.checked }))
               }
+              disabled={readOnly} // Locked
             />
           }
           label="Supplier / Vendor Impact"
@@ -165,12 +180,15 @@ export default function ImpactAssessmentPanel() {
         Risk Assessment
       </Typography>
 
+      {/* ✅ 3. Read-Only Inputs */}
       <Box sx={{ display: "grid", gap: 2 }}>
         <TextField
           select
           label="Overall Risk Level"
           value={riskLevel}
           onChange={(e) => setRiskLevel(e.target.value)}
+          disabled={readOnly} // Locked
+          fullWidth
         >
           <MenuItem value="Low">Low</MenuItem>
           <MenuItem value="Medium">Medium</MenuItem>
@@ -185,6 +203,8 @@ export default function ImpactAssessmentPanel() {
           multiline
           rows={3}
           placeholder="Describe risk and potential quality impact..."
+          disabled={readOnly} // Locked
+          fullWidth
         />
 
         <TextField
@@ -194,6 +214,8 @@ export default function ImpactAssessmentPanel() {
           multiline
           rows={3}
           placeholder="Describe mitigation steps..."
+          disabled={readOnly} // Locked
+          fullWidth
         />
       </Box>
 
@@ -202,6 +224,12 @@ export default function ImpactAssessmentPanel() {
       <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 1 }}>
         Implementation Plan
       </Typography>
+
+      {!readOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+           You can add new implementation steps in Edit mode.
+        </Alert>
+      )}
 
       <Box sx={{ display: "grid", gap: 1.5 }}>
         {planRows.map((row, idx) => (
@@ -225,14 +253,6 @@ export default function ImpactAssessmentPanel() {
           </Paper>
         ))}
       </Box>
-
-      <Typography
-        variant="caption"
-        sx={{ color: "text.secondary", mt: 2, display: "block" }}
-      >
-        Implementation steps will later support editable rows, approvals, and
-        evidence uploads.
-      </Typography>
     </Paper>
   );
 }

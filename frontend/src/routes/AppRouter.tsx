@@ -6,6 +6,7 @@ import { authService } from "../services/auth.service";
 // Auth Pages
 import LoginPage from "../pages/auth/LoginPage";
 import SignupPage from "../pages/auth/SignupPage";
+import AccessDeniedPage from "../pages/auth/AccessDeniedPage"; // ✅ NEW IMPORT
 
 // Dashboard
 import DashboardPage from "../pages/dashboard/DashboardPage";
@@ -42,19 +43,27 @@ const isAuthed = () => authService.isAuthenticated();
 export default function AppRouter() {
   return (
     <Routes>
-      {/* Public Routes */}
+      {/* --- Public Routes --- */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/access-denied" element={<AccessDeniedPage />} /> {/* ✅ ADDED THIS */}
 
-      {/* Protected App */}
+      {/* --- Protected App --- */}
       <Route
         path="/"
         element={isAuthed() ? <AppLayout /> : <Navigate to="/login" replace />}
       >
-        {/* Dashboard */}
-        <Route index element={<DashboardPage />} />
+        {/* Dashboard: Available to everyone with login access */}
+        <Route 
+          index 
+          element={
+            <RequirePermission moduleKey="dashboard">
+               <DashboardPage />
+            </RequirePermission>
+          } 
+        />
 
-        {/* DMS */}
+        {/* DMS Module */}
         <Route
           path="dms"
           element={
@@ -80,7 +89,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* Training */}
+        {/* Training Module */}
         <Route
           path="training"
           element={
@@ -105,6 +114,8 @@ export default function AppRouter() {
             </RequirePermission>
           }
         />
+        
+        {/* Training Matrix (Specific Sub-Permission) */}
         <Route
           path="training/matrix"
           element={
@@ -113,7 +124,6 @@ export default function AppRouter() {
             </RequirePermission>
           }
         />
-
         <Route
           path="training/employees/:id"
           element={
@@ -123,7 +133,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* Deviations */}
+        {/* Deviations Module */}
         <Route
           path="deviations"
           element={
@@ -149,7 +159,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* CAPA */}
+        {/* CAPA Module */}
         <Route
           path="capa"
           element={
@@ -175,7 +185,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* Change Control */}
+        {/* Change Control Module */}
         <Route
           path="change-control"
           element={

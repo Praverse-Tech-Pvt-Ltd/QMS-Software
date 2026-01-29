@@ -1,57 +1,66 @@
-import type { Role, ModuleKey, ActionKey } from "../types/permissions.types";
+import type { UserRole, ModuleKey, PermissionMatrix, PermissionAction } from "../types/permissions.types";
 
-type PermissionMatrix = {
-  [R in Role]: {
-    [M in ModuleKey]?: ActionKey[];
-  };
-};
-
-export const PERMISSIONS: PermissionMatrix = {
+export const ROLE_PERMISSIONS: PermissionMatrix = {
   Admin: {
     dashboard: ["view"],
-    dms: ["view", "create", "edit", "submit", "approve", "close", "reopen"],
-    deviation: ["view", "create", "edit", "submit", "approve", "close"],
-    capa: ["view", "create", "edit", "approve", "close"],
-    change: ["view", "create", "edit", "approve", "close"],
-    training: ["view", "create", "edit", "approve"],
+    dms: ["view", "create", "edit", "delete", "approve", "export"],
+    training: ["view", "create", "edit", "delete", "export"],
+    training_matrix: ["view", "export"],
+    deviations: ["view", "create", "edit", "delete", "approve", "export"],
+    capa: ["view", "create", "edit", "delete", "approve", "export"],
+    change: ["view", "create", "edit", "delete", "approve", "export"],
   },
-
   QA: {
-    dms: ["view", "approve"],
-    deviation: ["view", "approve"],
-    capa: ["view", "approve"],
-    change: ["view", "approve"],
-    training: ["view"],
+    dashboard: ["view"],
+    dms: ["view", "create", "edit", "approve", "export"], // QA Approves Docs
+    training: ["view", "create", "edit", "export"],
+    training_matrix: ["view", "export"],
+    deviations: ["view", "create", "edit", "approve", "export"], // QA Approves Deviations
+    capa: ["view", "create", "edit", "approve", "export"],
+    change: ["view", "create", "edit", "approve", "export"],
   },
-
   QC: {
-    dms: ["view"],
-    deviation: ["view", "create"],
-    capa: ["view"],
+    dashboard: ["view"],
+    dms: ["view"], // QC typically reads SOPs, doesn't write them
     training: ["view"],
+    training_matrix: ["view"],
+    deviations: ["view", "create"], // QC can raise a deviation
+    capa: ["view", "create"], // QC can raise a CAPA
   },
-
   Production: {
-    dms: ["view"],
-    deviation: ["view", "create"],
+    dashboard: ["view"],
+    dms: ["view"], // Read-only access to Effective SOPs
     training: ["view"],
+    training_matrix: ["view"], // Check own training status
+    deviations: ["view", "create"], // Production often raises deviations
+    change: ["view"],
   },
-
   Warehouse: {
-    dms: ["view"],
-    training: ["view"],
-  },
-
-  Viewer: {
     dashboard: ["view"],
     dms: ["view"],
+    training: ["view"],
+    deviations: ["view", "create"],
+  },
+  Viewer: {
+    dashboard: ["view"],
+    dms: ["view"], // Viewers can only read
+    training: ["view"],
+    training_matrix: ["view"],
+    deviations: ["view"],
+    capa: ["view"],
+    change: ["view"],
   },
 };
 
-export function canPerform(
-  role: Role,
-  module: ModuleKey,
-  action: ActionKey,
-) {
-  return PERMISSIONS[role]?.[module]?.includes(action) ?? false;
-}
+/**
+ * Helper to check permissions in your UI
+ * Usage: if (hasPermission('QA', 'dms', 'approve')) { ... }
+ */
+export const hasPermission = (
+  role: UserRole, 
+  module: ModuleKey, 
+  action: PermissionAction
+): boolean => {
+  const modulePerms = ROLE_PERMISSIONS[role]?.[module];
+  return modulePerms ? modulePerms.includes(action) : false;
+};

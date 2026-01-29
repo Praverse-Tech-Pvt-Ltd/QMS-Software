@@ -25,16 +25,20 @@ import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
-import { rolePermissions } from "../../types/permissions";
+import { ROLE_PERMISSIONS } from "../../config/permissions";
+import type { ModuleKey } from "../../types/permissions.types";
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useRole();
 
-  const allowed = rolePermissions[role];
+  const canView = (module: ModuleKey) => {
+    return ROLE_PERMISSIONS[role]?.[module]?.includes("view");
+  };
+
   const [trainingOpen, setTrainingOpen] = useState(
-    location.pathname.startsWith("/training")
+    location.pathname.startsWith("/training"),
   );
 
   const isActive = (path: string) =>
@@ -84,7 +88,7 @@ export default function Sidebar() {
       <Box sx={{ flex: 1, p: 2 }}>
         <List dense>
           {/* Dashboard */}
-          {allowed.includes("dashboard") && (
+          {canView("dashboard") && (
             <ListItemButton
               selected={isActive("/")}
               onClick={() => navigate("/")}
@@ -98,7 +102,7 @@ export default function Sidebar() {
           )}
 
           {/* DMS */}
-          {allowed.includes("dms") && (
+          {canView("dms") && (
             <ListItemButton
               selected={isActive("/dms")}
               onClick={() => navigate("/dms")}
@@ -112,7 +116,7 @@ export default function Sidebar() {
           )}
 
           {/* Training */}
-          {allowed.includes("training") && (
+          {canView("training") && (
             <>
               <ListItemButton
                 onClick={() => setTrainingOpen((v) => !v)}
@@ -140,9 +144,11 @@ export default function Sidebar() {
                     <ListItemText primary="Training Records" />
                   </ListItemButton>
 
-                  {allowed.includes("training_matrix") && (
+                  {canView("training_matrix") && (
                     <ListItemButton
-                      selected={location.pathname.startsWith("/training/matrix")}
+                      selected={location.pathname.startsWith(
+                        "/training/matrix",
+                      )}
                       onClick={() => navigate("/training/matrix")}
                       sx={{ borderRadius: 2 }}
                     >
@@ -155,7 +161,7 @@ export default function Sidebar() {
           )}
 
           {/* Deviations */}
-          {allowed.includes("deviations") && (
+          {canView("deviations") && (
             <ListItemButton
               selected={isActive("/deviations")}
               onClick={() => navigate("/deviations")}
@@ -169,7 +175,7 @@ export default function Sidebar() {
           )}
 
           {/* CAPA */}
-          {allowed.includes("capa") && (
+          {canView("capa") && (
             <ListItemButton
               selected={isActive("/capa")}
               onClick={() => navigate("/capa")}
@@ -183,7 +189,7 @@ export default function Sidebar() {
           )}
 
           {/* Change Control */}
-          {allowed.includes("change") && (
+          {canView("change") && (
             <ListItemButton
               selected={isActive("/change-control")}
               onClick={() => navigate("/change-control")}
@@ -198,18 +204,13 @@ export default function Sidebar() {
 
           <Divider sx={{ my: 2 }} />
 
+          {/* Settings - Only show if they have view access */}
+          {/* Note: If you add settings to permissions later, use canView('settings') */}
           <ListItemButton sx={{ borderRadius: 2 }}>
             <ListItemIcon>
               <SettingsOutlinedIcon />
             </ListItemIcon>
             <ListItemText primary="Settings" />
-          </ListItemButton>
-
-          <ListItemButton sx={{ borderRadius: 2 }}>
-            <ListItemIcon>
-              <HelpOutlineOutlinedIcon />
-            </ListItemIcon>
-            <ListItemText primary="Help Center" />
           </ListItemButton>
         </List>
       </Box>
