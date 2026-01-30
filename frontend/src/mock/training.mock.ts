@@ -1,29 +1,24 @@
-import type { QmsStatus } from "../types/qms";
+import type { TrainingPlan } from "../types/training.types";
 
-export type TrainingRecord = {
-  id: string;
-  title: string;
-  department: string;
-  owner: string;
-  status: QmsStatus;
-  updatedAt: string;
-};
-
-export const trainingMock: TrainingRecord[] = [
+export const trainingMock: TrainingPlan[] = [
   {
-    id: "TRN-0001",
-    title: "GMP Refresher Training",
-    department: "QA",
-    owner: "QA Team",
-    status: "Effective",
-    updatedAt: "2026-01-20",
-  },
-  {
-    id: "TRN-0002",
-    title: "Warehouse Hygiene & Safety",
-    department: "Warehouse",
-    owner: "S. Kumar",
-    status: "In Review",
-    updatedAt: "2026-01-19",
-  },
+    id: "TRN-2024-005",
+    title: "Annual GMP Refresher",
+    status: "Draft",
+    moduleKey: "training",
+    
+    method: "Classroom",
+    duration: 60,
+    passScore: 80,
+    objectives: "To refresh knowledge on Good Manufacturing Practices, hygiene, and documentation standards.",
+    trainer: "John Doe (Training Lead)",
+    version: "v2.0",
+    
+    totalTrainees: 25,
+    completionRate: 85,
+    
+    approvalRequests: [],
+    signatureLog: [],
+    approvalsLog: []
+  }
 ];

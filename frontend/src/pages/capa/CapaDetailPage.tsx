@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useState } from "react";
 import {
   Box,
-  Grid,
+  Grid, // ✅ Grid v2
   TextField,
   Typography,
   Divider,
@@ -11,310 +11,291 @@ import {
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 
-// Architecture Imports
-import { useRole } from "../../app/providers/RoleProvider";
-import { ROLE_PERMISSIONS } from "../../config/permissions";
-import { WORKFLOWS } from "../../config/workflows";
-import { workflowService } from "../../services/workflow.service";
-import { auditService } from "../../services/audit.service";
+// --- ENGINEERING STANDARDS IMPORTS ---
+import { useFetch } from "../../hooks/useFetch";
+import { capaService } from "../../services/capa.service"; // ✅ Service
+import LoadingState from "../../components/common/LoadingState";
+import ErrorState from "../../components/common/ErrorState";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
 
-// Components
+// --- COMPONENT IMPORTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
+import SignatureStamp from "../../components/qms/SignatureStamp";
+import ReasonForChangeModal from "../../components/common/ReasonForChangeModal";
+import UserSelectionModal from "../../components/common/UserSelectionModal";
 import WorkflowTimeline from "../../components/qms/WorkflowTimeline";
 import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
-import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
-import ActivityLog from "../../components/qms/ActivityLog";
-import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
-import UserSelectionModal from "../../components/common/UserSelectionModal";
-import AuditTrailTable from "../../components/qms/AuditTrailTable";
-import SignatureLogTable from "../../components/qms/SignatureLogTable";
-import SignatureStamp from "../../components/qms/SignatureStamp"; // ✅ Added
-import ReasonForChangeModal from "../../components/common/ReasonForChangeModal"; // ✅ Added
+import { WORKFLOWS } from "../../config/workflows";
+
+// Module Specific Components
 import CapaActionPanel from "../../components/capa/CapaActionPanel";
 import ClosureChecklist from "../../components/qms/ClosureChecklist";
-
-import type { AuditTrailEntry } from "../../types/audit.types";
-import type { WorkflowMeta } from "../../types/workflow.types";
+import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
+import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
+import AuditTrailTable from "../../components/qms/AuditTrailTable";
+import SignatureLogTable from "../../components/qms/SignatureLogTable";
+import ActivityLog from "../../components/qms/ActivityLog";
 
 export default function CapaDetailPage() {
   const { id } = useParams();
-  const { role } = useRole();
 
-  // State
-  const [meta, setMeta] = useState<WorkflowMeta | null>(null);
-  const [auditRows, setAuditRows] = useState<AuditTrailEntry[]>([]);
+  // 1. DATA FETCHING
+  const { 
+    data: record, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useFetch(() => capaService.getById(id || ""), [id]);
+
+  // 2. LOCAL STATE
   const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [reasonModalOpen, setReasonModalOpen] = useState(false); // ✅ Added
+  const [reasonModalOpen, setReasonModalOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // Permissions
-  const canEdit = ROLE_PERMISSIONS[role]?.capa?.includes("edit");
+  // 3. PERMISSIONS (Mocked logic)
+  const canEdit = record?.status !== 'Closed' && record?.status !== 'Cancelled';
 
-  // Load Data
-  useEffect(() => {
-    if (!id) return;
-    const data = workflowService.getOrCreate(id, "capa");
-    setMeta(data);
-  }, [id]);
+  // 4. HANDLERS
+  const handleSaveClick = () => setSaveDialogOpen(true);
 
-  useEffect(() => {
-    if (!id) return;
-    setAuditRows(auditService.list("capa", id));
-  }, [id, meta?.status]);
+  const handleConfirmSave = async () => {
+    await capaService.update(id!, { ...record });
+    setSaveDialogOpen(false);
+    refetch();
+  };
 
-  // --- Handlers ---
+  const handleAddReviewer = (user: any) => {
+    console.log("Assigning CAPA Reviewer:", user);
+    setAssignModalOpen(false);
+  };
 
   const handleValidate = () => {
-    if (!meta) return "Error: Record not loaded";
-    if (
-      meta.status === "Root Cause Analysis" ||
-      meta.status === "Investigation"
-    ) {
-      return true;
-    }
-    return true;
+     // CAPA validation logic here
+     return true;
   };
 
-  const handleAddReviewer = (user: {
-    id: string;
-    name: string;
-    role: string;
-  }) => {
-    if (!id || !meta) return;
-    const newRequest = {
-      id: `req-${Date.now()}`,
-      userId: user.id,
-      userName: user.name,
-      role: user.role,
-      stepName: meta.status,
-      assignedDate: new Date().toISOString(),
-      status: "Pending" as const,
-      dueDate: new Date(Date.now() + 86400000 * 5).toISOString(),
-    };
-    const updatedMeta = {
-      ...meta,
-      approvalRequests: [...(meta.approvalRequests || []), newRequest],
-    };
-    setMeta(updatedMeta);
-  };
+  // 5. LOADING / ERROR STATES
+  if (isLoading) return <LoadingState message="Loading CAPA Record..." />;
+  if (error || !record) return <ErrorState onRetry={refetch} />;
 
-  // ✅ Save Logic
-  const handleSaveClick = () => setReasonModalOpen(true);
-
-  const handleConfirmChange = (reason: string) => {
-    if (!id) return;
-    setReasonModalOpen(false);
-    auditService.add("capa", id, {
-      actionType: "FIELD_EDIT",
-      field: "CAPA Details",
-      oldValue: "Old Content",
-      newValue: "Updated Content",
-      user: "Current User",
-      role: role,
-      reason: reason,
-    });
-    setAuditRows(auditService.list("capa", id));
-  };
-
-  if (!id || !meta) return null;
-
+  // 6. RENDER
   return (
-    <DetailTabsLayout
-      title="CAPA-2024-009: Labeling Error Correction"
-      subtitle={`Record ID: ${id}`}
-      backTo="/capa"
-      // ✅ Signature Stamp
-      statusChip={
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-          <SignatureStamp
-            isSigned={meta.status === "Effective" || meta.status === "Closed"}
-            signedBy={
-              meta.signatureLog.length > 0
-                ? meta.signatureLog[meta.signatureLog.length - 1].signedBy
-                : "Unknown"
-            }
-            date={
-              meta.signatureLog.length > 0
-                ? new Date(
-                    meta.signatureLog[meta.signatureLog.length - 1].timestamp,
-                  ).toLocaleDateString()
-                : ""
-            }
-          />
-          <StatusChip status={meta.status} />
-        </Box>
-      }
-      rightPanel={
-        <Box sx={{ display: "grid", gap: 3 }}>
-          <WorkflowTimeline
-            currentStatus={meta.status}
-            steps={WORKFLOWS.capa.steps}
-          />
+    <>
+      <DetailTabsLayout
+        title={`${record.id}: ${record.title}`}
+        subtitle={`Record ID: ${id}`}
+        backTo="/capa"
+        
+        // Header Status Chip & Signature
+        statusChip={
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            {(record.status === "Effective" || record.status === "Closed") && (
+                <SignatureStamp
+                  isSigned={true}
+                  signedBy="QA Manager"
+                  date={new Date().toLocaleDateString()}
+                />
+            )}
+            <StatusChip status={record.status} />
+          </Box>
+        }
 
-          <WorkflowActionsPanel
-            recordId={id}
-            moduleKey="capa"
-            meta={meta}
-            onUpdated={setMeta}
-            onValidate={handleValidate}
-          />
+        // RIGHT PANEL: Workflow Timeline & Actions
+        rightPanel={
+          <Box sx={{ display: "grid", gap: 3 }}>
+            <WorkflowTimeline
+              currentStatus={record.status}
+              steps={WORKFLOWS.capa.steps}
+            />
 
-          <Divider />
+            <WorkflowActionsPanel
+              recordId={id || ""}
+              moduleKey="capa"
+              meta={record}
+              onUpdated={refetch}
+              onValidate={handleValidate}
+            />
 
-          <Box>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-              Record Metadata
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Source
-                </Typography>
-                <Typography variant="body2">Deviation DEV-042</Typography>
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                Record Metadata
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Source</Typography>
+                  <Typography variant="body2">{record.source}</Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">Risk Level</Typography>
+                  <Typography variant="body2">{record.riskLevel}</Typography>
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 6 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Risk Level
-                </Typography>
-                <Typography variant="body2">High</Typography>
+            </Box>
+          </Box>
+        }
+
+        // TAB 1: OVERVIEW (CAPA Form)
+        overview={
+          <Box sx={{ p: 1 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Problem & Investigation
+              </Typography>
+              {canEdit && (
+                <Button
+                  variant="contained"
+                  startIcon={<SaveIcon />}
+                  onClick={handleSaveClick}
+                  size="small"
+                >
+                  Save Changes
+                </Button>
+              )}
+            </Box>
+
+            <Grid container spacing={3}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  select
+                  label="CAPA Type"
+                  defaultValue={record.type}
+                  fullWidth
+                  disabled={!canEdit}
+                >
+                  <MenuItem value="Corrective">Corrective</MenuItem>
+                  <MenuItem value="Preventive">Preventive</MenuItem>
+                </TextField>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  label="Target Date"
+                  type="date"
+                  defaultValue={record.targetDate}
+                  fullWidth
+                  disabled={!canEdit}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  label="Owner"
+                  defaultValue={record.owner}
+                  fullWidth
+                  disabled={!canEdit}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  label="Problem Statement"
+                  defaultValue={record.description}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  disabled={!canEdit}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  label="Root Cause Analysis (RCA)"
+                  defaultValue={record.rootCause}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  disabled={!canEdit}
+                  helperText="Use 5 Whys or Fishbone method"
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  label="Proposed Action Plan"
+                  defaultValue={record.proposedPlan}
+                  fullWidth
+                  multiline
+                  rows={3}
+                  disabled={!canEdit}
+                />
               </Grid>
             </Grid>
           </Box>
-        </Box>
-      }
-      overview={
-        <Box sx={{ p: 1 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Problem & Investigation
-            </Typography>
-            {/* ✅ Save Button */}
-            {canEdit && (
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={handleSaveClick}
-                size="small"
-              >
-                Save Changes
-              </Button>
+        }
+
+        // TAB 2: ACTION PLAN (Detailed Steps)
+        plan={
+          <Box sx={{ p: 1 }}>
+            <CapaActionPanel readOnly={!canEdit} />
+            
+            {record.status === "Verification" && (
+              <Box sx={{ mt: 3 }}>
+                <ClosureChecklist />
+              </Box>
             )}
           </Box>
+        }
 
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                select
-                label="CAPA Type"
-                defaultValue="Corrective"
-                fullWidth
-                disabled={!canEdit}
-              >
-                <MenuItem value="Corrective">Corrective</MenuItem>
-                <MenuItem value="Preventive">Preventive</MenuItem>
-              </TextField>
-            </Grid>
+        // TAB 3: ATTACHMENTS
+        attachments={<AttachmentsUploader readOnly={!canEdit} />}
 
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                label="Target Date"
-                type="date"
-                defaultValue="2024-03-01"
-                fullWidth
-                disabled={!canEdit}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                label="Owner"
-                defaultValue="QA Specialist"
-                fullWidth
-                disabled={!canEdit}
-              />
-            </Grid>
+        // TAB 4: APPROVALS
+        approvals={
+          <Box sx={{ display: "grid", gap: 3 }}>
+            <ApprovalsPanel
+              requests={record.approvalRequests || []}
+              canAddReviewer={canEdit}
+              onAddReviewer={() => setAssignModalOpen(true)}
+            />
+            <SignatureLogTable rows={record.signatureLog || []} />
+          </Box>
+        }
 
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                label="Problem Statement"
-                defaultValue="Incorrect expiration date printed on Batch 4599 due to manual entry error."
-                fullWidth
-                multiline
-                rows={3}
-                disabled={!canEdit}
-              />
-            </Grid>
+        // TAB 5: AUDIT TRAIL
+        activity={
+          <Box sx={{ display: "grid", gap: 3 }}>
+            <ActivityLog />
+            <Divider />
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Audit Log
+            </Typography>
+            <AuditTrailTable rows={[]} /> 
+          </Box>
+        }
+      />
 
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                label="Root Cause Analysis (RCA)"
-                defaultValue="Human error due to lack of double-check verification step in the SOP."
-                fullWidth
-                multiline
-                rows={3}
-                disabled={!canEdit}
-                helperText="Use 5 Whys or Fishbone method"
-              />
-            </Grid>
+      {/* --- MODALS --- */}
+      <UserSelectionModal
+        open={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        onSelect={handleAddReviewer}
+        title="Assign CAPA Approver"
+      />
 
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                label="Proposed Action Plan"
-                defaultValue="1. Update SOP-005 to include dual verification. 2. Retrain packaging staff."
-                fullWidth
-                multiline
-                rows={3}
-                disabled={!canEdit}
-              />
-            </Grid>
-          </Grid>
+      <ReasonForChangeModal
+        open={reasonModalOpen}
+        onClose={() => setReasonModalOpen(false)}
+        onConfirm={(reason) => {
+             setReasonModalOpen(false);
+             handleConfirmSave();
+        }}
+      />
 
-          {/* ✅ Reason Modal */}
-          <ReasonForChangeModal
-            open={reasonModalOpen}
-            onClose={() => setReasonModalOpen(false)}
-            onConfirm={handleConfirmChange}
-          />
-        </Box>
-      }
-      plan={
-        <Box sx={{ p: 1 }}>
-          <CapaActionPanel readOnly={!canEdit} />
-          {meta?.status === "Verification" && (
-            <Box sx={{ mt: 3 }}>
-              <ClosureChecklist />
-            </Box>
-          )}
-        </Box>
-      }
-      attachments={<AttachmentsUploader readOnly={!canEdit} />}
-      activity={
-        <Box sx={{ display: "grid", gap: 3 }}>
-          <ActivityLog />
-          <Divider />
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>
-            Audit Trail (21 CFR Part 11)
-          </Typography>
-          <AuditTrailTable rows={auditRows} />
-        </Box>
-      }
-      approvals={
-        <Box sx={{ display: "grid", gap: 3 }}>
-          <ApprovalsPanel
-            requests={meta.approvalRequests || []}
-            canAddReviewer={canEdit}
-            onAddReviewer={() => setAssignModalOpen(true)}
-          />
-          <SignatureLogTable rows={meta.signatureLog || []} />
-
-          <UserSelectionModal
-            open={assignModalOpen}
-            onClose={() => setAssignModalOpen(false)}
-            onSelect={handleAddReviewer}
-            title="Assign CAPA Approver"
-          />
-        </Box>
-      }
-    />
+      <ConfirmDialog 
+        open={saveDialogOpen}
+        title="Save CAPA Record?"
+        message="This will update the investigation details. Ensure RCA is complete before saving."
+        confirmText="Save"
+        onClose={() => setSaveDialogOpen(false)}
+        onConfirm={() => {
+             // Optional: Force reason modal
+             // setReasonModalOpen(true);
+             handleConfirmSave();
+        }}
+      />
+    </>
   );
 }

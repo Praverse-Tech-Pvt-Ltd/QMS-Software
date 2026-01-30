@@ -1,29 +1,22 @@
-import type { QmsStatus } from "../types/qms";
-
-export type ChangeRecord = {
-  id: string;
-  title: string;
-  department: string;
-  owner: string;
-  status: QmsStatus;
-  updatedAt: string;
-};
+import type { ChangeRecord } from "../types/change.types";
 
 export const changeMock: ChangeRecord[] = [
   {
-    id: "CC-0031",
-    title: "Change in vendor for packaging material",
-    department: "QA",
-    owner: "M. Shah",
-    status: "In Review",
-    updatedAt: "2026-01-21",
-  },
-  {
-    id: "CC-0032",
-    title: "Update SOP for sampling method",
-    department: "QC",
-    owner: "R. Mehta",
-    status: "Draft",
-    updatedAt: "2026-01-20",
-  },
+    id: "CC-2024-001",
+    title: "New Blender Installation",
+    status: "Impact Assessment",
+    moduleKey: "change", // ✅ Add this
+    
+    type: "Major",
+    priority: "High",
+    department: "Engineering",
+    description: "Installation of a new high-speed blender.",
+    owner: "Jane Engineer",
+    targetDate: "2024-06-01",
+    justification: "Current capacity insufficient.",
+    
+    approvalRequests: [],
+    signatureLog: [],
+    approvalsLog: [] // ✅ Add this
+  }
 ];

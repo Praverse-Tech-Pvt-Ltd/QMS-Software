@@ -27,8 +27,8 @@ export type WorkflowStatus =
   
   // Change Control Specific
   | "Impact Assessment"
-  | "Closure"; 
-
+  | "Closure"
+  | "Cancelled";
 export type WorkflowAction =
   | "SUBMIT"
   | "APPROVE"
