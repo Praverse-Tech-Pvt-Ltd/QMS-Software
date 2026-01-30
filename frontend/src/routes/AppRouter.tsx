@@ -6,10 +6,12 @@ import { authService } from "../services/auth.service";
 // Auth Pages
 import LoginPage from "../pages/auth/LoginPage";
 import SignupPage from "../pages/auth/SignupPage";
-import AccessDeniedPage from "../pages/auth/AccessDeniedPage"; // ✅ NEW IMPORT
+import AccessDeniedPage from "../pages/auth/AccessDeniedPage";
 
-// Dashboard
+// Dashboard & Daily Usage
 import DashboardPage from "../pages/dashboard/DashboardPage";
+import MyTasksPage from "../pages/MyTasksPage"; // ✅ NEW IMPORT
+import ReportsPage from "../pages/ReportsPage"; // ✅ NEW IMPORT
 
 // DMS
 import DmsListPage from "../pages/dms/DmsListPage";
@@ -46,7 +48,7 @@ export default function AppRouter() {
       {/* --- Public Routes --- */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-      <Route path="/access-denied" element={<AccessDeniedPage />} /> {/* ✅ ADDED THIS */}
+      <Route path="/access-denied" element={<AccessDeniedPage />} />
 
       {/* --- Protected App --- */}
       <Route
@@ -54,14 +56,20 @@ export default function AppRouter() {
         element={isAuthed() ? <AppLayout /> : <Navigate to="/login" replace />}
       >
         {/* Dashboard: Available to everyone with login access */}
-        <Route 
-          index 
+        <Route
+          index
           element={
             <RequirePermission moduleKey="dashboard">
-               <DashboardPage />
+              <DashboardPage />
             </RequirePermission>
-          } 
+          }
         />
+
+        {/* ✅ NEW: My Tasks (Inbox) - Available to all authenticated users */}
+        <Route path="tasks" element={<MyTasksPage />} />
+
+        {/* ✅ NEW: Reports - Available to all (or restrict if needed) */}
+        <Route path="reports" element={<ReportsPage />} />
 
         {/* DMS Module */}
         <Route
@@ -114,7 +122,7 @@ export default function AppRouter() {
             </RequirePermission>
           }
         />
-        
+
         {/* Training Matrix (Specific Sub-Permission) */}
         <Route
           path="training/matrix"

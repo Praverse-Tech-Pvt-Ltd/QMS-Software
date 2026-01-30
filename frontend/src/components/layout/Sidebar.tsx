@@ -10,6 +10,7 @@ import {
   Avatar,
   Button,
 } from "@mui/material";
+// Existing Icons
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
@@ -17,10 +18,13 @@ import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import ChangeCircleOutlinedIcon from "@mui/icons-material/ChangeCircleOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import ExpandLessOutlinedIcon from "@mui/icons-material/ExpandLessOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+
+// ✅ NEW ICONS for Task H
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined"; // For Inbox
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined"; // For Reports
 
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -85,7 +89,7 @@ export default function Sidebar() {
       </Box>
 
       {/* Navigation */}
-      <Box sx={{ flex: 1, p: 2 }}>
+      <Box sx={{ flex: 1, p: 2, overflowY: "auto" }}>
         <List dense>
           {/* Dashboard */}
           {canView("dashboard") && (
@@ -100,6 +104,18 @@ export default function Sidebar() {
               <ListItemText primary="Dashboard" />
             </ListItemButton>
           )}
+
+          {/* ✅ NEW: My Inbox (Available to everyone) */}
+          <ListItemButton
+            selected={isActive("/tasks")}
+            onClick={() => navigate("/tasks")}
+            sx={{ borderRadius: 2 }}
+          >
+            <ListItemIcon>
+              <AssignmentOutlinedIcon />
+            </ListItemIcon>
+            <ListItemText primary="My Inbox" />
+          </ListItemButton>
 
           {/* DMS */}
           {canView("dms") && (
@@ -146,9 +162,7 @@ export default function Sidebar() {
 
                   {canView("training_matrix") && (
                     <ListItemButton
-                      selected={location.pathname.startsWith(
-                        "/training/matrix",
-                      )}
+                      selected={location.pathname.startsWith("/training/matrix")}
                       onClick={() => navigate("/training/matrix")}
                       sx={{ borderRadius: 2 }}
                     >
@@ -202,10 +216,21 @@ export default function Sidebar() {
             </ListItemButton>
           )}
 
+          {/* ✅ NEW: Reports (Available to everyone or restricted by role if needed) */}
+          <ListItemButton
+            selected={isActive("/reports")}
+            onClick={() => navigate("/reports")}
+            sx={{ borderRadius: 2 }}
+          >
+            <ListItemIcon>
+              <AssessmentOutlinedIcon />
+            </ListItemIcon>
+            <ListItemText primary="Reports & Analytics" />
+          </ListItemButton>
+
           <Divider sx={{ my: 2 }} />
 
-          {/* Settings - Only show if they have view access */}
-          {/* Note: If you add settings to permissions later, use canView('settings') */}
+          {/* Settings */}
           <ListItemButton sx={{ borderRadius: 2 }}>
             <ListItemIcon>
               <SettingsOutlinedIcon />
@@ -228,7 +253,9 @@ export default function Sidebar() {
             <Avatar sx={{ bgcolor: "#1e40af" }}>AP</Avatar>
             <Box>
               <Typography fontWeight={700}>Alexander Pierce</Typography>
-              <Typography variant="caption">Chief Quality Officer</Typography>
+              <Typography variant="caption" sx={{ textTransform: "capitalize" }}>
+                {role}
+              </Typography>
             </Box>
           </Box>
 
