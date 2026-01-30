@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box, Grid, TextField, Typography, Divider, MenuItem } from "@mui/material";
+import { Box,  Grid, TextField, Typography, Divider, MenuItem, Button } from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
 
 // Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
@@ -17,9 +18,11 @@ import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
-import UserSelectionModal from "../../components/common/UserSelectionModal"; // ✅ Added
+import UserSelectionModal from "../../components/common/UserSelectionModal";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
+import SignatureStamp from "../../components/qms/SignatureStamp";      // ✅ Added
+import ReasonForChangeModal from "../../components/common/ReasonForChangeModal"; // ✅ Added
 
 import type { AuditTrailEntry } from "../../types/audit.types";
 import type { WorkflowMeta } from "../../types/workflow.types";
@@ -31,7 +34,8 @@ export default function DeviationsDetailPage() {
   // State
   const [meta, setMeta] = useState<WorkflowMeta | null>(null);
   const [auditRows, setAuditRows] = useState<AuditTrailEntry[]>([]);
-  const [assignModalOpen, setAssignModalOpen] = useState(false); // ✅ Added Modal State
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [reasonModalOpen, setReasonModalOpen] = useState(false); // ✅ Reason Modal
 
   // Permissions
   const canEdit = ROLE_PERMISSIONS[role]?.deviations?.includes("edit");
@@ -48,25 +52,18 @@ export default function DeviationsDetailPage() {
     setAuditRows(auditService.list("deviations", id));
   }, [id, meta?.status]);
 
-  // ✅ 1. Transition Rule: Mandatory Fields
+  // --- Handlers ---
+
   const handleValidate = () => {
     if (!meta) return "Error: Record not loaded";
-    
-    // Example Rule: Cannot submit if Root Cause is empty (mock check)
-    // In real app, check form state. Here we simulate validation.
     if (meta.status === 'Investigation' && !canEdit) { 
-        // Mock: If we are in investigation and user can't edit, assume valid for demo
         return true; 
     }
-    
-    // Simple pass for demo
     return true; 
   };
 
-  // ✅ 2. Assign Reviewer Logic
   const handleAddReviewer = (user: { id: string; name: string; role: string }) => {
     if (!id || !meta) return;
-    
     const newRequest = {
         id: `req-${Date.now()}`,
         userId: user.id,
@@ -77,12 +74,31 @@ export default function DeviationsDetailPage() {
         status: 'Pending' as const,
         dueDate: new Date(Date.now() + 86400000 * 3).toISOString() 
     };
-
     const updatedMeta = { 
         ...meta, 
         approvalRequests: [...(meta.approvalRequests || []), newRequest] 
     };
     setMeta(updatedMeta);
+  };
+
+  // ✅ Save / Reason Handlers
+  const handleSaveClick = () => setReasonModalOpen(true);
+
+  const handleConfirmChange = (reason: string) => {
+    if (!id) return;
+    setReasonModalOpen(false);
+    
+    // Log Audit
+    auditService.add("deviations", id, {
+        actionType: "FIELD_EDIT",
+        field: "Event Details",
+        oldValue: "Previous Content",
+        newValue: "Updated Content",
+        user: "Current User",
+        role: role,
+        reason: reason
+    });
+    setAuditRows(auditService.list("deviations", id));
   };
 
   if (!id || !meta) return null;
@@ -92,7 +108,18 @@ export default function DeviationsDetailPage() {
       title="DEV-2024-042: Temperature Excursion"
       subtitle={`Record ID: ${id}`}
       backTo="/deviations"
-      statusChip={<StatusChip status={meta.status} />}
+      
+      // ✅ Signature Stamp in Header
+      statusChip={
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+           <SignatureStamp 
+              isSigned={meta.status === 'Closed' || meta.status === 'Approved'} 
+              signedBy={meta.signatureLog.length > 0 ? meta.signatureLog[meta.signatureLog.length - 1].signedBy : "Unknown"}
+              date={meta.signatureLog.length > 0 ? new Date(meta.signatureLog[meta.signatureLog.length - 1].timestamp).toLocaleDateString() : ""} 
+           />
+           <StatusChip status={meta.status} />
+        </Box>
+      }
       
       rightPanel={
         <Box sx={{ display: "grid", gap: 3 }}>
@@ -101,7 +128,6 @@ export default function DeviationsDetailPage() {
             steps={WORKFLOWS.deviations.steps} 
           />
 
-          {/* ✅ Connected Validation */}
           <WorkflowActionsPanel
             recordId={id}
             moduleKey="deviations"
@@ -132,12 +158,20 @@ export default function DeviationsDetailPage() {
 
       overview={
         <Box sx={{ p: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
-            Event Details
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Event Details
+            </Typography>
+            {/* ✅ Save Button */}
+            {canEdit && (
+                <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveClick} size="small">
+                    Save Changes
+                </Button>
+            )}
+          </Box>
 
           <Grid container spacing={3}>
-            {/* Classification */}
+            {/* Fields... */}
             <Grid size={{ xs: 12, md: 4 }}>
                <TextField
                 select
@@ -173,7 +207,6 @@ export default function DeviationsDetailPage() {
               />
             </Grid>
 
-            {/* Description */}
             <Grid size={{ xs: 12 }}>
               <TextField
                 label="Description of Event"
@@ -196,6 +229,13 @@ export default function DeviationsDetailPage() {
               />
             </Grid>
           </Grid>
+          
+          {/* ✅ Reason Modal */}
+          <ReasonForChangeModal 
+             open={reasonModalOpen}
+             onClose={() => setReasonModalOpen(false)}
+             onConfirm={handleConfirmChange}
+          />
         </Box>
       }
 
@@ -207,7 +247,6 @@ export default function DeviationsDetailPage() {
           <Divider />
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
              Audit Trail (21 CFR Part 11)
-             
           </Typography>
           <AuditTrailTable rows={auditRows} />
         </Box>
@@ -215,7 +254,6 @@ export default function DeviationsDetailPage() {
 
       approvals={
         <Box sx={{ display: "grid", gap: 3 }}>
-          {/* ✅ Connected Approvals Panel */}
           <ApprovalsPanel 
              requests={meta.approvalRequests || []} 
              canAddReviewer={canEdit}
@@ -223,7 +261,6 @@ export default function DeviationsDetailPage() {
           />
           <SignatureLogTable rows={meta.signatureLog || []} />
           
-          {/* ✅ User Selection Modal */}
           <UserSelectionModal 
             open={assignModalOpen}
             onClose={() => setAssignModalOpen(false)}

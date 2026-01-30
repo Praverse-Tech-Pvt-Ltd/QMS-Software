@@ -9,7 +9,12 @@ import {
   TableRow,
   TextField,
   Typography,
+  Button,
+  Stack,
+  TableContainer
 } from "@mui/material";
+import DownloadIcon from '@mui/icons-material/Download';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { useMemo, useState } from "react";
 import type { AuditTrailEntry, AuditActionType } from "../../types/audit.types";
 
@@ -32,8 +37,7 @@ export default function AuditTrailTable({ rows }: { rows: AuditTrailEntry[] }) {
   const filtered = useMemo(() => {
     return rows.filter((r) => {
       const matchesUser = user === "All" ? true : r.user === user;
-      const matchesAction =
-        actionType === "All" ? true : r.actionType === actionType;
+      const matchesAction = actionType === "All" ? true : r.actionType === actionType;
 
       const ts = new Date(r.timestamp).getTime();
       const fromOk = fromDate ? ts >= new Date(fromDate).getTime() : true;
@@ -48,109 +52,147 @@ export default function AuditTrailTable({ rows }: { rows: AuditTrailEntry[] }) {
     return ["All", ...Array.from(set)];
   }, [rows]);
 
+  // ✅ Export Logic
+  const handleExport = () => {
+    const headers = ["Timestamp,User,Role,Action,Field,Old Value,New Value,Reason"];
+    const csvRows = filtered.map(r => 
+      `${r.timestamp},${r.user},${r.role},${r.actionType},${r.field || '-'},"${r.oldValue || '-'}","${r.newValue || '-'}",${r.reason || '-'}`
+    );
+    
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...csvRows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `audit_trail_export_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <Paper
-      sx={{
-        p: 2.5,
-        borderRadius: 3,
-        border: "1px solid rgba(0,0,0,0.06)",
-      }}
-    >
-      <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-        Audit Trail
-      </Typography>
+    <Box>
+       {/* Toolbar */}
+       <Paper 
+         sx={{ 
+           p: 2, 
+           mb: 2, 
+           display: 'flex', 
+           flexWrap: 'wrap', 
+           gap: 2, 
+           alignItems: 'center', 
+           justifyContent: 'space-between',
+           border: "1px solid rgba(0,0,0,0.06)",
+           borderRadius: 2
+         }}
+       >
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center" sx={{ width: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 100 }}>
+                <FilterListIcon color="action" />
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Filters:</Typography>
+            </Box>
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr" },
-          gap: 1.5,
-          mb: 2,
-        }}
-      >
-        <TextField select label="User" value={user} onChange={(e) => setUser(e.target.value)}>
-          {userOptions.map((u) => (
-            <MenuItem key={u} value={u}>
-              {u}
-            </MenuItem>
-          ))}
-        </TextField>
+            <TextField select label="User" size="small" value={user} onChange={(e) => setUser(e.target.value)} sx={{ minWidth: 120 }}>
+              {userOptions.map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+            </TextField>
 
-        <TextField
-          select
-          label="Action Type"
-          value={actionType}
-          onChange={(e) => setActionType(e.target.value as any)}
-        >
-          {actionTypes.map((a) => (
-            <MenuItem key={a} value={a}>
-              {a}
-            </MenuItem>
-          ))}
-        </TextField>
+            <TextField select label="Action" size="small" value={actionType} onChange={(e) => setActionType(e.target.value as any)} sx={{ minWidth: 150 }}>
+              {actionTypes.map((a) => <MenuItem key={a} value={a}>{a}</MenuItem>)}
+            </TextField>
 
-        <TextField
-          type="date"
-          label="From Date"
-          InputLabelProps={{ shrink: true }}
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-        />
+            <TextField type="date" label="From" size="small" InputLabelProps={{ shrink: true }} value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            <TextField type="date" label="To" size="small" InputLabelProps={{ shrink: true }} value={toDate} onChange={(e) => setToDate(e.target.value)} />
 
-        <TextField
-          type="date"
-          label="To Date"
-          InputLabelProps={{ shrink: true }}
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-        />
-      </Box>
+            <Box sx={{ flexGrow: 1 }} />
+            
+            <Button 
+                startIcon={<DownloadIcon />} 
+                variant="outlined" 
+                onClick={handleExport}
+                sx={{ whiteSpace: 'nowrap' }}
+            >
+                Export CSV
+            </Button>
+          </Stack>
+       </Paper>
 
-      <Box sx={{ overflowX: "auto" }}>
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
         <Table size="small">
-          <TableHead>
-            <TableRow sx={{ bgcolor: "rgba(0,0,0,0.02)" }}>
-              <TableCell>Action</TableCell>
-              <TableCell>Field</TableCell>
-              <TableCell>Old Value</TableCell>
-              <TableCell>New Value</TableCell>
-              <TableCell>User</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Timestamp</TableCell>
-              <TableCell>Reason</TableCell>
+          <TableHead sx={{ bgcolor: "#f5f5f5" }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 700 }}>Timestamp</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>User</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Field Change</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Reason</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8}>
-                  <Typography variant="body2" sx={{ color: "text.secondary", p: 1 }}>
-                    No audit trail entries found for current filters.
-                  </Typography>
+                <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                  <Typography variant="body2" color="text.secondary">No audit entries match these filters.</Typography>
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((r) => (
                 <TableRow key={r.id} hover>
-                  <TableCell sx={{ fontWeight: 700 }}>{r.actionType}</TableCell>
-                  <TableCell>{r.field || "-"}</TableCell>
-                  <TableCell>{r.oldValue || "-"}</TableCell>
-                  <TableCell>{r.newValue || "-"}</TableCell>
-                  <TableCell>{r.user}</TableCell>
-                  <TableCell>{r.role}</TableCell>
-                  <TableCell>{new Date(r.timestamp).toLocaleString()}</TableCell>
-                  <TableCell>{r.reason || "-"}</TableCell>
+                  <TableCell sx={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                    {new Date(r.timestamp).toLocaleString()}
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={600}>{r.user}</Typography>
+                    <Typography variant="caption" color="text.secondary">{r.role}</Typography>
+                  </TableCell>
+                  
+                  <TableCell>
+                     <Typography 
+                        variant="caption" 
+                        sx={{ 
+                            bgcolor: r.actionType === 'STATUS_CHANGE' ? 'primary.50' : 'grey.100',
+                            color: r.actionType === 'STATUS_CHANGE' ? 'primary.main' : 'text.primary',
+                            px: 1, py: 0.5, borderRadius: 1, fontWeight: 700 
+                        }}
+                    >
+                        {r.actionType}
+                    </Typography>
+                  </TableCell>
+                  
+                  <TableCell>
+                    {r.field ? (
+                       <Box>
+                         <Typography variant="caption" sx={{ textTransform: 'uppercase', color: 'text.secondary', fontSize: '0.7rem' }}>
+                            {r.field}
+                         </Typography>
+                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="body2" sx={{ textDecoration: 'line-through', color: 'error.main' }}>
+                                {String(r.oldValue)}
+                            </Typography>
+                            <span>→</span>
+                            <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 600 }}>
+                                {String(r.newValue)}
+                            </Typography>
+                         </Box>
+                       </Box>
+                    ) : (
+                       <Typography variant="caption" color="text.secondary">-</Typography>
+                    )}
+                  </TableCell>
+                  
+                  <TableCell sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                    {r.reason || "-"}
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-      </Box>
-
+      </TableContainer>
+      
       <Typography variant="caption" sx={{ color: "text.secondary", mt: 1, display: "block" }}>
-        Audit trail is read-only in MVP. Backend integration will enforce immutability.
+         *Timestamps are immutable. Export generated at {new Date().toLocaleTimeString()}.
       </Typography>
-    </Paper>
+    </Box>
   );
 }

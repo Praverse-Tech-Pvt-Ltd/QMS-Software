@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import {
-  Box,
-  Grid,
-  TextField,
-  Typography,
-  Divider,
-  MenuItem,
-  Chip,
-} from "@mui/material";
+import { Box, Grid, TextField, Typography, Divider, Button } from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
 
 // Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
@@ -30,8 +23,8 @@ import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import UserSelectionModal from "../../components/common/UserSelectionModal";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
-
 import SignatureStamp from "../../components/qms/SignatureStamp";
+import ReasonForChangeModal from "../../components/common/ReasonForChangeModal"; // ✅ Imported
 
 // Types
 import type { AuditTrailEntry } from "../../types/audit.types";
@@ -45,6 +38,7 @@ export default function DmsDetailPage() {
   const [meta, setMeta] = useState<WorkflowMeta | null>(null);
   const [auditRows, setAuditRows] = useState<AuditTrailEntry[]>([]);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [reasonModalOpen, setReasonModalOpen] = useState(false); // ✅ State for Reason Modal
 
   // Permissions
   const canEdit = ROLE_PERMISSIONS[role]?.dms?.includes("edit");
@@ -62,19 +56,15 @@ export default function DmsDetailPage() {
     setAuditRows(auditService.list("dms", id));
   }, [id, meta?.status]);
 
+  // --- Handlers ---
+
   const handleValidate = () => {
     if (!meta) return "Error: Record not loaded";
-
     if (!id) return "Error: Invalid Record ID";
-
     return true;
   };
 
-  const handleAddReviewer = (user: {
-    id: string;
-    name: string;
-    role: string;
-  }) => {
+  const handleAddReviewer = (user: { id: string; name: string; role: string; }) => {
     if (!id || !meta) return;
 
     const newRequest = {
@@ -82,22 +72,42 @@ export default function DmsDetailPage() {
       userId: user.id,
       userName: user.name,
       role: user.role,
-      stepName: meta.status, // Assign to current step
+      stepName: meta.status,
       assignedDate: new Date().toISOString(),
       status: "Pending" as const,
-      dueDate: new Date(Date.now() + 86400000 * 3).toISOString(), // +3 days default
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString(),
     };
 
-    // Update Local State (Optimistic UI)
     const updatedMeta = {
       ...meta,
       approvalRequests: [...(meta.approvalRequests || []), newRequest],
     };
     setMeta(updatedMeta);
+  };
 
-    // Persist to Mock Service
-    // (Assuming workflowService has an update method, otherwise this just resets on reload)
-    // workflowService.update(id, 'dms', updatedMeta);
+  // ✅ Triggered when user clicks "Save Changes"
+  const handleSaveClick = () => {
+    setReasonModalOpen(true);
+  };
+
+  // ✅ Triggered when user confirms the reason
+  const handleConfirmChange = (reason: string) => {
+    if (!id) return;
+    setReasonModalOpen(false);
+
+    // 1. Log to Audit Service (Mock)
+    auditService.add("dms", id, {
+      actionType: "FIELD_EDIT",
+      field: "Document Form", // In a real app, track the specific field changed
+      oldValue: "Previous Value",
+      newValue: "Updated Value",
+      user: "Current User", // Replace with actual user context
+      role: role,
+      reason: reason,
+    });
+
+    // 2. Refresh Audit Rows to show the new entry immediately
+    setAuditRows(auditService.list("dms", id));
   };
 
   if (!id || !meta) return null;
@@ -139,7 +149,7 @@ export default function DmsDetailPage() {
             moduleKey="dms"
             meta={meta}
             onUpdated={setMeta}
-            onValidate={handleValidate} // ✅ Connected Validation
+            onValidate={handleValidate}
           />
 
           <Divider />
@@ -167,9 +177,24 @@ export default function DmsDetailPage() {
       }
       overview={
         <Box sx={{ p: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
-            Document Information
-          </Typography>
+          {/* ✅ Header with Save Button */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              Document Information
+            </Typography>
+
+            {/* Only show Save button if user has edit permission */}
+            {canEdit && (
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSaveClick}
+                size="small"
+              >
+                Save Changes
+              </Button>
+            )}
+          </Box>
 
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
@@ -249,6 +274,13 @@ export default function DmsDetailPage() {
 
             <PeriodicReviewCard />
           </Box>
+
+          {/* ✅ Render the Reason Modal */}
+          <ReasonForChangeModal
+            open={reasonModalOpen}
+            onClose={() => setReasonModalOpen(false)}
+            onConfirm={handleConfirmChange}
+          />
         </Box>
       }
       attachments={<AttachmentsUploader readOnly={!canEdit} />}
@@ -264,7 +296,6 @@ export default function DmsDetailPage() {
       }
       approvals={
         <Box sx={{ display: "grid", gap: 3 }}>
-          {/* ✅ Real Approvals Panel */}
           <ApprovalsPanel
             requests={meta.approvalRequests || []}
             canAddReviewer={canEdit}
@@ -272,7 +303,6 @@ export default function DmsDetailPage() {
           />
           <SignatureLogTable rows={meta.signatureLog || []} />
 
-          {/* ✅ User Selection Modal */}
           <UserSelectionModal
             open={assignModalOpen}
             onClose={() => setAssignModalOpen(false)}

@@ -4,7 +4,8 @@ export type AuditActionType =
   | "STATUS_CHANGE"
   | "APPROVAL"
   | "REJECT"
-  | "ATTACHMENT_ADD";
+  | "ATTACHMENT_ADD"
+  | "FIELD_EDIT"; // ✅ Added to fix the error
 
 export type AuditTrailEntry = {
   id: string;

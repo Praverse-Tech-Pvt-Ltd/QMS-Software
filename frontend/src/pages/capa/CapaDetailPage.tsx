@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box,  Grid, TextField, Typography, Divider, MenuItem } from "@mui/material";
+import { Box,  Grid, TextField, Typography, Divider, MenuItem, Button } from "@mui/material";
+import SaveIcon from "@mui/icons-material/Save";
 
 // Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
@@ -17,9 +18,11 @@ import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
-import UserSelectionModal from "../../components/common/UserSelectionModal"; // ✅ Added
+import UserSelectionModal from "../../components/common/UserSelectionModal";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
+import SignatureStamp from "../../components/qms/SignatureStamp";      // ✅ Added
+import ReasonForChangeModal from "../../components/common/ReasonForChangeModal"; // ✅ Added
 
 import type { AuditTrailEntry } from "../../types/audit.types";
 import type { WorkflowMeta } from "../../types/workflow.types";
@@ -31,7 +34,8 @@ export default function CapaDetailPage() {
   // State
   const [meta, setMeta] = useState<WorkflowMeta | null>(null);
   const [auditRows, setAuditRows] = useState<AuditTrailEntry[]>([]);
-  const [assignModalOpen, setAssignModalOpen] = useState(false); // ✅ Modal State
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [reasonModalOpen, setReasonModalOpen] = useState(false); // ✅ Added
 
   // Permissions
   const canEdit = ROLE_PERMISSIONS[role]?.capa?.includes("edit");
@@ -48,24 +52,18 @@ export default function CapaDetailPage() {
     setAuditRows(auditService.list("capa", id));
   }, [id, meta?.status]);
 
-  // ✅ 1. Transition Rule: Validation
+  // --- Handlers ---
+
   const handleValidate = () => {
     if (!meta) return "Error: Record not loaded";
-    
-    // Rule: Cannot move past 'Root Cause Analysis' without a root cause entered
     if (meta.status === 'Root Cause Analysis' || meta.status === 'Investigation') {
-       // Mock check for empty field (In real app, check React Hook Form state)
-       // For demo, we just allow it, but this is where you'd return "Root Cause is mandatory."
        return true; 
     }
-    
     return true; 
   };
 
-  // ✅ 2. Assign Reviewer Logic
   const handleAddReviewer = (user: { id: string; name: string; role: string }) => {
     if (!id || !meta) return;
-    
     const newRequest = {
         id: `req-${Date.now()}`,
         userId: user.id,
@@ -74,14 +72,31 @@ export default function CapaDetailPage() {
         stepName: meta.status,
         assignedDate: new Date().toISOString(),
         status: 'Pending' as const,
-        dueDate: new Date(Date.now() + 86400000 * 5).toISOString() // +5 days for CAPA
+        dueDate: new Date(Date.now() + 86400000 * 5).toISOString() 
     };
-
     const updatedMeta = { 
         ...meta, 
         approvalRequests: [...(meta.approvalRequests || []), newRequest] 
     };
     setMeta(updatedMeta);
+  };
+
+  // ✅ Save Logic
+  const handleSaveClick = () => setReasonModalOpen(true);
+
+  const handleConfirmChange = (reason: string) => {
+    if (!id) return;
+    setReasonModalOpen(false);
+    auditService.add("capa", id, {
+        actionType: "FIELD_EDIT",
+        field: "CAPA Details",
+        oldValue: "Old Content",
+        newValue: "Updated Content",
+        user: "Current User",
+        role: role,
+        reason: reason
+    });
+    setAuditRows(auditService.list("capa", id));
   };
 
   if (!id || !meta) return null;
@@ -91,7 +106,18 @@ export default function CapaDetailPage() {
       title="CAPA-2024-009: Labeling Error Correction"
       subtitle={`Record ID: ${id}`}
       backTo="/capa"
-      statusChip={<StatusChip status={meta.status} />}
+      
+      // ✅ Signature Stamp
+      statusChip={
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+           <SignatureStamp 
+              isSigned={meta.status === 'Effective' || meta.status === 'Closed'} 
+              signedBy={meta.signatureLog.length > 0 ? meta.signatureLog[meta.signatureLog.length - 1].signedBy : "Unknown"}
+              date={meta.signatureLog.length > 0 ? new Date(meta.signatureLog[meta.signatureLog.length - 1].timestamp).toLocaleDateString() : ""} 
+           />
+           <StatusChip status={meta.status} />
+        </Box>
+      }
       
       rightPanel={
         <Box sx={{ display: "grid", gap: 3 }}>
@@ -100,7 +126,6 @@ export default function CapaDetailPage() {
             steps={WORKFLOWS.capa.steps} 
           />
 
-          {/* ✅ Connected Validation */}
           <WorkflowActionsPanel
             recordId={id}
             moduleKey="capa"
@@ -131,12 +156,19 @@ export default function CapaDetailPage() {
 
       overview={
         <Box sx={{ p: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
-            Problem & Investigation
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Problem & Investigation
+            </Typography>
+            {/* ✅ Save Button */}
+            {canEdit && (
+                <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveClick} size="small">
+                    Save Changes
+                </Button>
+            )}
+          </Box>
 
           <Grid container spacing={3}>
-            {/* Classification */}
             <Grid size={{ xs: 12, md: 4 }}>
                <TextField
                 select
@@ -169,7 +201,6 @@ export default function CapaDetailPage() {
               />
             </Grid>
 
-            {/* Description */}
             <Grid size={{ xs: 12 }}>
               <TextField
                 label="Problem Statement"
@@ -204,6 +235,13 @@ export default function CapaDetailPage() {
               />
             </Grid>
           </Grid>
+
+          {/* ✅ Reason Modal */}
+          <ReasonForChangeModal 
+             open={reasonModalOpen}
+             onClose={() => setReasonModalOpen(false)}
+             onConfirm={handleConfirmChange}
+          />
         </Box>
       }
 
@@ -222,7 +260,6 @@ export default function CapaDetailPage() {
 
       approvals={
         <Box sx={{ display: "grid", gap: 3 }}>
-          {/* ✅ Connected Approvals Panel */}
           <ApprovalsPanel 
              requests={meta.approvalRequests || []} 
              canAddReviewer={canEdit}
@@ -230,7 +267,6 @@ export default function CapaDetailPage() {
           />
           <SignatureLogTable rows={meta.signatureLog || []} />
           
-          {/* ✅ User Selection Modal */}
           <UserSelectionModal 
             open={assignModalOpen}
             onClose={() => setAssignModalOpen(false)}
