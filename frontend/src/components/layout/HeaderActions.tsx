@@ -8,152 +8,179 @@ import {
   Chip,
   Menu,
   MenuItem,
+  InputAdornment,
+  Avatar,
+  Divider,
+  List,
+  
 } from "@mui/material";
+
+// Icons
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import NotificationsOutlinedIcon from "@mui/icons-material/NotificationsOutlined";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
-const ROLES = ["Admin", "QA", "QC", "Production", "Warehouse"] as const;
+const ROLES = ["Admin", "QA", "QC", "Production", "Warehouse", "Viewer"] as const;
 
 export default function HeaderActions() {
   const navigate = useNavigate();
   const { role, setRole } = useRole();
-
+  
+  // --- User Menu State ---
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
+  const userOpen = Boolean(anchorEl);
+
+  // --- Notification Menu State ---
+  const [notifyAnchorEl, setNotifyAnchorEl] = useState<null | HTMLElement>(null);
+  const notifyOpen = Boolean(notifyAnchorEl);
+
+  // --- Handlers ---
+  const handleUserMenuClose = () => setAnchorEl(null);
+  const handleNotifyMenuClose = () => setNotifyAnchorEl(null);
 
   const handleLogout = () => {
     localStorage.removeItem("qms_token");
     navigate("/login", { replace: true });
   };
 
+  const canCreateDocument = permissionService.can(role, "dms", "create");
+
   return (
-    <Box
-      sx={{
-        px: 3,
-        py: 2,
-        borderBottom: "1px solid rgba(0,0,0,0.08)",
-        bgcolor: "white",
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 3,
-        }}
-      >
-        {/* Search */}
-        <Box sx={{ flex: 1, maxWidth: 520 }}>
+    <Box sx={{ px: 3, py: 1.5, borderBottom: "1px solid #f1f5f9", bgcolor: "white", position: "sticky", top: 0, zIndex: 1100 }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+        
+        {/* Search Bar */}
+        <Box sx={{ flex: 1, maxWidth: 500, display: { xs: "none", sm: "block" } }}>
           <TextField
             fullWidth
             size="small"
-            placeholder="Search SOPs, CAPAs, or Tasks..."
-            InputProps={{
-              startAdornment: (
-                <SearchOutlinedIcon sx={{ mr: 1, color: "text.secondary" }} />
-              ),
-            }}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 3,
-                bgcolor: "rgba(0,0,0,0.03)",
-              },
-            }}
+            placeholder="Search..."
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "#f8fafc", "& fieldset": { borderColor: "#e2e8f0" }, "&:hover fieldset": { borderColor: "#cbd5e1" }, "&.Mui-focused fieldset": { borderColor: "#3b82f6" } } }}
+            InputProps={{ startAdornment: (<InputAdornment position="start"><SearchOutlinedIcon sx={{ color: "#94a3b8" }} /></InputAdornment>) }}
           />
         </Box>
 
-        {/* Right Section */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+        {/* Right Actions */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, ml: "auto" }}>
+          
           {/* Role Switcher */}
-          <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 1 }}>
-            <Typography variant="caption" sx={{ fontWeight: 700 }}>
-              VIEW AS:
-            </Typography>
-
-            <Box
-              sx={{
-                display: "flex",
-                gap: 0.5,
-                p: 0.5,
-                bgcolor: "rgba(0,0,0,0.06)",
-                borderRadius: 3,
-              }}
-            >
-              {ROLES.map((r) => (
-                <Chip
-                  key={r}
-                  label={`${r} Role`}
-                  size="small"
-                  clickable
-                  onClick={() => setRole(r)}
-                  sx={{
-                    fontWeight: 700,
-                    borderRadius: 2,
-                    bgcolor: role === r ? "white" : "transparent",
-                    boxShadow:
-                      role === r
-                        ? "0px 2px 8px rgba(0,0,0,0.12)"
-                        : "none",
-                  }}
-                />
-              ))}
-            </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mr: 1, borderRight: "1px solid #e2e8f0", pr: 2 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", display: { xs: "none", md: "block"} }}>VIEW AS:</Typography>
+            {ROLES.map((r) => (
+              <Chip
+                key={r}
+                label={r}
+                size="small"
+                onClick={() => setRole(r as any)}
+                variant={role === r ? "filled" : "outlined"}
+                color={role === r ? "primary" : "default"}
+                sx={{ fontWeight: 600, borderRadius: 1.5, height: 28, borderColor: "#e2e8f0", bgcolor: role === r ? "#eff6ff" : "white", color: role === r ? "#1d4ed8" : "#64748b", "&:hover": { bgcolor: "#f1f5f9" } }}
+              />
+            ))}
           </Box>
 
-          {/* Notifications */}
-          <IconButton>
-            <Badge variant="dot" color="error">
-              <NotificationsOutlinedIcon />
-            </Badge>
-          </IconButton>
-
-          {/* Messages */}
-          <IconButton>
-            <Badge badgeContent={3} color="primary">
-              <ChatBubbleOutlineOutlinedIcon />
-            </Badge>
-          </IconButton>
-
-          {/* Create Document */}
-          <Button
-            variant="contained"
-            startIcon={<AddOutlinedIcon />}
-            sx={{
-              borderRadius: 3,
-              textTransform: "none",
-              fontWeight: 800,
-              px: 2.5,
-            }}
-            onClick={() => navigate("/dms/new")}
+          {/* ✅ NOTIFICATIONS ICON (Now Functional) */}
+          <IconButton 
+            size="small" 
+            sx={{ color: notifyOpen ? "#1e40af" : "#64748b", bgcolor: notifyOpen ? "#eff6ff" : "transparent" }}
+            onClick={(e) => setNotifyAnchorEl(e.currentTarget)}
           >
-            Create Document
-          </Button>
-
-          {/* Profile */}
-          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
-            <AccountCircleOutlinedIcon />
+            <Badge variant="dot" color="error" overlap="circular">
+               <NotificationsNoneOutlinedIcon />
+            </Badge>
+          </IconButton>
+          
+          {/* Messages Icon */}
+          <IconButton size="small" sx={{ color: "#64748b" }}>
+            <Badge badgeContent={3} color="primary" overlap="circular">
+              <ChatBubbleOutlineOutlinedIcon fontSize="small" />
+            </Badge>
           </IconButton>
 
-          <Menu
+          {/* Create Button */}
+          {canCreateDocument && (
+            <Button
+              variant="contained"
+              startIcon={<AddOutlinedIcon />}
+              onClick={() => navigate("/dms/new")}
+              sx={{ bgcolor: "#1e40af", borderRadius: 2, textTransform: "none", fontWeight: 700, display: { xs: "none", md: "flex" }, boxShadow: "0 4px 6px -1px rgba(37, 99, 235, 0.2)", "&:hover": { bgcolor: "#1e3a8a" } }}
+            >
+              Create
+            </Button>
+          )}
+
+           {/* User Profile */}
+           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ ml: 0.5, color: "#475569" }}><AccountCircleOutlinedIcon /></IconButton>
+
+           {/* --- USER MENU --- */}
+           <Menu
             anchorEl={anchorEl}
-            open={open}
-            onClose={() => setAnchorEl(null)}
+            open={userOpen}
+            onClose={handleUserMenuClose}
+            onClick={handleUserMenuClose}
+            PaperProps={{ elevation: 0, sx: { overflow: 'visible', filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.1))', mt: 1.5, borderRadius: 2, minWidth: 180, border: "1px solid #e2e8f0" } }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
-            <MenuItem disabled>
-              <Typography variant="body2" fontWeight={700}>
-                Logged in (Demo)
-              </Typography>
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>Sign Out</MenuItem>
+            <Box sx={{ px: 2, py: 1 }}>
+              <Typography variant="subtitle2" fontWeight={700}>Alexander Pierce</Typography>
+              <Typography variant="caption" color="text.secondary">Chief Quality Officer</Typography>
+            </Box>
+            <Divider />
+            <MenuItem onClick={() => navigate("/settings")} sx={{ py: 1.5 }}><Avatar sx={{ width: 24, height: 24, mr: 1.5, bgcolor: "transparent", color: "#64748b" }} /> Profile</MenuItem>
+            <MenuItem onClick={handleLogout} sx={{ color: "error.main", py: 1.5 }}><LogoutOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} /> Sign Out</MenuItem>
           </Menu>
+
+          {/* --- ✅ NOTIFICATION MENU --- */}
+          <Menu
+            anchorEl={notifyAnchorEl}
+            open={notifyOpen}
+            onClose={handleNotifyMenuClose}
+            onClick={handleNotifyMenuClose}
+            PaperProps={{ elevation: 0, sx: { width: 320, maxHeight: 400, overflowY: 'auto', filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))', mt: 1.5, borderRadius: 2, border: "1px solid #e2e8f0" } }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="subtitle2" fontWeight={800}>Notifications</Typography>
+              <Chip label="2 New" size="small" color="error" sx={{ height: 20, fontSize: "0.7rem", fontWeight: 700 }} />
+            </Box>
+
+            <List disablePadding>
+              <MenuItem sx={{ py: 2, alignItems: "flex-start", gap: 1.5, whiteSpace: "normal" }}>
+                 <Avatar sx={{ bgcolor: "#eff6ff", color: "#1d4ed8", width: 32, height: 32 }}><AssignmentIndOutlinedIcon fontSize="small" /></Avatar>
+                 <Box>
+                    <Typography variant="body2" fontWeight={600}>New SOP Assigned</Typography>
+                    <Typography variant="caption" color="text.secondary">SOP-QA-001 requires your review.</Typography>
+                    <Typography variant="caption" display="block" color="text.disabled" sx={{ mt: 0.5 }}>2 hours ago</Typography>
+                 </Box>
+              </MenuItem>
+              <Divider component="li" />
+              <MenuItem sx={{ py: 2, alignItems: "flex-start", gap: 1.5, whiteSpace: "normal" }}>
+                 <Avatar sx={{ bgcolor: "#fff7ed", color: "#c2410c", width: 32, height: 32 }}><WarningAmberRoundedIcon fontSize="small" /></Avatar>
+                 <Box>
+                    <Typography variant="body2" fontWeight={600}>Audit Reminder</Typography>
+                    <Typography variant="caption" color="text.secondary">Quarterly internal audit starts in 3 days.</Typography>
+                    <Typography variant="caption" display="block" color="text.disabled" sx={{ mt: 0.5 }}>5 hours ago</Typography>
+                 </Box>
+              </MenuItem>
+            </List>
+            
+            <Box sx={{ p: 1.5, borderTop: "1px solid #f1f5f9", textAlign: "center" }}>
+              <Button size="small" fullWidth sx={{ textTransform: "none", fontWeight: 600 }}>View All Notifications</Button>
+            </Box>
+          </Menu>
+
         </Box>
       </Box>
     </Box>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { UserRole } from "../../types/role";
+// ✅ FIX: Import from the centralized permissions file we created
+import type { UserRole } from "../../types/permissions.types";
 
 type RoleContextType = {
   role: UserRole;
@@ -11,7 +12,8 @@ const RoleContext = createContext<RoleContextType | null>(null);
 export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [role, setRoleState] = useState<UserRole>(() => {
     const saved = localStorage.getItem("qms_role");
-    return (saved as UserRole) || "QA";
+    // Ensure the default role exists in your UserRole type (e.g., 'QA' or 'Admin')
+    return (saved as UserRole) || "QA"; 
   });
 
   const setRole = (newRole: UserRole) => {
@@ -29,4 +31,3 @@ export function useRole() {
   if (!ctx) throw new Error("useRole must be used inside RoleProvider");
   return ctx;
 }
-

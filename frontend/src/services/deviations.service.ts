@@ -1,46 +1,51 @@
 import { deviationsMock } from "../mock/deviations.mock";
+import type { DeviationRecord } from "../types/deviation.types";
 
-// Helper: Simulate network latency (so you can see Loading Spinners)
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const deviationsService = {
-  // 1. Fetch List (for Dashboard/List Page)
-  async list() {
-    await delay(800); 
+  // List
+  async list(): Promise<DeviationRecord[]> {
+    await delay(800);
     return deviationsMock;
   },
 
-  // 2. Fetch Single Record (for Detail Page)
-  async getById(id: string) {
+  // Get Single
+  async getById(id: string): Promise<DeviationRecord> {
     await delay(600);
-    const item = deviationsMock.find((d: any) => d.id === id);
+    const item = deviationsMock.find((d) => d.id === id);
 
     if (!item) {
-      // Fallback for demo if ID isn't in your static mock file
-      return {
+      // ✅ Fallback matching updated interface
+      const fallback: DeviationRecord = {
         id,
-        title: "Demo Deviation Record",
-        status: "Investigation",
-        severity: "Major",
-        batch: "B-2025-DEMO",
-        created: "2024-02-10",
-        description: "This is a simulated record because the ID was not found in the mock list.",
+        title: "New Deviation Request",
+        status: "Draft",
+        moduleKey: "deviations",
+        
+        severity: "Minor",
+        reportedBy: "Current User",
+        department: "Production",
+        reportedDate: new Date().toISOString().split('T')[0],
+
+        type: "General",
+        description: "Description of the deviation.",
+        location: "Plant A",
+        immediateAction: "None",
+        
+        approvalRequests: [],
+        signatureLog: [],
+        approvalsLog: []
       };
+      return fallback;
     }
     return item;
   },
 
-  // 3. Create Record
-  async create(data: any) {
-    await delay(1000);
-    console.log("Creating API Call:", data);
-    return { id: `DEV-${Math.floor(Math.random() * 10000)}`, ...data };
-  },
-
-  // 4. Update Record (Save button)
+  // Update
   async update(id: string, data: any) {
     await delay(1000);
-    console.log(`Updating API Call (${id}):`, data);
+    console.log(`Updating Deviation (${id}):`, data);
     return { id, ...data };
   }
 };

@@ -1,145 +1,97 @@
-import { Outlet } from "react-router-dom";
-import {
-  AppBar,
-  Box,
-  Drawer,
-  IconButton,
-  Toolbar,
-  Typography,
-  Tooltip,
-  Avatar,
-  CssBaseline
-} from "@mui/material";
-import Sidebar from "./Sidebar";
-import MenuIcon from "@mui/icons-material/Menu";
-import SearchIcon from "@mui/icons-material/Search";
 import { useState } from "react";
+import { Outlet } from "react-router-dom";
+import { Box, CssBaseline, Drawer, IconButton } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 
-// ✅ Import New Components
-import GlobalSearch from "../common/GlobalSearch";
-import NotificationMenu from "../common/NotificationMenu";
-import { useRole } from "../../app/providers/RoleProvider";
+import Sidebar from "./Sidebar";
+import HeaderActions from "./HeaderActions";
 
-const drawerWidth = 260;
+const DRAWER_WIDTH = 280;
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false); // ✅ Search State
-  const { role } = useRole();
 
-  const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
-
-  const drawer = <Sidebar />;
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
   return (
-    <Box sx={{ display: "flex" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f8fafc" }}>
       <CssBaseline />
-      
-      {/* Top AppBar */}
-      <AppBar
-        position="fixed"
-        elevation={0}
-        sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
-          bgcolor: "background.paper",
-          borderBottom: "1px solid rgba(0,0,0,0.08)",
-          color: "text.primary",
-        }}
-      >
-        <Toolbar>
-          <IconButton
-            edge="start"
-            onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: "none" } }}
-          >
-            <MenuIcon />
-          </IconButton>
 
-          <Typography variant="h6" fontWeight={800} noWrap component="div" sx={{ flexGrow: 1 }}>
-             Quality Management System
-          </Typography>
-
-          {/* ✅ 1. GLOBAL SEARCH TRIGGER */}
-          <Tooltip title="Search (Ctrl+K)">
-            <IconButton onClick={() => setSearchOpen(true)} sx={{ mr: 1 }}>
-                <SearchIcon />
-            </IconButton>
-          </Tooltip>
-
-          {/* ✅ 2. NOTIFICATION MENU */}
-          <Box sx={{ mr: 2 }}>
-            <NotificationMenu />
-          </Box>
-
-          {/* ✅ 3. USER PROFILE */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-             <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
-                <Typography variant="body2" fontWeight={700}>John Doe</Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                    {role}
-                </Typography>
-             </Box>
-             <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>JD</Avatar>
-          </Box>
-
-        </Toolbar>
-      </AppBar>
-
-      {/* Sidebar (Desktop) */}
+      {/* --- SIDEBAR NAVIGATION --- */}
       <Box
         component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
+        sx={{ 
+            width: { md: DRAWER_WIDTH }, 
+            flexShrink: { md: 0 } 
+        }}
       >
+        {/* Mobile Drawer (Temporary) */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
+          ModalProps={{ keepMounted: true }} 
           sx={{
             display: { xs: "block", md: "none" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: drawerWidth,
+            "& .MuiDrawer-paper": { 
+                boxSizing: "border-box", 
+                width: DRAWER_WIDTH,
             },
           }}
         >
-          {drawer}
+          <Sidebar />
         </Drawer>
 
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: "none", md: "block" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: drawerWidth,
-              borderRight: "1px solid rgba(0,0,0,0.08)",
-            },
-          }}
-          open
+        {/* Desktop Sidebar (Permanent) */}
+        <Box 
+            sx={{ 
+                display: { xs: "none", md: "block" },
+                width: DRAWER_WIDTH,
+                height: "100vh",
+                // Sidebar component inside has sticky positioning, 
+                // so we just provide the container
+            }}
         >
-          {drawer}
-        </Drawer>
+           <Sidebar />
+        </Box>
       </Box>
 
-      {/* Main Content */}
+      {/* --- MAIN CONTENT AREA --- */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          mt: 8,
-          bgcolor: '#f4f6f8',
-          minHeight: '100vh'
+          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
         }}
       >
-        <Outlet />
-      </Box>
+        {/* Mobile Header Toggle */}
+        <Box 
+            sx={{ 
+                display: { xs: "flex", md: "none" }, 
+                alignItems: "center",
+                p: 2, 
+                bgcolor: "white", 
+                borderBottom: "1px solid #f1f5f9" 
+            }}
+        >
+           <IconButton onClick={handleDrawerToggle} edge="start" sx={{ mr: 2, color: "#64748b" }}>
+             <MenuIcon />
+           </IconButton>
+        </Box>
 
-      {/* ✅ 4. RENDER SEARCH DIALOG */}
-      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+        {/* Global Header */}
+        <HeaderActions />
+
+        {/* Page Content */}
+        <Box sx={{ flexGrow: 1, overflowX: "hidden" }}>
+          <Outlet />
+        </Box>
+      </Box>
     </Box>
   );
 }

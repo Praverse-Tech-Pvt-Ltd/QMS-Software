@@ -1,141 +1,143 @@
 import {
-  Box,
-  IconButton,
-  Menu,
-  MenuItem,
-  Paper,
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
   TableRow,
+  Paper,
+  IconButton,
+  Chip,
+  Box,
   Typography,
 } from "@mui/material";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { useState } from "react";
-import type { WorkflowStatus } from "../../config/workflows";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
-import StatusChip from "../qms/StatusChip";
+// ✅ Type Definition for Columns
+export interface ColumnDef<T = any> {
+  field: keyof T | string;
+  headerName: string;
+  width?: string | number;
+  align?: "left" | "right" | "center";
+  renderCell?: (row: T) => React.ReactNode; // Key for custom UI like Progress Bars
+}
 
-export type ModuleRow = {
-  id: string;
-  title: string;
-  department: string;
-  owner: string;
-  status: WorkflowStatus;
-  updatedAt: string;
-};
+interface ModuleTableProps {
+  columns: ColumnDef[];
+  rows: any[];
+  onView?: (id: string) => void;
+}
 
 export default function ModuleTable({
+  columns,
   rows,
   onView,
-  onEdit,
-  onClone,
-}: {
-  rows: ModuleRow[];
-  onView: (id: string) => void;
-  onEdit?: (id: string) => void;
-  onClone?: (id: string) => void;
-}) {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const open = Boolean(anchorEl);
-
-  const handleOpen = (e: React.MouseEvent<HTMLElement>, id: string) => {
-    setAnchorEl(e.currentTarget);
-    setSelectedId(id);
+}: ModuleTableProps) {
+  
+  // Helper: Map Backend Status to UI Colors
+  const getStatusColor = (status: string, row?: any) => {
+    // Logic: If date is passed and not closed, it's overdue
+    if (row?.dueDate && new Date(row.dueDate) < new Date() && status !== "Closed" && status !== "Completed") {
+        return "error"; 
+    }
+    switch (status) {
+      case "Completed": 
+      case "Closed": return "success";
+      case "In Progress": 
+      case "Implementation": return "primary"; // Blue
+      case "Open": 
+      case "Draft": return "default"; // Grey
+      default: return "default";
+    }
   };
 
-  const handleClose = () => {
-    setAnchorEl(null);
-    setSelectedId(null);
+  const getStatusLabel = (status: string, row?: any) => {
+     if (row?.dueDate && new Date(row.dueDate) < new Date() && status !== "Closed" && status !== "Completed") {
+        return "Overdue";
+     }
+     // Map specific workflow terms to generic UI terms if needed
+     if (status === "Implementation") return "In Progress";
+     if (status === "Draft") return "Open";
+     if (status === "Closed") return "Completed";
+     return status;
   };
 
   return (
-    <Paper
-      sx={{
-        mt: 2,
-        borderRadius: 3,
-        border: "1px solid rgba(0,0,0,0.06)",
-        overflow: "hidden",
-      }}
-    >
-      <Table>
-        <TableHead>
-          <TableRow sx={{ bgcolor: "rgba(0,0,0,0.02)" }}>
-            <TableCell>ID</TableCell>
-            <TableCell>Title</TableCell>
-            <TableCell>Department</TableCell>
-            <TableCell>Owner</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Last Updated</TableCell>
-            <TableCell align="right">Actions</TableCell>
+    <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #e2e8f0", borderRadius: 3, overflow: "hidden" }}>
+      <Table sx={{ minWidth: 650 }}>
+        <TableHead sx={{ bgcolor: "#F8F9FA" }}>
+          <TableRow>
+            {columns.map((col) => (
+              <TableCell 
+                key={String(col.field)} 
+                sx={{ 
+                    fontWeight: 700, 
+                    color: "#64748b", 
+                    fontSize: "0.75rem", 
+                    textTransform: "uppercase",
+                    py: 2
+                }}
+                align={col.align || "left"}
+                width={col.width}
+              >
+                {col.headerName}
+              </TableCell>
+            ))}
+            {/* Actions Column */}
+            <TableCell align="right" sx={{ fontWeight: 700, color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase" }}>
+              ACTIONS
+            </TableCell>
           </TableRow>
         </TableHead>
-
         <TableBody>
           {rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7}>
-                <Box sx={{ p: 2 }}>
-                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                    No records found.
-                  </Typography>
-                </Box>
-              </TableCell>
-            </TableRow>
+             <TableRow>
+               <TableCell colSpan={columns.length + 1} align="center" sx={{ py: 4, color: "text.secondary" }}>
+                 No records found.
+               </TableCell>
+             </TableRow>
           ) : (
             rows.map((row) => (
-              <TableRow key={row.id} hover>
-                <TableCell sx={{ fontWeight: 700 }}>{row.id}</TableCell>
-                <TableCell>{row.title}</TableCell>
-                <TableCell>{row.department}</TableCell>
-                <TableCell>{row.owner}</TableCell>
-                <TableCell>
-                  <StatusChip status={row.status} />
-                </TableCell>
-                <TableCell>{row.updatedAt}</TableCell>
+              <TableRow key={row.id} hover sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+                {columns.map((col) => (
+                  <TableCell key={String(col.field)} align={col.align || "left"}>
+                    {/* 1. Custom Render (Progress Bar, Links) */}
+                    {col.renderCell ? (
+                      col.renderCell(row)
+                    ) : 
+                    /* 2. Status Chip Logic */
+                    col.field === "status" ? (
+                      <Chip 
+                        label={getStatusLabel(row.status, row)} 
+                        size="small" 
+                        color={getStatusColor(row.status, row) as any} 
+                        variant="filled" // Solid color
+                        sx={{ fontWeight: 600, fontSize: "0.75rem", borderRadius: 1.5 }}
+                      />
+                    ) : (
+                    /* 3. Default Text */
+                      <Typography variant="body2" sx={{ color: "#334155" }}>
+                        {row[col.field]}
+                      </Typography>
+                    )}
+                  </TableCell>
+                ))}
+                
+                {/* Actions: View Icon */}
                 <TableCell align="right">
-                  <IconButton onClick={(e) => handleOpen(e, row.id)}>
-                    <MoreVertIcon />
-                  </IconButton>
+                  <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                    {onView && (
+                      <IconButton size="small" onClick={() => onView(row.id)} sx={{ color: "#94a3b8" }}>
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
-
-      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-        <MenuItem
-          onClick={() => {
-            if (selectedId) onView(selectedId);
-            handleClose();
-          }}
-        >
-          View
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            if (selectedId && onEdit) onEdit(selectedId);
-            handleClose();
-          }}
-          disabled={!onEdit}
-        >
-          Edit (mock)
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            if (selectedId && onClone) onClone(selectedId);
-            handleClose();
-          }}
-          disabled={!onClone}
-        >
-          Clone (mock)
-        </MenuItem>
-      </Menu>
-    </Paper>
+    </TableContainer>
   );
 }

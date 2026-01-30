@@ -16,12 +16,18 @@ export const trainingService = {
     const item = trainingMock.find((t) => t.id === id);
 
     if (!item) {
-      // Fallback for Demo
+      // ✅ Fallback matching updated interface
       const fallback: TrainingPlan = {
         id,
         title: "Annual GMP Refresher",
         status: "Draft",
         moduleKey: "training",
+        
+        assignedTo: "All Staff",
+        department: "Quality Assurance",
+        dueDate: "2026-12-31",
+        completionRate: 0,
+
         method: "Classroom",
         duration: 60,
         passScore: 80,
@@ -29,7 +35,7 @@ export const trainingService = {
         trainer: "John Doe",
         version: "v2.0",
         totalTrainees: 0,
-        completionRate: 0,
+        
         approvalRequests: [],
         signatureLog: [],
         approvalsLog: []

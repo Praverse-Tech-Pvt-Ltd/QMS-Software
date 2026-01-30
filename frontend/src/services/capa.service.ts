@@ -4,7 +4,7 @@ import type { CapaRecord } from "../types/capa.types";
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const capaService = {
-  // List all
+  // List
   async list(): Promise<CapaRecord[]> {
     await delay(800);
     return capaMock;
@@ -16,20 +16,28 @@ export const capaService = {
     const item = capaMock.find((c) => c.id === id);
 
     if (!item) {
-      // Fallback Data for Demo
+      // ✅ Fallback matching updated interface
       const fallback: CapaRecord = {
         id,
-        title: "Labeling Error Correction",
-        status: "Investigation",
+        title: "New CAPA Request",
+        status: "Draft",
         moduleKey: "capa",
-        source: "Deviation DEV-042",
-        riskLevel: "High",
+        
+        initiator: "Current User",
+        department: "Quality Assurance",
+        priority: "Medium",
+        dueDate: "2026-12-31",
+        relatedTo: "N/A",
+
+        source: "Manual",
+        riskLevel: "Medium",
         type: "Corrective",
-        targetDate: "2024-03-01",
-        owner: "QA Specialist",
-        description: "Incorrect expiration date printed on Batch 4599 due to manual entry error.",
-        rootCause: "Human error due to lack of double-check verification step in the SOP.",
-        proposedPlan: "Update SOP-005 and retrain staff.",
+        targetDate: "2026-12-31",
+        owner: "QA Lead",
+        description: "Description of the issue.",
+        rootCause: "TBD",
+        proposedPlan: "TBD",
+        
         approvalRequests: [],
         signatureLog: [],
         approvalsLog: []

@@ -1,45 +1,52 @@
-// src/services/change.service.ts
 import { changeMock } from "../mock/change.mock";
 import type { ChangeRecord } from "../types/change.types";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const changeService = {
+  // List
   async list(): Promise<ChangeRecord[]> {
     await delay(800);
     return changeMock;
   },
 
+  // Get Single
   async getById(id: string): Promise<ChangeRecord> {
     await delay(600);
     const item = changeMock.find((c) => c.id === id);
 
     if (!item) {
-      // ✅ Fallback now satisfies the extended interface
+      // ✅ Fallback matching updated interface
       const fallback: ChangeRecord = {
         id,
-        title: "Installation of High-Speed Blender",
-        status: "Impact Assessment", // Valid WorkflowStatus
-        moduleKey: "change",        // ✅ REQUIRED by WorkflowMeta
+        title: "New Change Request",
+        status: "Draft",
+        moduleKey: "change",
         
-        type: "Major",
-        priority: "High",
-        department: "Engineering",
-        description: "Capacity expansion project for Q3.",
-        owner: "Jane Engineer",
-        targetDate: "2024-06-01",
+        initiator: "Current User",
+        department: "Production",
+        changeType: "Minor",
+        submittedDate: new Date().toISOString().split('T')[0],
+        targetDate: "2026-12-31",
+
+        type: "Minor",
+        priority: "Low",
+        description: "Description of change.",
+        owner: "Change Owner",
         
         approvalRequests: [],
         signatureLog: [],
-        approvalsLog: []            // ✅ REQUIRED by WorkflowMeta
+        approvalsLog: []
       };
       return fallback;
     }
     return item;
   },
 
+  // Update
   async update(id: string, data: any) {
     await delay(1000);
+    console.log(`Updating Change Control (${id}):`, data);
     return { id, ...data };
   }
 };

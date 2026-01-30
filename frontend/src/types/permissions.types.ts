@@ -13,7 +13,9 @@ export type ModuleKey =
   | "training_matrix"
   | "deviations"
   | "capa"
-  | "change";
+  | "change"
+  | "settings"
+  | "reports";
 
 export type PermissionAction = 
   | "view" 
@@ -21,7 +23,9 @@ export type PermissionAction =
   | "edit" 
   | "delete" 
   | "approve" 
-  | "export";
+  | "export"
+  | "close"
+  | "reopen";
 
 export type PermissionMatrix = Record<
   UserRole, 
