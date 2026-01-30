@@ -9,7 +9,11 @@ import {
   TableRow,
   Typography,
   Button,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 export type SopVersionRow = {
   version: string;
@@ -23,10 +27,12 @@ export default function VersionHistoryPanel({
   currentVersion,
   rows,
   onView,
+  onCompare, // ✅ New Prop
 }: {
   currentVersion: string;
   rows: SopVersionRow[];
   onView: (version: string) => void;
+  onCompare: (vOld: string, vNew: string) => void; // ✅ New Prop Type
 }) {
   return (
     <Paper
@@ -61,36 +67,51 @@ export default function VersionHistoryPanel({
               <TableCell>Effective Date</TableCell>
               <TableCell>Updated By</TableCell>
               <TableCell>Updated At</TableCell>
-              <TableCell align="right">Action</TableCell>
+              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {rows.map((r) => (
+            {rows.map((r, index) => (
               <TableRow key={r.version} hover>
                 <TableCell sx={{ fontWeight: 800 }}>{r.version}</TableCell>
-                <TableCell>{r.status}</TableCell>
+                <TableCell>
+                   <Chip 
+                    label={r.status} 
+                    size="small" 
+                    color={r.status === 'Effective' ? 'success' : 'default'} 
+                    variant={r.status === 'Effective' ? 'filled' : 'outlined'}
+                  />
+                </TableCell>
                 <TableCell>{r.effectiveDate}</TableCell>
                 <TableCell>{r.updatedBy}</TableCell>
                 <TableCell>{r.updatedAt}</TableCell>
                 <TableCell align="right">
-                  <Button size="small" onClick={() => onView(r.version)}>
-                    View
-                  </Button>
+                  {/* View Button */}
+                  <Tooltip title="View Details">
+                    <IconButton size="small" onClick={() => onView(r.version)}>
+                        <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
+                  {/* ✅ Compare Button (Only if there is a newer version to compare against) */}
+                  {index > 0 && (
+                     <Tooltip title={`Compare ${r.version} vs ${rows[index-1].version}`}>
+                        <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={() => onCompare(r.version, rows[index-1].version)}
+                        >
+                            <CompareArrowsIcon fontSize="small" />
+                        </IconButton>
+                     </Tooltip>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </Box>
-
-      <Typography
-        variant="caption"
-        sx={{ color: "text.secondary", mt: 1, display: "block" }}
-      >
-        This is a UI-only placeholder. Version comparison and controlled copies
-        will be added with backend integration.
-      </Typography>
     </Paper>
   );
 }

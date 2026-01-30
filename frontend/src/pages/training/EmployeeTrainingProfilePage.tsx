@@ -3,17 +3,44 @@ import {
   Paper,
   Typography,
   LinearProgress,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
   Chip,
+  Button,
+  Avatar,
+  Grid,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Alert,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
+import OjtChecklist from "../../components/training/OjtChecklist";
+// Icons
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import HistoryIcon from "@mui/icons-material/History";
+import QuizIcon from "@mui/icons-material/Quiz";
 
-const employees: Record<string, { name: string; department: string; completion: number }> = {
+// Components (We define QuizModal inline here for simplicity, or import it if preferred)
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+} from "@mui/material";
+
+// --- MOCK DATA ---
+const employees: Record<
+  string,
+  { name: string; department: string; completion: number }
+> = {
   "EMP-1001": { name: "Rahul Patel", department: "Production", completion: 72 },
   "EMP-1002": { name: "Amit Shah", department: "Production", completion: 55 },
   "EMP-2001": { name: "Neha Mehta", department: "QC", completion: 88 },
@@ -22,106 +49,319 @@ const employees: Record<string, { name: string; department: string; completion: 
   "EMP-3002": { name: "Ravi Joshi", department: "QA", completion: 70 },
 };
 
-const mockTrainings = [
-  { title: "SOP-001 (Gowning)", status: "Completed", due: "2026-01-05" },
-  { title: "SOP-014 (Line Clearance)", status: "Due Soon", due: "2026-01-25" },
-  { title: "SOP-022 (Batch Record Review)", status: "Overdue", due: "2026-01-10" },
+const initialTrainings = [
+  {
+    id: 1,
+    title: "SOP-001 (Gowning)",
+    status: "Completed",
+    due: "2026-01-05",
+    score: "95%",
+  },
+  {
+    id: 2,
+    title: "SOP-014 (Line Clearance)",
+    status: "Due Soon",
+    due: "2026-01-25",
+    score: null,
+  },
+  {
+    id: 3,
+    title: "SOP-022 (Batch Record Review)",
+    status: "Overdue",
+    due: "2026-01-10",
+    score: null,
+  },
 ];
 
+// --- SUB-COMPONENT: QUIZ MODAL ---
+function QuizModal({ open, onClose, title, onPass }: any) {
+  const [step, setStep] = useState(0);
+  const [answer, setAnswer] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleFinish = () => {
+    setSubmitted(false);
+    setStep(0);
+    setAnswer("");
+    onPass(); // Trigger completion in parent
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <QuizIcon color="primary" />
+        Effectiveness Check: {title}
+      </DialogTitle>
+      <DialogContent>
+        {!submitted ? (
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
+              What is the critical parameter for this step?
+            </Typography>
+            <FormControl component="fieldset">
+              <RadioGroup
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+              >
+                <FormControlLabel
+                  value="A"
+                  control={<Radio />}
+                  label="Temperature must be < 25°C"
+                />
+                <FormControlLabel
+                  value="B"
+                  control={<Radio />}
+                  label="Speed must be > 100 rpm"
+                />
+                <FormControlLabel
+                  value="C"
+                  control={<Radio />}
+                  label="Visual inspection only"
+                />
+              </RadioGroup>
+            </FormControl>
+          </Box>
+        ) : (
+          <Box sx={{ textAlign: "center", py: 3 }}>
+            <CheckCircleIcon color="success" sx={{ fontSize: 60 }} />
+            <Typography variant="h5" fontWeight={800} gutterBottom>
+              Passed!
+            </Typography>
+            <Typography>Score: 100%</Typography>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions>
+        {!submitted ? (
+          <Button
+            variant="contained"
+            onClick={() => setSubmitted(true)}
+            disabled={!answer}
+          >
+            Submit Answer
+          </Button>
+        ) : (
+          <Button variant="contained" onClick={handleFinish}>
+            Close & Update Record
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// --- MAIN PAGE COMPONENT ---
 export default function EmployeeTrainingProfilePage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+
+  // State
+  const [trainings, setTrainings] = useState(initialTrainings);
+  const [quizOpen, setQuizOpen] = useState(false);
+  const [activeTrainingId, setActiveTrainingId] = useState<number | null>(null);
 
   const emp = employees[id || ""] || {
-    name: "Employee",
+    name: "Unknown Employee",
     department: "N/A",
     completion: 0,
   };
 
+  // Handlers
+  const handleStart = (tId: number) => {
+    setActiveTrainingId(tId);
+    setQuizOpen(true);
+  };
+
+  const handleQuizPass = () => {
+    if (activeTrainingId === null) return;
+    setTrainings((prev) =>
+      prev.map((t) =>
+        t.id === activeTrainingId
+          ? { ...t, status: "Completed", score: "100%" }
+          : t,
+      ),
+    );
+  };
+
   return (
     <Box>
+      <Button onClick={() => navigate(-1)} sx={{ mb: 1 }}>
+        &larr; Back to Matrix
+      </Button>
       <PageHeader
         title="Employee Training Profile"
-        subtitle={`Employee ID: ${id}`}
-        showBack
+        subtitle={`LMS Record for: ${id}`}
+        showBack={false}
       />
 
+      {/* Header Card */}
       <Paper
         sx={{
-          mt: 2,
           p: 3,
+          mt: 2,
           borderRadius: 3,
-          border: "1px solid rgba(0,0,0,0.06)",
+          display: "flex",
+          alignItems: "center",
+          gap: 3,
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 900 }}>
-          {emp.name}
-        </Typography>
-
-        <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
-          Department: {emp.department}
-        </Typography>
-
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
-            Completion Percentage
+        <Avatar
+          sx={{
+            width: 80,
+            height: 80,
+            bgcolor: "primary.main",
+            fontSize: "2rem",
+          }}
+        >
+          {emp.name.charAt(0)}
+        </Avatar>
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="h5" fontWeight={800}>
+            {emp.name}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            {emp.department} Department
           </Typography>
 
-          <LinearProgress variant="determinate" value={emp.completion} />
-          <Typography
-            variant="caption"
-            sx={{ color: "text.secondary", mt: 0.7, display: "block" }}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              mt: 1.5,
+              maxWidth: 400,
+            }}
           >
-            {emp.completion}% completed
-          </Typography>
-        </Box>
-
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5 }}>
-            Assigned Trainings
-          </Typography>
-
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ bgcolor: "rgba(0,0,0,0.02)" }}>
-                <TableCell sx={{ fontWeight: 800 }}>Training</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 800 }}>Due Date</TableCell>
-              </TableRow>
-            </TableHead>
-
-            <TableBody>
-              {mockTrainings.map((t) => (
-                <TableRow key={t.title} hover>
-                  <TableCell>{t.title}</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={t.status}
-                      color={
-                        t.status === "Completed"
-                          ? "success"
-                          : t.status === "Overdue"
-                          ? "error"
-                          : "warning"
-                      }
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>{t.due}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <Typography
-            variant="caption"
-            sx={{ color: "text.secondary", mt: 2, display: "block" }}
-          >
-            Training completion and overdue calculation will be connected once
-            backend integration is available.
-          </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={emp.completion}
+              sx={{ flexGrow: 1, height: 10, borderRadius: 5 }}
+            />
+            <Typography fontWeight={700}>{emp.completion}% Trained</Typography>
+          </Box>
         </Box>
       </Paper>
+
+      <Grid container spacing={3} sx={{ mt: 1 }}>
+        {/* LEFT COL: Actionable Items */}
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
+            <Box
+              sx={{ p: 2, bgcolor: "#f8f9fa", borderBottom: "1px solid #eee" }}
+            >
+              <Typography variant="h6" fontWeight={800}>
+                Pending Assignments
+              </Typography>
+            </Box>
+            <List>
+              {trainings.filter((t) => t.status !== "Completed").length ===
+                0 && (
+                <Box sx={{ p: 3, textAlign: "center" }}>
+                  <CheckCircleIcon color="success" />
+                  <Typography>All training complete!</Typography>
+                </Box>
+              )}
+
+              {trainings
+                .filter((t) => t.status !== "Completed")
+                .map((t) => (
+                  <ListItem
+                    key={t.id}
+                    divider
+                    secondaryAction={
+                      <Button
+                        variant="contained"
+                        size="small"
+                        color={t.status === "Overdue" ? "error" : "primary"}
+                        startIcon={
+                          t.status === "Overdue" ? (
+                            <WarningAmberIcon />
+                          ) : (
+                            <PlayArrowIcon />
+                          )
+                        }
+                        onClick={() => handleStart(t.id)}
+                      >
+                        {t.status === "Overdue" ? "Retrain" : "Start"}
+                      </Button>
+                    }
+                  >
+                    <ListItemText
+                      primary={
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <Typography fontWeight={600}>{t.title}</Typography>
+                          {t.status === "Overdue" && (
+                            <Chip label="OVERDUE" color="error" size="small" />
+                          )}
+                        </Box>
+                      }
+                      secondary={`Due Date: ${t.due}`}
+                    />
+                  </ListItem>
+                ))}
+            </List>
+          </Paper>
+        </Grid>
+
+        {/* RIGHT COL: History */}
+        <Grid size={{ xs: 12, md: 4 }}>
+          <Paper sx={{ borderRadius: 3, height: "100%" }}>
+            <Box
+              sx={{
+                p: 2,
+                bgcolor: "#f8f9fa",
+                borderBottom: "1px solid #eee",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              <HistoryIcon color="action" />
+              <Typography variant="h6" fontWeight={800}>
+                History
+              </Typography>
+            </Box>
+            <List dense>
+              {trainings
+                .filter((t) => t.status === "Completed")
+                .map((t) => (
+                  <ListItem key={t.id} divider>
+                    <ListItemText
+                      primary={t.title}
+                      secondary={
+                        <Typography variant="caption" color="success.main">
+                          Passed • Score: {t.score}
+                        </Typography>
+                      }
+                    />
+                    <CheckCircleIcon color="success" fontSize="small" />
+                  </ListItem>
+                ))}
+            </List>
+          </Paper>
+        </Grid>
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" fontWeight={800} gutterBottom>
+            On-The-Job (OJT) Tasks
+          </Typography>
+          <OjtChecklist />
+        </Box>
+      </Grid>
+
+      {/* QUIZ MODAL */}
+      <QuizModal
+        open={quizOpen}
+        onClose={() => setQuizOpen(false)}
+        title={
+          activeTrainingId
+            ? trainings.find((t) => t.id === activeTrainingId)?.title
+            : ""
+        }
+        onPass={handleQuizPass}
+      />
     </Box>
   );
 }

@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box, Grid, TextField, Typography, Divider, Button } from "@mui/material";
+import {
+  Box,
+  Grid,
+  TextField,
+  Typography,
+  Divider,
+  Button,
+} from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 
 // Architecture Imports
@@ -24,7 +31,10 @@ import UserSelectionModal from "../../components/common/UserSelectionModal";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import SignatureStamp from "../../components/qms/SignatureStamp";
-import ReasonForChangeModal from "../../components/common/ReasonForChangeModal"; // ✅ Imported
+import ReasonForChangeModal from "../../components/common/ReasonForChangeModal"; 
+import VersionCompareModal from "../../components/dms/VersionCompareModal";
+import ControlledCopyPrintModal from "../../components/dms/ControlledCopyPrintModal";
+import PrintIcon from "@mui/icons-material/Print";
 
 // Types
 import type { AuditTrailEntry } from "../../types/audit.types";
@@ -38,8 +48,10 @@ export default function DmsDetailPage() {
   const [meta, setMeta] = useState<WorkflowMeta | null>(null);
   const [auditRows, setAuditRows] = useState<AuditTrailEntry[]>([]);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [reasonModalOpen, setReasonModalOpen] = useState(false); // ✅ State for Reason Modal
-
+  const [reasonModalOpen, setReasonModalOpen] = useState(false); 
+  const [compareModalOpen, setCompareModalOpen] = useState(false);
+  const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   // Permissions
   const canEdit = ROLE_PERMISSIONS[role]?.dms?.includes("edit");
 
@@ -64,7 +76,11 @@ export default function DmsDetailPage() {
     return true;
   };
 
-  const handleAddReviewer = (user: { id: string; name: string; role: string; }) => {
+  const handleAddReviewer = (user: {
+    id: string;
+    name: string;
+    role: string;
+  }) => {
     if (!id || !meta) return;
 
     const newRequest = {
@@ -83,6 +99,10 @@ export default function DmsDetailPage() {
       approvalRequests: [...(meta.approvalRequests || []), newRequest],
     };
     setMeta(updatedMeta);
+  };
+  const handleCompare = (vOld: string, vNew: string) => {
+    setCompareVersions({ old: vOld, new: vNew });
+    setCompareModalOpen(true);
   };
 
   // ✅ Triggered when user clicks "Save Changes"
@@ -243,7 +263,15 @@ export default function DmsDetailPage() {
               />
             </Grid>
           </Grid>
-
+          <Button
+            variant="outlined"
+            startIcon={<PrintIcon />}
+            size="small"
+            onClick={() => setPrintModalOpen(true)}
+            sx={{ mr: 1 }}
+          >
+            Print Controlled Copy
+          </Button>
           <Divider sx={{ my: 4 }} />
 
           <Box sx={{ display: "grid", gap: 3 }}>
@@ -263,13 +291,14 @@ export default function DmsDetailPage() {
                 },
                 {
                   version: "v1.0",
-                  status: "Obsolete",
+                  status: "Superseded",
                   effectiveDate: "2023-01-01",
                   updatedBy: "QA Manager",
                   updatedAt: "2023-01-02",
                 },
               ]}
-              onView={(v) => console.log("View version:", v)}
+              onView={(v) => console.log("View:", v)}
+              onCompare={handleCompare} 
             />
 
             <PeriodicReviewCard />
@@ -281,8 +310,23 @@ export default function DmsDetailPage() {
             onClose={() => setReasonModalOpen(false)}
             onConfirm={handleConfirmChange}
           />
+          <VersionCompareModal
+            open={compareModalOpen}
+            onClose={() => setCompareModalOpen(false)}
+            oldVersion={compareVersions.old}
+            newVersion={compareVersions.new}
+          />
+
+          <ControlledCopyPrintModal
+            open={printModalOpen}
+            onClose={() => setPrintModalOpen(false)}
+            docTitle="Standard Hygiene Procedure"
+            docId={id || ""}
+            version="v1.1"
+          />
         </Box>
       }
+      
       attachments={<AttachmentsUploader readOnly={!canEdit} />}
       activity={
         <Box sx={{ display: "grid", gap: 3 }}>

@@ -1,12 +1,20 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box,  Grid, TextField, Typography, Divider, MenuItem, Button } from "@mui/material";
+import {
+  Box,
+  Grid,
+  TextField,
+  Typography,
+  Divider,
+  MenuItem,
+  Button,
+} from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 
 // Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
-import { ROLE_PERMISSIONS } from "../../config/permissions"; 
-import { WORKFLOWS } from "../../config/workflows"; 
+import { ROLE_PERMISSIONS } from "../../config/permissions";
+import { WORKFLOWS } from "../../config/workflows";
 import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
 
@@ -21,8 +29,10 @@ import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import UserSelectionModal from "../../components/common/UserSelectionModal";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
-import SignatureStamp from "../../components/qms/SignatureStamp";      // ✅ Added
+import SignatureStamp from "../../components/qms/SignatureStamp"; // ✅ Added
 import ReasonForChangeModal from "../../components/common/ReasonForChangeModal"; // ✅ Added
+import DeviationEventPanel from "../../components/deviations/DeviationEventPanel"; // ✅ New Component
+import LinkedCapasPanel from "../../components/deviations/LinkedCapasPanel";
 
 import type { AuditTrailEntry } from "../../types/audit.types";
 import type { WorkflowMeta } from "../../types/workflow.types";
@@ -56,27 +66,31 @@ export default function DeviationsDetailPage() {
 
   const handleValidate = () => {
     if (!meta) return "Error: Record not loaded";
-    if (meta.status === 'Investigation' && !canEdit) { 
-        return true; 
+    if (meta.status === "Investigation" && !canEdit) {
+      return true;
     }
-    return true; 
+    return true;
   };
 
-  const handleAddReviewer = (user: { id: string; name: string; role: string }) => {
+  const handleAddReviewer = (user: {
+    id: string;
+    name: string;
+    role: string;
+  }) => {
     if (!id || !meta) return;
     const newRequest = {
-        id: `req-${Date.now()}`,
-        userId: user.id,
-        userName: user.name,
-        role: user.role,
-        stepName: meta.status,
-        assignedDate: new Date().toISOString(),
-        status: 'Pending' as const,
-        dueDate: new Date(Date.now() + 86400000 * 3).toISOString() 
+      id: `req-${Date.now()}`,
+      userId: user.id,
+      userName: user.name,
+      role: user.role,
+      stepName: meta.status,
+      assignedDate: new Date().toISOString(),
+      status: "Pending" as const,
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString(),
     };
-    const updatedMeta = { 
-        ...meta, 
-        approvalRequests: [...(meta.approvalRequests || []), newRequest] 
+    const updatedMeta = {
+      ...meta,
+      approvalRequests: [...(meta.approvalRequests || []), newRequest],
     };
     setMeta(updatedMeta);
   };
@@ -87,16 +101,16 @@ export default function DeviationsDetailPage() {
   const handleConfirmChange = (reason: string) => {
     if (!id) return;
     setReasonModalOpen(false);
-    
+
     // Log Audit
     auditService.add("deviations", id, {
-        actionType: "FIELD_EDIT",
-        field: "Event Details",
-        oldValue: "Previous Content",
-        newValue: "Updated Content",
-        user: "Current User",
-        role: role,
-        reason: reason
+      actionType: "FIELD_EDIT",
+      field: "Event Details",
+      oldValue: "Previous Content",
+      newValue: "Updated Content",
+      user: "Current User",
+      role: role,
+      reason: reason,
     });
     setAuditRows(auditService.list("deviations", id));
   };
@@ -108,24 +122,32 @@ export default function DeviationsDetailPage() {
       title="DEV-2024-042: Temperature Excursion"
       subtitle={`Record ID: ${id}`}
       backTo="/deviations"
-      
       // ✅ Signature Stamp in Header
       statusChip={
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-           <SignatureStamp 
-              isSigned={meta.status === 'Closed' || meta.status === 'Approved'} 
-              signedBy={meta.signatureLog.length > 0 ? meta.signatureLog[meta.signatureLog.length - 1].signedBy : "Unknown"}
-              date={meta.signatureLog.length > 0 ? new Date(meta.signatureLog[meta.signatureLog.length - 1].timestamp).toLocaleDateString() : ""} 
-           />
-           <StatusChip status={meta.status} />
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <SignatureStamp
+            isSigned={meta.status === "Closed" || meta.status === "Approved"}
+            signedBy={
+              meta.signatureLog.length > 0
+                ? meta.signatureLog[meta.signatureLog.length - 1].signedBy
+                : "Unknown"
+            }
+            date={
+              meta.signatureLog.length > 0
+                ? new Date(
+                    meta.signatureLog[meta.signatureLog.length - 1].timestamp,
+                  ).toLocaleDateString()
+                : ""
+            }
+          />
+          <StatusChip status={meta.status} />
         </Box>
       }
-      
       rightPanel={
         <Box sx={{ display: "grid", gap: 3 }}>
-          <WorkflowTimeline 
-            currentStatus={meta.status} 
-            steps={WORKFLOWS.deviations.steps} 
+          <WorkflowTimeline
+            currentStatus={meta.status}
+            steps={WORKFLOWS.deviations.steps}
           />
 
           <WorkflowActionsPanel
@@ -133,57 +155,65 @@ export default function DeviationsDetailPage() {
             moduleKey="deviations"
             meta={meta}
             onUpdated={setMeta}
-            onValidate={handleValidate} 
+            onValidate={handleValidate}
           />
-          
+
           <Divider />
-          
+
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
               Record Metadata
             </Typography>
             <Grid container spacing={2}>
-               <Grid size={{ xs: 6 }}>
-                 <Typography variant="caption" color="text.secondary">Reported By</Typography>
-                 <Typography variant="body2">Operator A. Smith</Typography>
-               </Grid>
-               <Grid size={{ xs: 6 }}>
-                 <Typography variant="caption" color="text.secondary">Department</Typography>
-                 <Typography variant="body2">Production / Line 4</Typography>
-               </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Reported By
+                </Typography>
+                <Typography variant="body2">Operator A. Smith</Typography>
+              </Grid>
+              <Grid size={{ xs: 6 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Department
+                </Typography>
+                <Typography variant="body2">Production / Line 4</Typography>
+              </Grid>
             </Grid>
           </Box>
         </Box>
       }
-
       overview={
         <Box sx={{ p: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Event Details
+              Event Details
             </Typography>
             {/* ✅ Save Button */}
             {canEdit && (
-                <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveClick} size="small">
-                    Save Changes
-                </Button>
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSaveClick}
+                size="small"
+              >
+                Save Changes
+              </Button>
             )}
           </Box>
 
           <Grid container spacing={3}>
             {/* Fields... */}
             <Grid size={{ xs: 12, md: 4 }}>
-               <TextField
+              <TextField
                 select
                 label="Classification"
                 defaultValue="Major"
                 fullWidth
                 disabled={!canEdit}
-               >
-                 <MenuItem value="Minor">Minor</MenuItem>
-                 <MenuItem value="Major">Major</MenuItem>
-                 <MenuItem value="Critical">Critical</MenuItem>
-               </TextField>
+              >
+                <MenuItem value="Minor">Minor</MenuItem>
+                <MenuItem value="Major">Major</MenuItem>
+                <MenuItem value="Critical">Critical</MenuItem>
+              </TextField>
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
@@ -196,7 +226,7 @@ export default function DeviationsDetailPage() {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-             <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 label="Date Discovered"
                 type="date"
@@ -229,39 +259,38 @@ export default function DeviationsDetailPage() {
               />
             </Grid>
           </Grid>
-          
+
+          <DeviationEventPanel readOnly={!canEdit} />
+          <LinkedCapasPanel readOnly={!canEdit} />
           {/* ✅ Reason Modal */}
-          <ReasonForChangeModal 
-             open={reasonModalOpen}
-             onClose={() => setReasonModalOpen(false)}
-             onConfirm={handleConfirmChange}
+          <ReasonForChangeModal
+            open={reasonModalOpen}
+            onClose={() => setReasonModalOpen(false)}
+            onConfirm={handleConfirmChange}
           />
         </Box>
       }
-
       attachments={<AttachmentsUploader readOnly={!canEdit} />}
-
       activity={
         <Box sx={{ display: "grid", gap: 3 }}>
           <ActivityLog />
           <Divider />
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
-             Audit Trail (21 CFR Part 11)
+            Audit Trail (21 CFR Part 11)
           </Typography>
           <AuditTrailTable rows={auditRows} />
         </Box>
       }
-
       approvals={
         <Box sx={{ display: "grid", gap: 3 }}>
-          <ApprovalsPanel 
-             requests={meta.approvalRequests || []} 
-             canAddReviewer={canEdit}
-             onAddReviewer={() => setAssignModalOpen(true)}
+          <ApprovalsPanel
+            requests={meta.approvalRequests || []}
+            canAddReviewer={canEdit}
+            onAddReviewer={() => setAssignModalOpen(true)}
           />
           <SignatureLogTable rows={meta.signatureLog || []} />
-          
-          <UserSelectionModal 
+
+          <UserSelectionModal
             open={assignModalOpen}
             onClose={() => setAssignModalOpen(false)}
             onSelect={handleAddReviewer}

@@ -1,22 +1,33 @@
 export type WorkflowModuleKey = "dms" | "training" | "deviations" | "capa" | "change";
 
 export type WorkflowStatus =
+  // Common
   | "Draft"
-  | "Submitted"         
-  | "In Review"
-  | "QA Review"
+  | "Review"
+  | "Pending"
   | "Approved"
-  | "Effective"
   | "Rejected"
-  | "Closed"
+  
+  // DMS Specific
+  | "Effective"
+  | "Superseded"
   | "Obsolete"
-  | "Investigation"      
+  
+  // Deviation Specific
+  | "Open"
+  | "Investigation"
   | "Root Cause Analysis"
-  | "Implementation"     
-  | "Effectiveness Check"
-  | "Plan Approval"      
-  | "Pending Assignment";
-
+  | "CAPA Planning"
+  
+  // CAPA Specific
+  | "Plan Approval"
+  | "Implementation"
+  | "Verification" 
+  | "Closed"
+  
+  // Change Control Specific
+  | "Impact Assessment"
+  | "Closure"; 
 
 export type WorkflowAction =
   | "SUBMIT"
