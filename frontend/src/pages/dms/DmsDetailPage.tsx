@@ -1,11 +1,19 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box, Grid, TextField, Typography, Divider, MenuItem, Chip } from "@mui/material";
+import {
+  Box,
+  Grid,
+  TextField,
+  Typography,
+  Divider,
+  MenuItem,
+  Chip,
+} from "@mui/material";
 
 // Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
-import { ROLE_PERMISSIONS } from "../../config/permissions"; 
-import { WORKFLOWS } from "../../config/workflows"; 
+import { ROLE_PERMISSIONS } from "../../config/permissions";
+import { WORKFLOWS } from "../../config/workflows";
 import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
 
@@ -19,9 +27,11 @@ import PeriodicReviewCard from "../../components/dms/PeriodicReviewCard";
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
-import UserSelectionModal from "../../components/common/UserSelectionModal"; // ✅ Added Modal
+import UserSelectionModal from "../../components/common/UserSelectionModal";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
+
+import SignatureStamp from "../../components/qms/SignatureStamp";
 
 // Types
 import type { AuditTrailEntry } from "../../types/audit.types";
@@ -34,7 +44,7 @@ export default function DmsDetailPage() {
   // State
   const [meta, setMeta] = useState<WorkflowMeta | null>(null);
   const [auditRows, setAuditRows] = useState<AuditTrailEntry[]>([]);
-  const [assignModalOpen, setAssignModalOpen] = useState(false); // ✅ Modal State
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
 
   // Permissions
   const canEdit = ROLE_PERMISSIONS[role]?.dms?.includes("edit");
@@ -52,40 +62,36 @@ export default function DmsDetailPage() {
     setAuditRows(auditService.list("dms", id));
   }, [id, meta?.status]);
 
-  // ✅ 1. Transition Rule: Validation Logic
-  // Passed to WorkflowActionsPanel to block actions if data is missing
   const handleValidate = () => {
-     if (!meta) return "Error: Record not loaded";
-     
-     // Example Rule: Cannot submit to QA if title is missing
-     // In a real app, you would check the form values here.
-     // For this UI demo, we'll assume valid if the ID exists.
-     if (!id) return "Error: Invalid Record ID";
-     
-     return true; // Proceed
+    if (!meta) return "Error: Record not loaded";
+
+    if (!id) return "Error: Invalid Record ID";
+
+    return true;
   };
 
-  // ✅ 2. Assign Reviewer Logic
-  const handleAddReviewer = (user: { id: string; name: string; role: string }) => {
+  const handleAddReviewer = (user: {
+    id: string;
+    name: string;
+    role: string;
+  }) => {
     if (!id || !meta) return;
-    
-    // Call service to add reviewer (Mock)
-    // In a real app, this would be an API call
+
     const newRequest = {
-        id: `req-${Date.now()}`,
-        userId: user.id,
-        userName: user.name,
-        role: user.role,
-        stepName: meta.status, // Assign to current step
-        assignedDate: new Date().toISOString(),
-        status: 'Pending' as const,
-        dueDate: new Date(Date.now() + 86400000 * 3).toISOString() // +3 days default
+      id: `req-${Date.now()}`,
+      userId: user.id,
+      userName: user.name,
+      role: user.role,
+      stepName: meta.status, // Assign to current step
+      assignedDate: new Date().toISOString(),
+      status: "Pending" as const,
+      dueDate: new Date(Date.now() + 86400000 * 3).toISOString(), // +3 days default
     };
 
     // Update Local State (Optimistic UI)
-    const updatedMeta = { 
-        ...meta, 
-        approvalRequests: [...(meta.approvalRequests || []), newRequest] 
+    const updatedMeta = {
+      ...meta,
+      approvalRequests: [...(meta.approvalRequests || []), newRequest],
     };
     setMeta(updatedMeta);
 
@@ -101,8 +107,26 @@ export default function DmsDetailPage() {
       title="SOP-2024-001: Hygiene Procedure"
       subtitle={`Record ID: ${id}`}
       backTo="/dms"
-      statusChip={<StatusChip status={meta.status} />}
-      
+      statusChip={
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <SignatureStamp
+            isSigned={meta.status === "Effective" || meta.status === "Approved"}
+            signedBy={
+              meta.signatureLog.length > 0
+                ? meta.signatureLog[meta.signatureLog.length - 1].signedBy
+                : "Unknown"
+            }
+            date={
+              meta.signatureLog.length > 0
+                ? new Date(
+                    meta.signatureLog[meta.signatureLog.length - 1].timestamp,
+                  ).toLocaleDateString()
+                : ""
+            }
+          />
+          <StatusChip status={meta.status} />
+        </Box>
+      }
       rightPanel={
         <Box sx={{ display: "grid", gap: 3 }}>
           <WorkflowTimeline
@@ -141,7 +165,6 @@ export default function DmsDetailPage() {
           </Box>
         </Box>
       }
-
       overview={
         <Box sx={{ p: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
@@ -228,33 +251,29 @@ export default function DmsDetailPage() {
           </Box>
         </Box>
       }
-
       attachments={<AttachmentsUploader readOnly={!canEdit} />}
-
       activity={
         <Box sx={{ display: "grid", gap: 3 }}>
           <ActivityLog />
           <Divider />
           <Typography variant="h6" sx={{ fontWeight: 800 }}>
             Audit Trail (21 CFR Part 11)
-            
           </Typography>
           <AuditTrailTable rows={auditRows} />
         </Box>
       }
-
       approvals={
         <Box sx={{ display: "grid", gap: 3 }}>
           {/* ✅ Real Approvals Panel */}
-          <ApprovalsPanel 
-             requests={meta.approvalRequests || []} 
-             canAddReviewer={canEdit}
-             onAddReviewer={() => setAssignModalOpen(true)}
+          <ApprovalsPanel
+            requests={meta.approvalRequests || []}
+            canAddReviewer={canEdit}
+            onAddReviewer={() => setAssignModalOpen(true)}
           />
           <SignatureLogTable rows={meta.signatureLog || []} />
-          
+
           {/* ✅ User Selection Modal */}
-          <UserSelectionModal 
+          <UserSelectionModal
             open={assignModalOpen}
             onClose={() => setAssignModalOpen(false)}
             onSelect={handleAddReviewer}

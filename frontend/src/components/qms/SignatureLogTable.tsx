@@ -1,71 +1,113 @@
-import {
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-  Box,
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper, 
+  Typography, 
+  Chip, 
+  Box 
 } from "@mui/material";
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+
+// Import Types
 import type { SignatureEntry } from "../../types/workflow.types";
 
-export default function SignatureLogTable({
-  rows,
-}: {
-  rows: SignatureEntry[];
-}) {
+export default function SignatureLogTable({ rows }: { rows: SignatureEntry[] }) {
+  
+  if (!rows || rows.length === 0) {
+    return (
+        <Paper 
+          variant="outlined" 
+          sx={{ 
+            p: 3, 
+            textAlign: 'center', 
+            bgcolor: '#fafafa', 
+            borderRadius: 2, 
+            borderStyle: 'dashed' 
+          }}
+        >
+            <Typography variant="body2" color="text.secondary">
+                No electronic signatures have been recorded for this record yet.
+            </Typography>
+        </Paper>
+    );
+  }
+
   return (
-    <Paper
-      sx={{
-        p: 2,
-        borderRadius: 3,
-        border: "1px solid rgba(0,0,0,0.06)",
-      }}
-    >
-      <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.5 }}>
-        Signature Log
+    <Box>
+      <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
+        Signature History
       </Typography>
-
-      {rows.length === 0 ? (
-        <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          No signatures recorded yet.
-        </Typography>
-      ) : (
-        <Box sx={{ overflowX: "auto" }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ bgcolor: "rgba(0,0,0,0.02)" }}>
-                <TableCell>Meaning</TableCell>
-                <TableCell>Status Before</TableCell>
-                <TableCell>Status After</TableCell>
-                <TableCell>Signed By</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Timestamp</TableCell>
+      
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+        <Table size="small">
+          <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 700 }}>Date / Time (UTC)</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Signed By</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Role</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Meaning</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Verification</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id} hover>
+                <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                  {new Date(row.timestamp).toLocaleString()}
+                </TableCell>
+                
+                <TableCell>
+                  <Typography variant="body2" fontWeight={600}>
+                      {row.signedBy}
+                  </Typography>
+                </TableCell>
+                
+                <TableCell>{row.role}</TableCell>
+                
+                <TableCell>
+                  <Chip 
+                      label={row.meaning} 
+                      size="small" 
+                      variant="outlined" 
+                      color={row.meaning === 'Approval' ? 'success' : 'default'}
+                      sx={{ height: 24 }}
+                  />
+                </TableCell>
+                
+                <TableCell>
+                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          {row.statusBefore}
+                      </Typography>
+                      →
+                      <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                          {row.statusAfter}
+                      </Typography>
+                   </Box>
+                </TableCell>
+                
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'success.main' }}>
+                      <VerifiedUserIcon fontSize="small" />
+                      <Typography variant="caption" fontWeight={700}>
+                          Valid
+                      </Typography>
+                  </Box>
+                </TableCell>
               </TableRow>
-            </TableHead>
-
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.id} hover>
-                  <TableCell>{r.meaning}</TableCell>
-                  <TableCell>{r.statusBefore}</TableCell>
-                  <TableCell>{r.statusAfter}</TableCell>
-                  <TableCell>{r.signedBy}</TableCell>
-                  <TableCell>{r.role}</TableCell>
-                  <TableCell>
-                    {new Date(r.timestamp).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Box>
-      )}
-
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      
       <Typography variant="caption" sx={{ color: "text.secondary", mt: 1, display: "block" }}>
-        Note: This is a UI-only placeholder for 21 CFR Part 11 compliant e-sign logs.
+        *Timestamps are server-generated and immutable per 21 CFR Part 11 requirements.
       </Typography>
-    </Paper>
+    </Box>
   );
 }

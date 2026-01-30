@@ -1,129 +1,169 @@
-import React, { useState } from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
   DialogActions,
   Button,
-  Typography,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
   MenuItem,
+  Typography,
   Alert,
-  Box
-} from '@mui/material';
-import FingerprintIcon from '@mui/icons-material/Fingerprint';
-import type { SignatureMeaning } from '../../types/workflow.types';
+  Box,
+} from "@mui/material";
+import LockIcon from '@mui/icons-material/Lock';
+import GavelIcon from '@mui/icons-material/Gavel';
+import { useState } from "react";
+import { useRole } from "../../app/providers/RoleProvider";
+
+// Types
+import type { SignatureMeaning } from "../../types/workflow.types";
 
 interface ESignModalProps {
   open: boolean;
   onClose: () => void;
-  onSign: (data: { meaning: SignatureMeaning; comment: string }) => void;
-  actionLabel: string;
-  forcedMeaning?: SignatureMeaning; // If the workflow dictates the meaning (e.g., Approval)
+  onSign: (data: { 
+    username: string; 
+    password: string; 
+    meaning: SignatureMeaning; 
+    comment: string 
+  }) => void;
+  actionLabel: string; // e.g., "Approve", "Review"
+  forcedMeaning?: SignatureMeaning; // If action implies meaning (e.g. Approve -> Approval)
 }
 
-const ESignModal: React.FC<ESignModalProps> = ({
-  open,
-  onClose,
-  onSign,
-  actionLabel,
-  forcedMeaning
-}) => {
-  const [password, setPassword] = useState('');
-  const [meaning, setMeaning] = useState<SignatureMeaning>(forcedMeaning || 'Approval');
-  const [comment, setComment] = useState('');
-  const [error, setError] = useState('');
+const MEANINGS: SignatureMeaning[] = ["Review", "Approval", "Execution", "Authorship"];
+
+export default function ESignModal({ 
+  open, 
+  onClose, 
+  onSign, 
+  actionLabel, 
+  forcedMeaning 
+}: ESignModalProps) {
+  const { role } = useRole();
+  
+  // Form State
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [meaning, setMeaning] = useState<SignatureMeaning>(forcedMeaning || "Approval");
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState("");
 
   const handleSign = () => {
-    if (!password) {
-      setError('Password is required for electronic signature.');
-      return;
-    }
-    // Mock Password Check
-    if (password === 'wrong') {
-      setError('Invalid credentials.');
+    // 1. Basic Validation
+    if (!username || !password) {
+      setError("Identity verification (Username & Password) is required.");
       return;
     }
 
-    // Success
-    onSign({ meaning, comment });
+    // 2. Mock Auth Check
+    // In a real app, this would hit an API to verify credentials again
+    if (password.length < 3) {
+      setError("Invalid credentials (mock: password too short).");
+      return;
+    }
+
+    // 3. Success
+    setError("");
+    onSign({ username, password, meaning, comment });
+    onClose();
+    
     // Reset fields
-    setPassword('');
-    setComment('');
-    setError('');
+    setPassword("");
+    setComment("");
+    setUsername("");
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <FingerprintIcon color="primary" />
-        Electronic Signature
-      </DialogTitle>
-      <DialogContent>
-        <Box sx={{ mb: 3, mt: 1 }}>
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            You are about to perform: <strong>{actionLabel}</strong>. 
-            This action is legally binding equivalent to a handwritten signature (21 CFR Part 11).
-          </Alert>
+      {/* Secure Header */}
+      <Box sx={{ bgcolor: 'primary.main', color: 'white', px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <GavelIcon fontSize="large" />
+        <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+               Electronic Signature Required
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.9 }}>
+               Action: <b>{actionLabel}</b> • Role: {role}
+            </Typography>
         </Box>
+      </Box>
 
-        <FormControl fullWidth margin="normal">
-          <InputLabel>Meaning of Signature</InputLabel>
-          <Select
-            value={meaning}
-            label="Meaning of Signature"
-            onChange={(e) => setMeaning(e.target.value as SignatureMeaning)}
-            disabled={!!forcedMeaning}
-          >
-            <MenuItem value="Authorship">Authorship (I am the author)</MenuItem>
-            <MenuItem value="Review">Review (I have reviewed this)</MenuItem>
-            <MenuItem value="Approval">Approval (I approve this)</MenuItem>
-            <MenuItem value="Execution">Execution (I have executed this task)</MenuItem>
-          </Select>
-        </FormControl>
+      <DialogContent sx={{ mt: 2 }}>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        <TextField
-          label="Password / Pin"
-          type="password"
-          fullWidth
-          margin="normal"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          error={!!error}
-          helperText={error}
-          autoFocus
-        />
+        <Box sx={{ display: 'grid', gap: 2.5 }}>
+            <Alert severity="info" icon={<LockIcon fontSize="inherit" />}>
+                 I certify that I am the user identified below and I authorize this action. This is legally binding.
+            </Alert>
 
-        <TextField
-          label="Additional Comments (Optional)"
-          fullWidth
-          multiline
-          rows={2}
-          margin="normal"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-        />
-        
-        <Typography variant="caption" display="block" sx={{ mt: 2, color: 'text.disabled' }}>
-          Server Timestamp: {new Date().toUTCString()}
-        </Typography>
+            {/* Credential Re-entry (21 CFR Part 11 Requirement) */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                <TextField
+                    label="Username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    fullWidth
+                    size="small"
+                    placeholder="e.g. jdoe"
+                    autoFocus
+                />
+                <TextField
+                    label="Password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    fullWidth
+                    size="small"
+                />
+            </Box>
+
+            {/* Signature Meaning */}
+            <TextField
+                select
+                label="Meaning of Signature"
+                value={meaning}
+                onChange={(e) => setMeaning(e.target.value as SignatureMeaning)}
+                fullWidth
+                disabled={!!forcedMeaning} // Lock if forced (e.g. Approve button must mean Approval)
+                helperText="Why are you signing this record?"
+            >
+                {MEANINGS.map((m) => (
+                    <MenuItem key={m} value={m}>
+                        {m}
+                    </MenuItem>
+                ))}
+            </TextField>
+
+            <TextField
+                label="Comments (Optional)"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                multiline
+                rows={2}
+                fullWidth
+                placeholder="Add context to your signature..."
+            />
+            
+            <Typography variant="caption" display="block" sx={{ color: 'text.disabled', textAlign: 'right' }}>
+               Server Timestamp: {new Date().toUTCString()}
+            </Typography>
+        </Box>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+
+      <DialogActions sx={{ p: 3, pt: 0 }}>
+        <Button onClick={onClose} color="inherit">
+          Cancel
+        </Button>
         <Button 
-          onClick={handleSign} 
-          variant="contained" 
-          color="primary"
-          disabled={!password}
+            onClick={handleSign} 
+            variant="contained" 
+            color="primary"
+            startIcon={<GavelIcon />}
+            disabled={!username || !password}
         >
-          Sign & Confirm
+          Digitally Sign & Confirm
         </Button>
       </DialogActions>
     </Dialog>
   );
-};
-
-export default ESignModal;
+}
