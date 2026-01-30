@@ -1,247 +1,202 @@
-# NexGen QMS Frontend (Sprint Build)
 
-Frontend UI for NexGen Pharma Solutions Pvt. Ltd. Quality Management System (QMS).
-This build focuses on production-like workflows using mock data, with a clean enterprise UI and future-ready API/service stubs (FastAPI integration later).
+# Enterprise QMS Frontend (Inspection‑Ready UX)
 
----
-
-## Tech Stack
-
-- React + TypeScript (Vite)
-- Material UI (MUI)
-- React Router
-- React Hook Form + Zod validation
-- notistack (toasts)
-- LocalStorage mock persistence (workflow/audit/signatures)
+This repository contains a **production‑grade Quality Management System (QMS) frontend** designed to demonstrate how an enterprise pharmaceutical QMS behaves during audits, inspections, and day‑to‑day operations.  
+The backend is **mocked**, but the UI, workflows, permissions, and data structures are built exactly like a real system.
 
 ---
 
-## Getting Started
+## 🎯 High‑Level Objective
 
-### 1) Install dependencies
-```bash
-npm install
-```
+A fully connected, **role‑based QMS frontend** where users can:
 
-### 2) Start dev server
-```bash
-npm run dev
-```
-
-App runs on:
-- http://localhost:5173
+- Create and manage quality records
+- Move records through controlled workflows
+- Perform e‑signatures
+- View complete audit trails
+- Link records (Deviation ↔ CAPA ↔ Change Control ↔ SOP ↔ Training)
+- Manage daily work through tasks and notifications
 
 ---
 
-## Authentication (Mock)
+## 🧱 Architecture Overview
 
-This project currently uses dummy authentication (UI-only).
-
-- Login route: /login
-- Signup route: /signup
-
-A mock token is stored in localStorage:
-- qms_token
-
-Logout clears the token and redirects to /login.
+- **Frontend**: React + TypeScript + MUI
+- **State & Data**: Mock services shaped like real APIs
+- **Auth**: Mock role‑based auth (RBAC)
+- **Workflow Engine**: Centralized and reusable across modules
+- **Design**: Inspection‑ready, enterprise UX
 
 ---
 
-## Roles & Permissions (Simulation)
+## A) Security & Permissions (RBAC)
 
-Role switching exists to simulate access control:
-
+### Roles
 - Admin
 - QA
 - QC
 - Production
 - Warehouse
+- Viewer
 
-Permissions are enforced on routes using:
-- RequirePermission
-
-Example: Training Matrix is visible only for Admin / QA / QC.
-
----
-
-## Modules Included (Week-1 + Sprint Enhancements)
-
-### Document Management (DMS)
-- List page with filters/search/status chips/table
-- Create page with validations + back button
-- Detail page with tabs (Overview / Attachments / Activity / Approvals)
-- SOP version history UI (v1.0/v1.1)
-- Periodic review scheduling UI
-
-Routes:
-- /dms
-- /dms/new
-- /dms/:id
+### Implemented
+- Permissions matrix per module & action
+- Route guards for unauthorized access
+- Action‑level permissions (Create / Edit / Submit / Approve / Close / Reopen)
+- Read‑only locked records with reason display
+- Dedicated **Access Denied** page
+- Consistent permission error handling
 
 ---
 
-### Training / LMS
-- List page + Create + Detail screens
+## B) Workflow Engine (Shared)
+
+### Supported Modules
+- DMS
+- Deviations
+- CAPA
+- Change Control
+
+### Workflow Capabilities
+- Config‑driven workflow definitions
+- Status timelines
+- Validated transitions
+- Reject / Return to Draft with comments
+- Mandatory field & attachment checks
+- Multi‑approver (parallel & sequential)
+- Due dates & escalation indicators
+
+---
+
+## C) E‑Signature (UI‑Only)
+
+- Re‑authentication placeholder (username/password)
+- Signature meaning:
+  - Review
+  - Approval
+  - Execution
+  - Verification
+- Confirmation statement
+- Signature stamp on record header
+- Dedicated **Signature History** tab
+
+---
+
+## D) Audit Trail
+
+- Action‑level audit logging
+- Old vs new value tracking
+- Reason‑for‑change enforcement
+- Filters: date, user, action, field
+- Export (JSON / CSV – mocked)
+
+---
+
+## E) Document Management System (DMS)
+
+- SOP lifecycle:
+  - Draft → Review → Approved → Effective → Superseded / Archived
+- Versioning:
+  - v1.0 / v1.1 / v2.0
+- Version history & comparison UI
+- Controlled copy badge
+- Print / download controls
+- Periodic review dashboard
+
+---
+
+## F) Training / LMS
+
 - Training Matrix (Role → SOP mapping)
-- Employee Training Profile (assigned trainings, completion %, overdue)
-
-Routes:
-- /training
-- /training/new
-- /training/:id
-- /training/matrix
-- /training/employees/:id
+- Department‑based views
+- Employee training profiles
+- Completion % and overdue tracking
+- Training history timeline
+- Effectiveness checks (quiz + OJT placeholders)
+- SOP version change impact → retraining assignment
 
 ---
 
-### Deviation / Incident
-- List page + Create + Detail screens
-- Upgraded create form with pharma fields + tabs:
+## G) Deviation, CAPA & Change Control
+
+### Deviations
+- Pharma‑specific fields (batch, material, equipment, severity)
+- Tabs:
   - Containment
   - Investigation
+  - Risk Assessment
   - CAPA Linkage
-
-Routes:
-- /deviations
-- /deviations/new
-- /deviations/:id
-
----
+  - Approvals
+  - Audit Trail
 
 ### CAPA
-- List page + Create + Detail screens
-- Effectiveness Check UI + Closure Checklist
-
-Routes:
-- /capa
-- /capa/new
-- /capa/:id
-
----
+- Action plan table
+- Owners, due dates, evidence
+- Effectiveness checks
+- Closure checklist
 
 ### Change Control
-- List page + Create + Detail screens
-- Impact Assessment UI:
-  - Validation / Regulatory / Stability / Docs / Training / Supplier
-- Risk assessment notes + mitigation
-- Implementation Plan (cards)
-
-Routes:
-- /change-control
-- /change-control/new
-- /change-control/:id
+- Impact assessment (validation, regulatory, training, etc.)
+- Implementation plan
+- Verification & closure
 
 ---
 
-## Common QMS Workflow Features
+## H) Daily Usage Features
 
-### Workflow Lifecycle (UI + Mock persistence)
-Lifecycle implemented across modules:
-- Draft → QA Review → Approved → Effective → Closed
-- Reject supported
-
-Stored per record in LocalStorage via:
-- workflow.service.ts
+- My Tasks Inbox
+- Notifications Center
+- Global Search (cross‑module)
+- Reports UI (Pareto & trends – placeholders)
 
 ---
 
-### Workflow Actions (Role Based)
-Actions are enabled based on role + status stage:
-- Submit for QA Review
-- Approve / Reject (with reason)
-- Mark Effective
-- Close
+## I) Engineering Quality
 
-Component:
-- WorkflowActionsPanel
-
----
-
-### E-Signature (UI only)
-Workflow transitions trigger an E-Sign Modal:
-- Re-auth username/password (placeholder)
-- Signature meaning: Review / Approval / Execution
-- Signature comment
-
-Signatures are logged per record:
-- SignatureLogTable
+- Standardized components:
+  - Tables
+  - Forms
+  - Tabs
+  - Status chips
+  - Workflow timelines
+  - Modals
+  - Attachment uploaders
+  - Comment threads
+- Clean folder & route structure
+- Error / loading / empty states everywhere
+- Mock service layer shaped like real APIs
+- Storybook‑ready component design
 
 ---
 
-### Audit Trail (Read-only UI)
-Audit Trail table included below Activity Log:
-- action type
-- field
-- old/new values
-- user
-- timestamp
-- reason
+## 📦 Deliverables Included
 
-Filters:
-- User
-- Action Type
-- Date range
+- ✅ Enterprise‑grade frontend UI
+- ✅ Updated README (this file)
+- ✅ Mock JSON data (users, SOPs, tasks, deviations, CAPA, CC)
+- ✅ Inspection‑ready UX patterns
+- ✅ Demo‑ready workflows
 
 ---
 
-## Folder Structure (Recommended)
+## 🚀 Demo Scenarios Supported
 
-```
-src/
-  app/
-    providers/
-  components/
-    common/
-    layout/
-    qms/
-    dms/
-    capa/
-    change/
-  pages/
-    auth/
-    dashboard/
-    dms/
-    training/
-    deviations/
-    capa/
-    change-control/
-  routes/
-  services/
-  types/
-```
+- SOP creation → review → approval → effective → supersede
+- Deviation creation → QA review → approval → CAPA linkage → closure
+- E‑signature & audit trail visibility
+- Task inbox & notification flow
+- Global search across modules
 
 ---
 
-## Notes
+## ⚠️ Disclaimer
 
-- This sprint is frontend-only (no backend integration yet).
-- The UI is designed to be enterprise/premium and pharma-friendly.
-- Later integration targets:
-  - FastAPI backend
-  - Real RBAC
-  - Database-backed workflows
-  - Immutable audit logs
-  - 21 CFR Part 11 compliant e-sign controls
+This project is a **UI‑only demonstration**.  
+Authentication, digital signatures, and compliance logic must be implemented server‑side for regulated production use.
 
 ---
 
-## Demo Flows (Recommended to Record)
+## 👨‍💻 Author
 
-### DMS
-Create → Submit QA Review → Approve → Mark Effective → Close
+Built as an **enterprise‑grade QMS UX showcase** for audits, demos, interviews, and SaaS validation.
 
-### Deviation
-Create → Submit QA Review → Approve → Mark Effective → Close
-
----
-
-## What Remains (Next Sprint Ideas)
-
-- Controlled document distribution + read acknowledgements
-- Full approver assignment UI (people picker)
-- SOP linking inside Training Matrix from real DMS records
-- Editable implementation plan table (inline row editing)
-- Module-level dashboards and analytics
-- Audit trail generation for field edits (not just status changes)
-- Better mock API layer (async + simulated latency)
-- Export / Print views (PDF placeholder)
