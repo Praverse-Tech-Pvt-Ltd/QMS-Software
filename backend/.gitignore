@@ -1,0 +1,32 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Django ---
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# --- Environment & Secrets ---
+.env
+venv/
+env/
+.venv/
+secrets.json
+
+# --- Media & Static ---
+# Ignore user-uploaded files (DMS files) but keep the folder structure
+media/
+staticfiles/
+
+# --- IDEs & Editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db

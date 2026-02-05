@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import RequirePermission from "./RequirePermission";
-import { authService } from "../services/auth.service";
+import AuthGuard from "../components/auth/AuthGuard"; // ✅ The Bouncer
 
 // Auth Pages
 import LoginPage from "../pages/auth/LoginPage";
@@ -10,8 +10,8 @@ import AccessDeniedPage from "../pages/auth/AccessDeniedPage";
 
 // Dashboard & Daily Usage
 import DashboardPage from "../pages/dashboard/DashboardPage";
-import MyTasksPage from "../pages/MyTasksPage"; // ✅ NEW IMPORT
-import ReportsPage from "../pages/ReportsPage"; // ✅ NEW IMPORT
+import MyTasksPage from "../pages/MyTasksPage";
+import ReportsPage from "../pages/ReportsPage";
 
 // DMS
 import DmsListPage from "../pages/dms/DmsListPage";
@@ -40,8 +40,6 @@ import ChangeControlListPage from "../pages/change-control/ChangeControlListPage
 import ChangeControlCreatePage from "../pages/change-control/ChangeControlCreatePage";
 import ChangeControlDetailPage from "../pages/change-control/ChangeControlDetailPage";
 
-const isAuthed = () => authService.isAuthenticated();
-
 export default function AppRouter() {
   return (
     <Routes>
@@ -50,174 +48,184 @@ export default function AppRouter() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/access-denied" element={<AccessDeniedPage />} />
 
-      {/* --- Protected App --- */}
-      <Route
-        path="/"
-        element={isAuthed() ? <AppLayout /> : <Navigate to="/login" replace />}
-      >
-        {/* Dashboard: Available to everyone with login access */}
-        <Route
-          index
-          element={
-            <RequirePermission moduleKey="dashboard">
-              <DashboardPage />
-            </RequirePermission>
-          }
-        />
+      {/* --- Protected Routes (Wrapped in AuthGuard) --- */}
+      {/* 1. The AuthGuard checks if user is logged in.
+          2. If yes, it renders the Outlet (which is AppLayout).
+          3. AppLayout renders the specific page (Dashboard, DMS, etc.).
+      */}
+      <Route element={<AuthGuard />}>
+        <Route path="/" element={<AppLayout />}>
+          
+          {/* Dashboard */}
+          <Route
+            index
+            element={
+              <RequirePermission moduleKey="dashboard">
+                <DashboardPage />
+              </RequirePermission>
+            }
+          />
 
-        {/* ✅ NEW: My Tasks (Inbox) - Available to all authenticated users */}
-        <Route path="tasks" element={<MyTasksPage />} />
+          <Route path="tasks" element={<MyTasksPage />} />
+          <Route path="reports" element={<ReportsPage />} />
 
-        {/* ✅ NEW: Reports - Available to all (or restrict if needed) */}
-        <Route path="reports" element={<ReportsPage />} />
+          {/* DMS Module */}
+          <Route path="dms">
+            <Route
+              index
+              element={
+                <RequirePermission moduleKey="dms">
+                  <DmsListPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="new"
+              element={
+                <RequirePermission moduleKey="dms">
+                  <DmsCreatePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path=":id"
+              element={
+                <RequirePermission moduleKey="dms">
+                  <DmsDetailPage />
+                </RequirePermission>
+              }
+            />
+          </Route>
 
-        {/* DMS Module */}
-        <Route
-          path="dms"
-          element={
-            <RequirePermission moduleKey="dms">
-              <DmsListPage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="dms/new"
-          element={
-            <RequirePermission moduleKey="dms">
-              <DmsCreatePage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="dms/:id"
-          element={
-            <RequirePermission moduleKey="dms">
-              <DmsDetailPage />
-            </RequirePermission>
-          }
-        />
+          {/* Training Module */}
+          <Route path="training">
+            <Route
+              index
+              element={
+                <RequirePermission moduleKey="training">
+                  <TrainingListPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="new"
+              element={
+                <RequirePermission moduleKey="training">
+                  <TrainingCreatePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path=":id"
+              element={
+                <RequirePermission moduleKey="training">
+                  <TrainingDetailPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="matrix"
+              element={
+                <RequirePermission moduleKey="training_matrix">
+                  <TrainingMatrixPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="employees/:id"
+              element={
+                <RequirePermission moduleKey="training_matrix">
+                  <EmployeeTrainingProfilePage />
+                </RequirePermission>
+              }
+            />
+          </Route>
 
-        {/* Training Module */}
-        <Route
-          path="training"
-          element={
-            <RequirePermission moduleKey="training">
-              <TrainingListPage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="training/new"
-          element={
-            <RequirePermission moduleKey="training">
-              <TrainingCreatePage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="training/:id"
-          element={
-            <RequirePermission moduleKey="training">
-              <TrainingDetailPage />
-            </RequirePermission>
-          }
-        />
+          {/* Deviations Module */}
+          <Route path="deviations">
+            <Route
+              index
+              element={
+                <RequirePermission moduleKey="deviations">
+                  <DeviationsListPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="new"
+              element={
+                <RequirePermission moduleKey="deviations">
+                  <DeviationsCreatePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path=":id"
+              element={
+                <RequirePermission moduleKey="deviations">
+                  <DeviationsDetailPage />
+                </RequirePermission>
+              }
+            />
+          </Route>
 
-        {/* Training Matrix (Specific Sub-Permission) */}
-        <Route
-          path="training/matrix"
-          element={
-            <RequirePermission moduleKey="training_matrix">
-              <TrainingMatrixPage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="training/employees/:id"
-          element={
-            <RequirePermission moduleKey="training_matrix">
-              <EmployeeTrainingProfilePage />
-            </RequirePermission>
-          }
-        />
+          {/* CAPA Module */}
+          <Route path="capa">
+            <Route
+              index
+              element={
+                <RequirePermission moduleKey="capa">
+                  <CapaListPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="new"
+              element={
+                <RequirePermission moduleKey="capa">
+                  <CapaCreatePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path=":id"
+              element={
+                <RequirePermission moduleKey="capa">
+                  <CapaDetailPage />
+                </RequirePermission>
+              }
+            />
+          </Route>
 
-        {/* Deviations Module */}
-        <Route
-          path="deviations"
-          element={
-            <RequirePermission moduleKey="deviations">
-              <DeviationsListPage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="deviations/new"
-          element={
-            <RequirePermission moduleKey="deviations">
-              <DeviationsCreatePage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="deviations/:id"
-          element={
-            <RequirePermission moduleKey="deviations">
-              <DeviationsDetailPage />
-            </RequirePermission>
-          }
-        />
+          {/* Change Control Module */}
+          <Route path="change-control">
+            <Route
+              index
+              element={
+                <RequirePermission moduleKey="change">
+                  <ChangeControlListPage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path="new"
+              element={
+                <RequirePermission moduleKey="change">
+                  <ChangeControlCreatePage />
+                </RequirePermission>
+              }
+            />
+            <Route
+              path=":id"
+              element={
+                <RequirePermission moduleKey="change">
+                  <ChangeControlDetailPage />
+                </RequirePermission>
+              }
+            />
+          </Route>
 
-        {/* CAPA Module */}
-        <Route
-          path="capa"
-          element={
-            <RequirePermission moduleKey="capa">
-              <CapaListPage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="capa/new"
-          element={
-            <RequirePermission moduleKey="capa">
-              <CapaCreatePage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="capa/:id"
-          element={
-            <RequirePermission moduleKey="capa">
-              <CapaDetailPage />
-            </RequirePermission>
-          }
-        />
-
-        {/* Change Control Module */}
-        <Route
-          path="change-control"
-          element={
-            <RequirePermission moduleKey="change">
-              <ChangeControlListPage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="change-control/new"
-          element={
-            <RequirePermission moduleKey="change">
-              <ChangeControlCreatePage />
-            </RequirePermission>
-          }
-        />
-        <Route
-          path="change-control/:id"
-          element={
-            <RequirePermission moduleKey="change">
-              <ChangeControlDetailPage />
-            </RequirePermission>
-          }
-        />
+        </Route>
       </Route>
 
       {/* Fallback */}
