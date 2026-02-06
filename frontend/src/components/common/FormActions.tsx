@@ -1,7 +1,7 @@
 import { Box, Button, CircularProgress } from "@mui/material";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
-import { transitions, shadows, motion } from "../../theme/motion";
+import { transitions, shadows } from "../../theme/motion";
 
 // ✅ 1. Define flexible props
 interface FormActionsProps {

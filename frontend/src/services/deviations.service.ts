@@ -1,51 +1,48 @@
-import { deviationsMock } from "../mock/deviations.mock";
-import type { DeviationRecord } from "../types/deviation.types";
+import api from "./api";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// We define the interface to match your Django Backend (snake_case)
+// If your UI expects camelCase, you might need to map fields here.
+export interface DeviationRecord {
+  id: number;
+  deviation_id: string; // Backend sends 'deviation_id'
+  title: string;
+  description: string;
+  department: string;
+  risk_level: "CRITICAL" | "MAJOR" | "MINOR";
+  status: "DRAFT" | "SUBMITTED" | "INVESTIGATION" | "QA_REVIEW" | "APPROVED" | "CLOSED";
+  event_date: string;
+  created_at: string;
+  // UI Helpers (Optional mapping if needed)
+  moduleKey?: "deviations"; 
+}
 
 export const deviationsService = {
   // List
   async list(): Promise<DeviationRecord[]> {
-    await delay(800);
-    return deviationsMock;
+    const response = await api.get<DeviationRecord[]>("/quality/deviations/");
+    return response.data;
   },
 
   // Get Single
   async getById(id: string): Promise<DeviationRecord> {
-    await delay(600);
-    const item = deviationsMock.find((d) => d.id === id);
+    const response = await api.get<DeviationRecord>(`/quality/deviations/${id}/`);
+    return response.data;
+  },
 
-    if (!item) {
-      // ✅ Fallback matching updated interface
-      const fallback: DeviationRecord = {
-        id,
-        title: "New Deviation Request",
-        status: "Draft",
-        moduleKey: "deviations",
-        
-        severity: "Minor",
-        reportedBy: "Current User",
-        department: "Production",
-        reportedDate: new Date().toISOString().split('T')[0],
-
-        type: "General",
-        description: "Description of the deviation.",
-        location: "Plant A",
-        immediateAction: "None",
-        
-        approvalRequests: [],
-        signatureLog: [],
-        approvalsLog: []
-      };
-      return fallback;
-    }
-    return item;
+  // Create
+  async create(data: Partial<DeviationRecord>) {
+    const response = await api.post("/quality/deviations/", data);
+    return response.data;
   },
 
   // Update
-  async update(id: string, data: any) {
-    await delay(1000);
-    console.log(`Updating Deviation (${id}):`, data);
-    return { id, ...data };
+  async update(id: string, data: Partial<DeviationRecord>) {
+    const response = await api.patch(`/quality/deviations/${id}/`, data);
+    return response.data;
+  },
+
+  // Workflow Action (Submit)
+  async submit(id: string | number) {
+    return await api.post(`/quality/deviations/${id}/submit/`);
   }
 };

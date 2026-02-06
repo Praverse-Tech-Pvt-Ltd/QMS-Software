@@ -24,7 +24,6 @@ import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined"; 
 import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined"; 
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
@@ -52,6 +51,9 @@ export default function Sidebar() {
     localStorage.removeItem("qms_token");
     navigate("/login", { replace: true });
   };
+
+  // ✅ Helper to safely check permissions with null role handling
+  const canView = (module: any) => role ? permissionService.can(role, module, 'view') : false;
 
   return (
     <Box
@@ -98,7 +100,7 @@ export default function Sidebar() {
         <List dense sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
           
           {/* Dashboard - Visible to Everyone */}
-          {permissionService.can(role, 'dashboard', 'view') && (
+          {canView('dashboard') && (
             <ListItemButton
               selected={isActive("/")}
               onClick={() => navigate("/")}
@@ -180,7 +182,7 @@ export default function Sidebar() {
           </ListItemButton>
 
           {/* ✅ DMS - Protected */}
-          {permissionService.can(role, 'dms', 'view') && (
+          {canView('dms') && (
             <ListItemButton
               selected={isActive("/dms")}
               onClick={() => navigate("/dms")}
@@ -222,7 +224,7 @@ export default function Sidebar() {
           )}
 
           {/* ✅ Training - Protected */}
-          {permissionService.can(role, 'training', 'view') && (
+          {canView('training') && (
             <>
               <ListItemButton
                 onClick={() => setTrainingOpen((v) => !v)}
@@ -288,7 +290,7 @@ export default function Sidebar() {
                     />
                   </ListItemButton>
                   
-                  {permissionService.can(role, 'training_matrix', 'view') && (
+                  {canView('training_matrix') && (
                     <ListItemButton
                       selected={location.pathname === "/training/matrix"}
                       onClick={() => navigate("/training/matrix")}
@@ -317,7 +319,7 @@ export default function Sidebar() {
           )}
 
           {/* ✅ Deviations - Protected */}
-          {permissionService.can(role, 'deviations', 'view') && (
+          {canView('deviations') && (
             <ListItemButton
               selected={isActive("/deviations")}
               onClick={() => navigate("/deviations")}
@@ -355,7 +357,7 @@ export default function Sidebar() {
           )}
 
           {/* ✅ CAPA - Protected */}
-          {permissionService.can(role, 'capa', 'view') && (
+          {canView('capa') && (
             <ListItemButton
               selected={isActive("/capa")}
               onClick={() => navigate("/capa")}
@@ -393,7 +395,7 @@ export default function Sidebar() {
           )}
 
           {/* ✅ Change Control - Protected */}
-          {permissionService.can(role, 'change', 'view') && (
+          {canView('change') && (
             <ListItemButton
               selected={isActive("/change-control")}
               onClick={() => navigate("/change-control")}
@@ -431,7 +433,7 @@ export default function Sidebar() {
           )}
 
           {/* ✅ Reports - Protected */}
-          {permissionService.can(role, 'reports', 'view') && (
+          {canView('reports') && (
             <ListItemButton
               selected={isActive("/reports")}
               onClick={() => navigate("/reports")}
@@ -471,7 +473,7 @@ export default function Sidebar() {
           <Divider sx={{ my: 1, borderColor: "#E9ECEF" }} />
 
           {/* ✅ Settings - Protected */}
-          {permissionService.can(role, 'settings', 'view') && (
+          {canView('settings') && (
             <ListItemButton 
               selected={isActive("/settings")}
               onClick={() => navigate("/settings")}
@@ -530,7 +532,7 @@ export default function Sidebar() {
                 Alexander Pierce
               </Typography>
               <Typography variant="caption" color="#858D96" fontWeight={500} sx={{ textTransform: 'capitalize', fontSize: "0.75rem" }}>
-                {role} {/* Shows current dynamic role */}
+                {role || "Viewer"} {/* Fallback if null */}
               </Typography>
             </Box>
           </Box>

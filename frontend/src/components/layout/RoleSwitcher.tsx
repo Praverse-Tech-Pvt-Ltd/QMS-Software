@@ -6,7 +6,8 @@ import { useRole } from "../../app/providers/RoleProvider";
 export default function RoleSwitcher() {
   const { role, setRole } = useRole();
 
-  const handleChange = (e: SelectChangeEvent) => {
+  // ✅ Fix 1: Add <string> generic to SelectChangeEvent
+  const handleChange = (e: SelectChangeEvent<string>) => {
     setRole(e.target.value as any);
   };
 
@@ -17,7 +18,8 @@ export default function RoleSwitcher() {
       </Typography>
 
       <FormControl size="small">
-        <Select value={role} onChange={handleChange}>
+        {/* ✅ Fix 2: Handle null role with fallback string */}
+        <Select value={role || ""} onChange={handleChange}>
           {roles.map((r) => (
             <MenuItem key={r} value={r}>
               {r}

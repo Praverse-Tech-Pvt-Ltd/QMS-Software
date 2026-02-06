@@ -1,26 +1,28 @@
 import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
-  Grid, // ✅ Import Grid2 as Grid for 'size' prop support
-  TextField,
   Typography,
   Divider,
   Button,
+  TextField,
+  CircularProgress,
+  Alert,
+  Grid
 } from "@mui/material";
+
+// ✅ CRITICAL: Import Grid2 to use the 'size' prop
+
 import SaveIcon from "@mui/icons-material/Save";
 import PrintIcon from "@mui/icons-material/Print";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-// --- ENGINEERING STANDARDS IMPORTS ---
-import { useFetch } from "../../hooks/useFetch";
-import { dmsService } from "../../services/dms.service";
-import LoadingState from "../../components/common/LoadingState";
-import ErrorState from "../../components/common/ErrorState";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
-import { useRole } from "../../app/providers/RoleProvider";
+// --- SERVICES & PROVIDERS ---
+import { dmsService,type  DmsDocument } from "../../services/dms.service";
 import { permissionService } from "../../services/permission.service";
+import { useRole } from "../../app/providers/RoleProvider";
 
-// --- COMPONENT IMPORTS ---
+// --- COMPONENTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
 import SignatureStamp from "../../components/qms/SignatureStamp";
@@ -32,45 +34,69 @@ import VersionHistoryPanel from "../../components/dms/VersionHistoryPanel";
 import PeriodicReviewCard from "../../components/dms/PeriodicReviewCard";
 import VersionCompareModal from "../../components/dms/VersionCompareModal";
 import ControlledCopyPrintModal from "../../components/dms/ControlledCopyPrintModal";
+import { FileUploadModal } from "../../components/dms/FileUploadModal"; 
 
 // Generic QMS Components
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
+
 export default function DmsDetailPage() {
   const { id } = useParams();
   const { role } = useRole();
   
-  // 1. DATA FETCHING
-  const { 
-    data: record, 
-    isLoading, 
-    error, 
-    refetch 
-  } = useFetch(() => dmsService.getById(id || ""), [id]);
+  // 1. DATA STATE
+  const [record, setRecord] = useState<DmsDocument | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 2. LOCAL STATE
+  // 2. UI STATE
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  
-  // DMS Specific State
+  const [uploadModalOpen, setUploadModalOpen] = useState(false); 
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
-  // 3. PERMISSIONS - Check both role and record status
-  const canEdit = permissionService.can(role, 'dms', 'edit') && 
-                  (record?.status === 'Draft' || record?.status === 'Review');
-  const canDelete = permissionService.can(role, 'dms', 'delete');
+  // 3. FETCH DATA
+  const loadData = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await dmsService.getById(id);
+      setRecord(data);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load document.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // 4. HANDLERS
-  const handleSaveClick = () => setSaveDialogOpen(true);
+  useEffect(() => {
+    loadData();
+  }, [id]);
 
-  const handleConfirmSave = async () => {
-    await dmsService.update(id!, { ...record });
-    setSaveDialogOpen(false);
-    refetch();
+  // 4. PERMISSIONS
+  const canEdit = role 
+    ? permissionService.can(role, 'dms', 'edit') && (record?.status === 'DRAFT' || record?.status === 'REVIEW')
+    : false;
+
+  // 5. HANDLERS
+  const handleSaveClick = () => setReasonModalOpen(true);
+
+  const handleConfirmSave = async (reason: string) => {
+    if (!record || !id) return;
+    try {
+      // ✅ Log the reason (or send it to backend in the future)
+      console.log("Saving with reason:", reason);
+
+      await dmsService.update(id, { ...record });
+      setReasonModalOpen(false);
+      loadData(); 
+    } catch (err) {
+      alert("Failed to save changes");
+    }
   };
 
   const handleCompare = (vOld: string, vNew: string) => {
@@ -83,26 +109,25 @@ export default function DmsDetailPage() {
     setAssignModalOpen(false);
   };
 
-  // 5. LOADING / ERROR STATES
-  if (isLoading) return <LoadingState message="Loading Document..." />;
-  if (error || !record) return <ErrorState onRetry={refetch} />;
-
   // 6. RENDER
+  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /> <Typography>Loading Document...</Typography></Box>;
+  if (error || !record) return <Box sx={{ p: 5 }}><Alert severity="error">{error || "Document not found"}</Alert></Box>;
+
   return (
     <>
       <DetailTabsLayout
-        title={`${record.id}: ${record.title}`}
-        subtitle={`Version: ${record.version}`}
+        title={`${record.document_id || record.id}: ${record.title}`}
+        subtitle={`Version: ${record.latest_version?.version_number || "Draft"}`}
         backTo="/dms"
         
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: 'center' }}>
-            {(record.status === "Effective" || record.status === "Approved") && (
-                <SignatureStamp
-                  isSigned={true}
-                  signedBy="Quality Assurance"
-                  date={record.effectiveDate || new Date().toLocaleDateString()}
-                />
+            {(record.status === "EFFECTIVE" || record.status === "APPROVED") && (
+              <SignatureStamp
+                isSigned={true}
+                signedBy="Quality Assurance"
+                date={record.updatedAt || new Date().toLocaleDateString()}
+              />
             )}
             <StatusChip status={record.status} />
           </Box>
@@ -116,12 +141,12 @@ export default function DmsDetailPage() {
                 </Typography>
                 <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                     <Box>
-                        <Typography variant="caption" color="text.secondary">Created By</Typography>
-                        <Typography variant="body2">John Doe</Typography>
+                        <Typography variant="caption" color="text.secondary">Owner</Typography>
+                        <Typography variant="body2">{record.owner}</Typography>
                     </Box>
                     <Box>
-                        <Typography variant="caption" color="text.secondary">Effective Date</Typography>
-                        <Typography variant="body2">{record.effectiveDate || '-'}</Typography>
+                        <Typography variant="caption" color="text.secondary">Updated</Typography>
+                        <Typography variant="body2">{record.updatedAt || '-'}</Typography>
                     </Box>
                 </Box>
             </Box>
@@ -145,23 +170,19 @@ export default function DmsDetailPage() {
                   Document Information
                 </Typography>
                 {canEdit && (
-                  <Button
-                    variant="contained"
-                    startIcon={<SaveIcon />}
-                    onClick={handleSaveClick}
-                    size="small"
-                  >
+                  <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSaveClick} size="small">
                     Save Changes
                   </Button>
                 )}
              </Box>
 
-             {/* ✅ CORRECTED: Using 'size' object prop for Grid2 */}
+             {/* ✅ UPDATED: Using Grid v2 with 'size' prop */}
              <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 8 }}>
                   <TextField
                     label="Document Title"
-                    defaultValue={record.title}
+                    value={record.title}
+                    // onChange={(e) => setRecord({...record, title: e.target.value})} 
                     fullWidth
                     disabled={!canEdit}
                   />
@@ -169,7 +190,7 @@ export default function DmsDetailPage() {
                 <Grid size={{ xs: 12, md: 4 }}>
                   <TextField
                     label="Document Type"
-                    defaultValue={record.type}
+                    value={record.doc_type}
                     fullWidth
                     disabled={!canEdit}
                   />
@@ -177,27 +198,8 @@ export default function DmsDetailPage() {
 
                 <Grid size={{ xs: 12 }}>
                   <TextField
-                    label="Scope / Description"
-                    defaultValue={record.description}
-                    fullWidth
-                    multiline
-                    rows={4}
-                    disabled={!canEdit}
-                  />
-                </Grid>
-
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    label="Owner / Department"
-                    defaultValue={record.owner}
-                    fullWidth
-                    disabled={!canEdit}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    label="Next Review Date"
-                    defaultValue={record.nextReview}
+                    label="Department"
+                    value={record.department}
                     fullWidth
                     disabled={!canEdit}
                   />
@@ -206,15 +208,20 @@ export default function DmsDetailPage() {
 
              <Divider sx={{ my: 4 }} />
 
-             <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
-                Lifecycle Management
-             </Typography>
+             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                    Lifecycle Management
+                </Typography>
+                {canEdit && (
+                  <Button variant="outlined" startIcon={<UploadFileIcon />} onClick={() => setUploadModalOpen(true)} size="small">
+                    Upload New Version
+                  </Button>
+                )}
+             </Box>
+             
              <VersionHistoryPanel
-                currentVersion={record.version}
-                rows={[
-                  { version: "v1.1", status: "Effective", effectiveDate: "2024-01-10", updatedBy: "QA Lead", updatedAt: "2024-01-11" },
-                  { version: "v1.0", status: "Superseded", effectiveDate: "2023-01-01", updatedBy: "QA Manager", updatedAt: "2023-01-02" },
-                ]}
+                currentVersion={record.latest_version?.version_number || "Draft"}
+                rows={[]} 
                 onView={(v) => console.log("View:", v)}
                 onCompare={handleCompare}
              />
@@ -226,7 +233,7 @@ export default function DmsDetailPage() {
         approvals={
            <Box sx={{ display: "grid", gap: 3 }}>
               <ApprovalsPanel 
-                  requests={record.approvalRequests || []} 
+                  requests={[]} 
                   canAddReviewer={canEdit} 
                   onAddReviewer={() => setAssignModalOpen(true)}
               />
@@ -253,19 +260,8 @@ export default function DmsDetailPage() {
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         onConfirm={(reason) => {
-             setReasonModalOpen(false);
-             handleConfirmSave();
-        }}
-      />
-
-      <ConfirmDialog 
-        open={saveDialogOpen}
-        title="Save Document?"
-        message="This will update the document metadata. A version increment may be required."
-        confirmText="Save"
-        onClose={() => setSaveDialogOpen(false)}
-        onConfirm={() => {
-             handleConfirmSave();
+             // ✅ Pass the reason to your handler
+             handleConfirmSave(reason);
         }}
       />
 
@@ -280,9 +276,19 @@ export default function DmsDetailPage() {
         open={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
         docTitle={record.title}
-        docId={record.id}
-        version={record.version}
+        docId={record.id.toString()}
+        version={record.latest_version?.version_number || "Draft"}
       />
+
+      {uploadModalOpen && (
+        <FileUploadModal 
+            docId={record.id}
+            onClose={() => setUploadModalOpen(false)}
+            onSuccess={() => {
+                loadData(); 
+            }}
+        />
+      )}
     </>
   );
 }

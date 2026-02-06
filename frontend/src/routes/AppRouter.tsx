@@ -10,8 +10,8 @@ import AccessDeniedPage from "../pages/auth/AccessDeniedPage";
 
 // Dashboard & Daily Usage
 import DashboardPage from "../pages/dashboard/DashboardPage";
-import MyTasksPage from "../pages/MyTasksPage";
-import ReportsPage from "../pages/ReportsPage";
+import MyTasksPage from "../pages/dashboard/MyTasksPage";
+import ReportsPage from "../pages/dashboard/ReportsPage";
 
 // DMS
 import DmsListPage from "../pages/dms/DmsListPage";

@@ -7,7 +7,6 @@ import {
   Typography 
 } from "@mui/material";
 import PrintIcon from '@mui/icons-material/Print';
-import WaterDropIcon from '@mui/icons-material/WaterDrop';
 
 interface ControlledCopyPrintModalProps {
   open: boolean;

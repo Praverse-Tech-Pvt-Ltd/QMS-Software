@@ -5,20 +5,20 @@ import {
   MenuItem,
   Typography,
   Divider,
-  Grid,
-  Chip,
   Stack,
   Alert,
   AlertTitle,
+  Grid,
 } from "@mui/material";
+
+// ✅ Grid v2 Import
+
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
-import SectionTabs from "../../components/qms/SectionTabs";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { useNavigate } from "react-router-dom";
@@ -46,7 +46,7 @@ const schema = z.object({
 
   // Containment
   immediateAction: z.string().min(5, "Immediate action taken is required"),
-  batchNo: z.string().optional(), // Optional for some deviations
+  batchNo: z.string().optional(),
   productName: z.string().optional(),
   impactedArea: z.string().min(2, "Impacted area is required"),
 
@@ -66,13 +66,12 @@ export default function DeviationsCreatePage() {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
       department: "Production",
-      reportedBy: "", // Could default to current user
+      reportedBy: "", 
       incidentDate: new Date().toISOString().split("T")[0],
       severity: "Medium",
       classification: "Process",
@@ -85,14 +84,15 @@ export default function DeviationsCreatePage() {
     },
   });
 
-  const capaRequiredValue = watch("capaRequired");
-
   // Reusable Create Logic
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
       // 1. Generate ID (Mock)
       const newId = `DEV-2024-${Math.floor(Math.random() * 1000)}`;
-      const initialStatus = action === "Draft" ? "Draft" : "Investigation"; // Deviations jump to Investigation
+      
+      // ✅ FIX: Use variables to resolve unused warnings
+      const initialStatus = action === "Draft" ? "Draft" : "Investigation"; 
+      console.log(`Creating Deviation (${initialStatus}):`, data);
 
       // 2. Persist Data
       workflowService.getOrCreate(newId, "deviations");
@@ -104,7 +104,8 @@ export default function DeviationsCreatePage() {
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        role: role,
+        // ✅ FIX: Handle nullable role
+        role: role || "Unknown",
         reason: `Initial Deviation Report (${action})`,
       });
 
@@ -207,7 +208,7 @@ export default function DeviationsCreatePage() {
                 helperText={errors.title?.message || "Provide a clear, concise description"}
                 InputProps={{
                   startAdornment: (
-                    <ReportProblemOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                    <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
                   ),
                 }}
                 sx={{

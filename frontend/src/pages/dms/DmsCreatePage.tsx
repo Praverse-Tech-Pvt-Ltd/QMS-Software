@@ -3,20 +3,21 @@ import {
   Paper,
   TextField,
   MenuItem,
-  Grid,
   Typography,
   Divider,
+  Grid,
 } from "@mui/material";
-import PageHeader from "../../components/common/PageHeader";
 
+
+import PageHeader from "../../components/common/PageHeader";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
 
-// ✅ Import the API helper
-import api from "../../services/api"; 
+// ✅ Use the Service, not direct API calls
+import { dmsService } from "../../services/dms.service";
 import FormActions from "../../components/common/FormActions";
 
 // Validation Schema
@@ -25,8 +26,6 @@ const schema = z.object({
   document_id: z.string().min(3, "Document ID is required (e.g., SOP-QA-001)"),
   doc_type: z.string().min(1, "Document Type is required"),
   department: z.string().min(1, "Department is required"),
-  // Removed 'owner' (handled by backend)
-  // Removed 'description' (backend model doesn't have this field yet)
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -50,33 +49,29 @@ export default function DmsCreatePage() {
     },
   });
 
-  // ✅ Real Backend Create Logic
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      const payload = {
+      // ✅ Construct payload matching the Service Interface
+      const payload: any = {
         title: data.title,
         document_id: data.document_id,
         doc_type: data.doc_type,
         department: data.department,
-        status: action === "Draft" ? "DRAFT" : "REVIEW" // Map to Django choices
+        status: action === "Draft" ? "DRAFT" : "REVIEW",
       };
 
-      // 1. Call Django API
-      await api.post('/dms/documents/', payload);
+      // ✅ Use Service
+      await dmsService.create(payload);
 
-      // 2. Feedback & Redirect
-      enqueueSnackbar(
-        `Document ${data.document_id} created successfully!`,
-        { variant: "success" }
-      );
-      
-      // Redirect to the list view (or detail view if you have it ready)
-      navigate('/dms'); 
-      
+      enqueueSnackbar(`Document ${data.document_id} created successfully!`, {
+        variant: "success",
+      });
+
+      navigate("/dms");
     } catch (error: any) {
       console.error(error);
-      const msg = error.response?.data?.document_id 
-        ? "Document ID already exists." 
+      const msg = error.response?.data?.document_id
+        ? "Document ID already exists."
         : "Failed to create document.";
       enqueueSnackbar(msg, { variant: "error" });
     }
@@ -125,7 +120,7 @@ export default function DmsCreatePage() {
               />
             </Grid>
 
-            {/* Document ID (Required by Backend) */}
+            {/* Document ID */}
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 label="Document ID"
@@ -188,7 +183,8 @@ export default function DmsCreatePage() {
           <Divider sx={{ my: 1 }} />
 
           <Typography variant="body2" color="text.secondary">
-            Note: You are creating this record as the <strong>Owner</strong>. You can upload files after saving.
+            Note: You are creating this record as the <strong>Owner</strong>.
+            You can upload files after saving.
           </Typography>
 
           <FormActions

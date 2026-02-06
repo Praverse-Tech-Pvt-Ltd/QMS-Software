@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -7,6 +7,8 @@ import {
   Button,
   Stack,
   IconButton,
+  CircularProgress,
+  Alert
 } from "@mui/material";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
@@ -16,111 +18,76 @@ import { useNavigate } from "react-router-dom";
 
 import StatusChip from "../../components/qms/StatusChip";
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
-import type { WorkflowStatus } from "../../types/workflow.types";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
-type DocumentRow = {
-  id: string;
-  title: string;
-  owner: string;
-  department: string;
-  status: WorkflowStatus;
-  updated: string;
-};
+// Import the Service and Type
+import { dmsService, type DmsDocument } from "../../services/dms.service";
 
-const STATUS_FILTERS: ("All" | WorkflowStatus)[] = [
-  "All",
-  "Draft",
-  "In Review",
-  "Approved",
-  "Effective",
-  "Closed",
-];
+const STATUS_FILTERS = ["All", "Draft", "Review", "Approved", "Effective", "Obsolete"];
 
 export default function DmsListPage() {
   const navigate = useNavigate();
   const { role } = useRole();
-  const [statusFilter, setStatusFilter] = useState<"All" | WorkflowStatus>("All");
-  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
+  
+  // Data State
+  const [documents, setDocuments] = useState<DmsDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [permissionDenied, setPermissionDenied] = useState({ open: false, message: "" });
+
+  useEffect(() => {
+    loadDocuments();
+  }, []);
+
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const data = await dmsService.list(); 
+      setDocuments(data);
+    } catch (err) {
+      console.error("Failed to load documents", err);
+      // In development without backend, you might want to suppress this or show empty state
+      setError("Failed to connect to the server. Is Django running?");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateNew = () => {
-    if (!permissionService.can(role, "dms", "create")) {
+    // ✅ FIX: Check if role exists before checking permissions
+    const canCreate = role ? permissionService.can(role, "dms", "create") : false;
+
+    if (!canCreate) {
       setPermissionDenied({
         open: true,
-        message: `You don't have permission to create documents. Your current role (${role}) does not allow this action.`,
+        message: `You don't have permission to create documents. Role: ${role || "Unknown"}`,
       });
       return;
     }
     navigate("/dms/new");
   };
 
-  const documents: DocumentRow[] = [
-    {
-      id: "SOP-QA-2024-015",
-      title: "Manufacturing Process Standard Operating Procedure",
-      owner: "Sarah Johnson",
-      department: "Quality Assurance",
-      status: "Effective",
-      updated: "2026-01-15",
-    },
-    {
-      id: "SOP-QA-2024-016",
-      title: "Equipment Qualification and Validation Protocol",
-      owner: "Michael Chen",
-      department: "Quality Control",
-      status: "In Review",
-      updated: "2026-01-20",
-    },
-    {
-      id: "SOP-QA-2024-017",
-      title: "Environmental Monitoring Procedures",
-      owner: "Emily Rodriguez",
-      department: "Quality Assurance",
-      status: "Draft",
-      updated: "2026-01-22",
-    },
-    {
-      id: "SOP-QA-2024-014",
-      title: "Batch Release Documentation Requirements",
-      owner: "David Williams",
-      department: "Production",
-      status: "Approved",
-      updated: "2026-01-18",
-    },
-    {
-      id: "SOP-QA-2023-089",
-      title: "Change Control Management System",
-      owner: "Jennifer Lee",
-      department: "Quality Assurance",
-      status: "Closed",
-      updated: "2025-12-30",
-    },
-  ];
+  // Client-side filtering
+  const filteredDocs = statusFilter === "All"
+    ? documents
+    : documents.filter((d) => d.status === statusFilter.toUpperCase());
 
-  const filteredDocs =
-    statusFilter === "All"
-      ? documents
-      : documents.filter((d) => d.status === statusFilter);
+  if (loading) return <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box>;
+  if (error) return <Box sx={{ p: 4 }}><Alert severity="error">{error}</Alert></Box>;
 
   return (
     <Box sx={{ p: 4 }}>
       {/* Header */}
-      <Stack
-        direction="row"
-        alignItems="flex-start"
-        justifyContent="space-between"
-        mb={3}
-      >
+      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" mb={3}>
         <Box>
-          <Typography variant="h4" fontWeight={800}>
-            Document Management System
-          </Typography>
+          <Typography variant="h4" fontWeight={800}>Document Management</Typography>
           <Typography variant="body2" color="text.secondary" mt={0.5}>
-            Centralized repository for all controlled documents and SOPs
+            Repository for SOPs, Policies, and Work Instructions
           </Typography>
         </Box>
-
         <Button
           variant="contained"
           startIcon={<AddOutlinedIcon />}
@@ -131,38 +98,27 @@ export default function DmsListPage() {
         </Button>
       </Stack>
 
-      {/* Search + Filters */}
+      {/* Filters */}
       <Paper sx={{ p: 3, mb: 3, borderRadius: 4 }}>
         <Stack direction="row" spacing={2} mb={2}>
           <TextField
             fullWidth
             placeholder="Search documents..."
-            InputProps={{
-              startAdornment: <SearchOutlinedIcon sx={{ mr: 1 }} />,
-            }}
+            InputProps={{ startAdornment: <SearchOutlinedIcon sx={{ mr: 1 }} /> }}
           />
-          <Button
-            variant="outlined"
-            startIcon={<FilterListOutlinedIcon />}
-            sx={{ borderRadius: 3, px: 3 }}
-          >
+          <Button variant="outlined" startIcon={<FilterListOutlinedIcon />} sx={{ borderRadius: 3, px: 3 }}>
             Filters
           </Button>
         </Stack>
-
-        {/* Status Filters */}
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="body2" fontWeight={600}>
-            Status:
-          </Typography>
-
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <Typography variant="body2" fontWeight={600}>Status:</Typography>
           {STATUS_FILTERS.map((s) => (
             <Button
               key={s}
               size="small"
               variant={statusFilter === s ? "contained" : "outlined"}
               onClick={() => setStatusFilter(s)}
-              sx={{ borderRadius: 3, textTransform: "none" }}
+              sx={{ borderRadius: 3, textTransform: "none", m: 0.5 }}
             >
               {s}
             </Button>
@@ -172,87 +128,46 @@ export default function DmsListPage() {
 
       {/* Table */}
       <Paper sx={{ borderRadius: 4, overflow: "hidden" }}>
-        <Box
-          component="table"
-          sx={{ width: "100%", borderCollapse: "collapse" }}
-        >
+        <Box component="table" sx={{ width: "100%", borderCollapse: "collapse" }}>
           <Box component="thead" sx={{ bgcolor: "grey.50" }}>
             <Box component="tr">
-              {[
-                "Document ID",
-                "Title",
-                "Owner",
-                "Department",
-                "Status",
-                "Updated",
-                ...(role !== "Viewer" ? ["Actions"] : []),
-              ].map((h) => (
-                <Box
-                  key={h}
-                  component="th"
-                  sx={{
-                    textAlign: "left",
-                    px: 3,
-                    py: 2,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "text.secondary",
-                  }}
-                >
+              {["ID", "Title", "Type", "Department", "Status", "Actions"].map((h) => (
+                <Box key={h} component="th" sx={{ textAlign: "left", px: 3, py: 2, fontSize: 12, fontWeight: 700, color: "text.secondary" }}>
                   {h.toUpperCase()}
                 </Box>
               ))}
             </Box>
           </Box>
-
           <Box component="tbody">
+            {filteredDocs.length === 0 && (
+               <Box component="tr">
+                 <Box component="td" colSpan={6} sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                   No documents found.
+                 </Box>
+               </Box>
+            )}
             {filteredDocs.map((doc) => (
-              <Box
-                component="tr"
-                key={doc.id}
-                sx={{
-                  borderTop: "1px solid rgba(0,0,0,0.06)",
-                  "&:hover": { bgcolor: "grey.50" },
-                }}
-              >
-                <Box
-                  component="td"
-                  sx={{ px: 3, py: 2, fontWeight: 600, color: "primary.main" }}
-                >
-                  {doc.id}
+              <Box component="tr" key={doc.id} sx={{ borderTop: "1px solid rgba(0,0,0,0.06)", "&:hover": { bgcolor: "grey.50" } }}>
+                <Box component="td" sx={{ px: 3, py: 2, fontWeight: 600, color: "primary.main" }}>
+                  {doc.document_id}
                 </Box>
-                <Box component="td" sx={{ px: 3, py: 2 }}>
-                  {doc.title}
-                </Box>
-                <Box component="td" sx={{ px: 3, py: 2 }}>
-                  {doc.owner}
-                </Box>
-                <Box component="td" sx={{ px: 3, py: 2 }}>
-                  {doc.department}
-                </Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>{doc.title}</Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>{doc.doc_type}</Box>
+                <Box component="td" sx={{ px: 3, py: 2 }}>{doc.department}</Box>
                 <Box component="td" sx={{ px: 3, py: 2 }}>
                   <StatusChip status={doc.status} />
                 </Box>
                 <Box component="td" sx={{ px: 3, py: 2 }}>
-                  {doc.updated}
+                  <IconButton size="small" onClick={() => navigate(`/dms/${doc.id}`)}>
+                    <VisibilityOutlinedIcon />
+                  </IconButton>
                 </Box>
-                {role !== "Viewer" && (
-                  <Box component="td" sx={{ px: 3, py: 2 }}>
-                    <IconButton
-                      size="small"
-                      onClick={() => navigate(`/dms/${doc.id}`)}
-                    >
-                      <VisibilityOutlinedIcon />
-                    </IconButton>
-                  </Box>
-                )}
               </Box>
             ))}
           </Box>
         </Box>
       </Paper>
 
-      {/* Permission Denied Dialog */}
       <PermissionDeniedDialog
         open={permissionDenied.open}
         onClose={() => setPermissionDenied({ open: false, message: "" })}

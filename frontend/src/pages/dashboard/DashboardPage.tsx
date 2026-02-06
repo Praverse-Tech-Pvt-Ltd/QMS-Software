@@ -9,9 +9,12 @@ import {
   TableHead,
   TableRow,
   Chip,
-  Grid,
   TextField,
+  Grid
 } from "@mui/material";
+
+
+
 import { useNavigate } from "react-router-dom";
 import { motion, transitions, shadows, keyframes } from "../../theme/motion";
 import { useState } from "react";
@@ -165,6 +168,15 @@ export default function DashboardPage() {
 
   // ✅ 4. Handler for quick action clicks with permission check
   const handleQuickActionClick = (action: typeof allActions[0]) => {
+    // ✅ FIX: Handle nullable role
+    if (!role) {
+        setPermissionDenied({
+            open: true,
+            message: "You must be logged in to perform this action.",
+        });
+        return;
+    }
+
     const hasPermission = permissionService.can(role, action.module, "create");
     
     if (!hasPermission) {
@@ -239,7 +251,8 @@ export default function DashboardPage() {
           </Button>
           <Button
             variant="outlined"
-            disabled={!permissionService.can(role, 'dashboard', 'export')}
+            // ✅ FIX: Handle nullable role for disabled check
+            disabled={!role || !permissionService.can(role, 'dashboard', 'export')}
             sx={{
               bgcolor: "white",
               borderColor: "#e2e8f0",
@@ -535,7 +548,8 @@ export default function DashboardPage() {
 
                 <Grid container spacing={2}>
                   {allActions.map((action) => {
-                    const hasPermission = permissionService.can(role, action.module, "create");
+                    // ✅ FIX: Handle nullable role
+                    const hasPermission = role ? permissionService.can(role, action.module, "create") : false;
                     
                     return (
                       <Grid size={6} key={action.label}>

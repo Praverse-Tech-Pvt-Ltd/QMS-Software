@@ -1,4 +1,4 @@
-import { Box, Button, TextField, Typography, Chip, InputAdornment } from "@mui/material";
+import { Box, Button, TextField, Typography, Chip, InputAdornment, Alert, CircularProgress } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
@@ -7,78 +7,100 @@ import { useNavigate } from "react-router-dom";
 
 // Standard Imports
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
-import ModuleTable, {type ColumnDef } from "../../components/common/ModuleTable";
-import { capaService } from "../../services/capa.service";
-import { type CapaRecord } from "../../types/capa.types";
+import ModuleTable, { type ColumnDef } from "../../components/common/ModuleTable";
+import { capaService,type CapaRecord } from "../../services/capa.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
-// Filter Options matching your image
-const STATUS_FILTERS = ["All", "Open", "QA Review", "In Progress", "Completed"];
+// Adjusted Filter Options to match available Backend Statuses
+const STATUS_FILTERS = ["All", "Open", "In Progress", "Verification", "Closed"];
 
 export default function CapaListPage() {
   const navigate = useNavigate();
   const { role } = useRole();
+  
+  // State
   const [rows, setRows] = useState<CapaRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  // Fetch Data
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await capaService.list();
+      setRows(data);
+    } catch (err) {
+      console.error("Failed to load CAPA records", err);
+      setError("Failed to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateNew = () => {
-    if (!permissionService.can(role, "capa", "create")) {
+    const canCreate = role ? permissionService.can(role, "capa", "create") : false;
+
+    if (!canCreate) {
       setPermissionDenied({
         open: true,
-        message: `You don't have permission to create CAPA records. Your current role (${role}) does not allow this action.`,
+        message: `You don't have permission to create CAPA records. Role: ${role || "Unknown"}`,
       });
       return;
     }
     navigate("/capa/new");
   };
 
-  useEffect(() => {
-    capaService.list().then((data) => {
-      setRows(data);
-    });
-  }, []);
-
-  // Filter Logic
+  // ✅ FIXED: Strict Type Filtering
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
+      const searchString = searchTerm.toLowerCase();
       const matchesSearch =
-        r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.id.toLowerCase().includes(searchTerm.toLowerCase());
+        r.title.toLowerCase().includes(searchString) ||
+        (r.capa_id || "").toLowerCase().includes(searchString);
 
-      // Helper to match UI status label back to backend status
       let matchesStatus = true;
+      
       if (statusFilter !== "All") {
-          if (statusFilter === "QA Review") matchesStatus = r.status === "Review";
-          else if (statusFilter === "Open") matchesStatus = r.status === "Draft";
-          else if (statusFilter === "In Progress") matchesStatus = r.status === "Implementation";
-          else if (statusFilter === "Completed") matchesStatus = r.status === "Closed" || r.status === "Effective";
-          else matchesStatus = r.status === statusFilter;
+          // Map "Friendly" UI names to valid 'CapaRecord' statuses
+          if (statusFilter === "Open") {
+              matchesStatus = r.status === "PLANNING"; 
+          } 
+          else if (statusFilter === "In Progress") {
+              matchesStatus = r.status === "PENDING" || r.status === "IMPLEMENTATION";
+          }
+          else if (statusFilter === "Verification") {
+              matchesStatus = r.status === "VERIFICATION";
+          }
+          else if (statusFilter === "Closed") {
+              matchesStatus = r.status === "CLOSED";
+          }
+          else {
+              // Fallback for exact matches if you add more filters later
+              matchesStatus = r.status === statusFilter as any; 
+          }
       }
 
       return matchesSearch && matchesStatus;
     });
   }, [rows, searchTerm, statusFilter]);
 
-  // Helper for Priority Colors
-  const getPriorityColor = (priority: string) => {
-      switch(priority) {
-          case "Critical": return { color: "#dc2626", fontWeight: 700 }; // Red text
-          case "High": return { color: "#ea580c", fontWeight: 700 };     // Orange text
-          case "Medium": return { color: "#6366F1", fontWeight: 700 };   // Blue text
-          case "Low": return { color: "#16a34a", fontWeight: 700 };      // Green text
-          default: return { color: "#4b5563" };
-      }
-  };
+  // ✅ REMOVED unused 'getPriorityColor' function
 
-  // ✅ COLUMN DEFINITIONS
+  // COLUMN DEFINITIONS
   const columns: ColumnDef<CapaRecord>[] = [
     { 
-      field: "id", 
+      field: "capa_id", 
       headerName: "CAPA ID", 
       width: 140,
       renderCell: (row) => (
@@ -87,46 +109,38 @@ export default function CapaListPage() {
           sx={{ color: "#6366F1", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
           onClick={() => navigate(`/capa/${row.id}`)}
         >
-          {row.id}
+          {row.capa_id}
         </Typography>
       ) 
     },
     { field: "title", headerName: "TITLE", width: "30%" },
-    { field: "initiator", headerName: "INITIATOR" },
-    { field: "department", headerName: "DEPARTMENT" },
+    { field: "department", headerName: "DEPARTMENT" }, // Ensure backend sends this or remove if optional
     { 
-        field: "priority", 
-        headerName: "PRIORITY",
+        field: "action_type", 
+        headerName: "TYPE",
         renderCell: (row) => (
-            <Typography variant="body2" sx={{ ...getPriorityColor(row.priority), fontSize: "0.875rem" }}>
-                {row.priority}
-            </Typography>
+            <Chip 
+                label={row.action_type} 
+                size="small" 
+                sx={{ 
+                    bgcolor: row.action_type === 'CORRECTIVE' ? '#fee2e2' : '#dcfce7',
+                    color: row.action_type === 'CORRECTIVE' ? '#991b1b' : '#166534',
+                    fontWeight: 600,
+                    fontSize: '0.7rem'
+                }} 
+            />
         )
     },
-    { field: "status", headerName: "STATUS" }, // Handled automatically by ModuleTable (Pills)
-    { field: "dueDate", headerName: "DUE DATE" },
-    { 
-        field: "relatedTo", 
-        headerName: "RELATED TO",
-        renderCell: (row) => (
-            <Typography 
-                variant="body2" 
-                sx={{ color: "#6366F1", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
-                onClick={(e) => {
-                    e.stopPropagation();
-                    // In a real app, you might navigate to the Deviation page here
-                    console.log("Navigating to related:", row.relatedTo);
-                }}
-            >
-                {row.relatedTo}
-            </Typography>
-        )
-    },
+    { field: "status", headerName: "STATUS" }, // ModuleTable handles status pills automatically
+    { field: "due_date", headerName: "DUE DATE" },
   ];
+
+  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box>;
+  if (error) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
 
   return (
     <Box sx={{ p: 3, bgcolor: "#f8fafc", minHeight: "100vh" }}>
-      {/* 1. Header Section */}
+      {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 3 }}>
         <Box>
             <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a" }}>
@@ -152,7 +166,7 @@ export default function CapaListPage() {
         </Button>
       </Box>
 
-      {/* 2. Search & Filter Bar */}
+      {/* Search & Filter Bar */}
       <Box sx={{ 
           bgcolor: "#fff", 
           p: 2, 
@@ -221,7 +235,7 @@ export default function CapaListPage() {
         </Box>
       </Box>
 
-      {/* 3. Data Table */}
+      {/* Data Table */}
       <ModuleTable
         columns={columns}
         rows={filteredRows}

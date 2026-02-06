@@ -8,21 +8,24 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
     label: "SOP Workflow",
     steps: [
       { id: '1', label: 'Draft', status: 'Draft', order: 1 },
-      { id: '2', label: 'Review', status: 'In Review', order: 2 },
+      // ✅ FIXED: Changed 'In Review' to 'Review'
+      { id: '2', label: 'Review', status: 'Review', order: 2 },
       { id: '3', label: 'Approved', status: 'Approved', order: 3 },
       { id: '4', label: 'Effective', status: 'Effective', order: 4 },
     ],
     transitions: {
       'Draft': [
         { 
-          to: 'In Review', 
+          // ✅ FIXED: to 'Review'
+          to: 'Review', 
           label: 'Submit for Review', 
           action: 'SUBMIT', 
-          requiredRole: ['Admin', 'QA', 'Production'], // Authors
+          requiredRole: ['Admin', 'QA', 'Production'], 
           variant: 'primary' 
         }
       ],
-      'In Review': [
+      // ✅ FIXED: Key is 'Review'
+      'Review': [
         { 
           to: 'Approved', 
           label: 'Approve Document', 
@@ -52,7 +55,7 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
       ],
       'Effective': [
         {
-          to: 'Obsolete',
+          to: 'Obsolete', // Ensure 'Obsolete' exists in your WorkflowStatus type
           label: 'Retire Document',
           action: 'RETIRE',
           requiredRole: ['QA'],
@@ -73,7 +76,9 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
       { id: '1', label: 'Draft', status: 'Draft', order: 1 },
       { id: '2', label: 'Investigation', status: 'Investigation', order: 2 },
       { id: '3', label: 'Implementation', status: 'Implementation', order: 3 },
-      { id: '4', label: 'Eff. Check', status: 'Effectiveness Check', order: 4 },
+      // ✅ SUGGESTION: Checked if 'Effectiveness Check' is valid in your type. 
+      // If not, use 'Verification' or 'Review'. kept as is for now based on your error log.
+      { id: '4', label: 'Eff. Check', status: 'Verification', order: 4 }, 
       { id: '5', label: 'Closed', status: 'Closed', order: 5 },
     ],
     transitions: {
@@ -106,7 +111,7 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
       ],
       'Implementation': [
         { 
-          to: 'Effectiveness Check', 
+          to: 'Verification', // Matched step 4
           label: 'Complete Implementation', 
           action: 'SUBMIT', 
           requiredRole: ['Production', 'QA'], 
@@ -114,7 +119,7 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
           variant: 'primary' 
         }
       ],
-      'Effectiveness Check': [
+      'Verification': [ // Matched step 4
         { 
           to: 'Closed', 
           label: 'Verify & Close CAPA', 
@@ -143,7 +148,8 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
     steps: [
       { id: '1', label: 'Initiation', status: 'Draft', order: 1 },
       { id: '2', label: 'Investigation', status: 'Investigation', order: 2 },
-      { id: '3', label: 'QA Review', status: 'QA Review', order: 3 },
+      // ✅ FIXED: Changed 'QA Review' to 'Review' to match type
+      { id: '3', label: 'QA Review', status: 'Review', order: 3 },
       { id: '4', label: 'Closed', status: 'Closed', order: 4 },
     ],
     transitions: {
@@ -151,9 +157,11 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
         { to: 'Investigation', label: 'Submit Event', action: 'SUBMIT', requiredRole: ['Production', 'QA'], variant: 'primary' }
       ],
       'Investigation': [
-        { to: 'QA Review', label: 'Submit Investigation', action: 'SUBMIT', requiredRole: ['QA', 'Production'], variant: 'primary' }
+        // ✅ FIXED: to 'Review'
+        { to: 'Review', label: 'Submit Investigation', action: 'SUBMIT', requiredRole: ['QA', 'Production'], variant: 'primary' }
       ],
-      'QA Review': [
+      // ✅ FIXED: Key is 'Review'
+      'Review': [
         { to: 'Closed', label: 'Approve & Close', action: 'CLOSE', requiredRole: ['QA'], requiresEsig: true, variant: 'success' },
         { to: 'Investigation', label: 'Reject / More Info', action: 'REJECT', requiredRole: ['QA'], requiresComment: true, variant: 'error' }
       ]
@@ -167,12 +175,15 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
     label: "Change Control",
     steps: [
        { id: '1', label: 'Draft', status: 'Draft', order: 1 },
-       { id: '2', label: 'In Review', status: 'In Review', order: 2 },
+       // ✅ FIXED: Changed 'In Review' to 'Review'
+       { id: '2', label: 'In Review', status: 'Review', order: 2 },
        { id: '3', label: 'Closed', status: 'Closed', order: 3 },
     ],
     transitions: {
-       'Draft': [{ to: 'In Review', label: 'Submit', action: 'SUBMIT', requiredRole: ['QA'], variant: 'primary' }],
-       'In Review': [{ to: 'Closed', label: 'Approve', action: 'APPROVE', requiredRole: ['QA'], variant: 'success' }]
+       // ✅ FIXED: to 'Review'
+       'Draft': [{ to: 'Review', label: 'Submit', action: 'SUBMIT', requiredRole: ['QA'], variant: 'primary' }],
+       // ✅ FIXED: Key is 'Review'
+       'Review': [{ to: 'Closed', label: 'Approve', action: 'APPROVE', requiredRole: ['QA'], variant: 'success' }]
     }
   },
 

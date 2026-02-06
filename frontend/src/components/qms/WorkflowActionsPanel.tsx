@@ -5,7 +5,8 @@ import {
   Paper,
   TextField,
   Typography,
-  Alert
+  Alert,
+  CircularProgress
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { useSnackbar } from "notistack";
@@ -31,7 +32,7 @@ export default function WorkflowActionsPanel({
   moduleKey,
   meta,
   onUpdated,
-  onValidate, // ✅ New Prop: Parent can inject validation logic
+  onValidate, 
 }: {
   recordId: string;
   moduleKey: WorkflowModuleKey;
@@ -45,18 +46,23 @@ export default function WorkflowActionsPanel({
   // State
   const [comment, setComment] = useState("");
   const [esignOpen, setEsignOpen] = useState(false);
+  const [loading, setLoading] = useState(false); 
   
   // Stores the full configuration object of the action being attempted
   const [pendingTransition, setPendingTransition] = useState<WorkflowTransition | null>(null);
 
   // ---------------------------------------------------------------------------
-  // 1. COMPUTE ALLOWED ACTIONS (The "Brain")
+  // 1. COMPUTE ALLOWED ACTIONS
   // ---------------------------------------------------------------------------
   const availableTransitions = useMemo(() => {
+    // ✅ FIX: If no role (not logged in), no actions allowed.
+    if (!role) return [];
+
     const moduleConfig = WORKFLOWS[moduleKey];
     if (!moduleConfig) return [];
 
     // Get all possible transitions from the current status
+    // Safe check: Ensure status exists in config, default to empty array
     const potentialTransitions = moduleConfig.transitions[meta.status] || [];
 
     // Filter by User Role (RBAC) AND Permission Check
@@ -66,7 +72,8 @@ export default function WorkflowActionsPanel({
       
       // Check if role has the required permission for the action type
       let permissionAllowed = true;
-      if (t.action === 'APPROVE') {
+      // We assume standard CRUD permissions map to workflow actions
+      if (t.action === 'APPROVE' || t.action === 'REJECT') {
         permissionAllowed = permissionService.can(role, moduleKey as ModuleKey, 'approve');
       } else if (t.action === 'SUBMIT') {
         permissionAllowed = permissionService.can(role, moduleKey as ModuleKey, 'edit');
@@ -82,18 +89,15 @@ export default function WorkflowActionsPanel({
   const handleActionClick = (transition: WorkflowTransition) => {
     
     // ✅ 1. Check Transition Rules (Validation)
-    // We only enforce validation on "forward" actions (Submit/Approve), usually not Reject.
     if (transition.action === 'SUBMIT' || transition.action === 'APPROVE') {
         if (onValidate) {
             const validationResult = onValidate();
             
-            // If validation returns a string, it's a specific error message
             if (typeof validationResult === 'string') {
                 enqueueSnackbar(validationResult, { variant: "error" });
                 return;
             }
             
-            // If validation returns false (generic error)
             if (validationResult === false) {
                 enqueueSnackbar("Please complete all mandatory fields before proceeding.", { variant: "error" });
                 return;
@@ -109,9 +113,8 @@ export default function WorkflowActionsPanel({
       return;
     }
 
-    // If it's a simple state change (no sig), just do it
-    // Check if comment is required (e.g. for Rejection)
-    if (transition.requiresComment && !comment) {
+    // If it's a simple state change (no sig), check comment requirement
+    if (transition.requiresComment && !comment.trim()) {
        enqueueSnackbar("A comment/reason is required for this action.", { variant: "warning" });
        return;
     }
@@ -120,32 +123,41 @@ export default function WorkflowActionsPanel({
     executeTransition(transition, comment, null);
   };
 
-  const executeTransition = (
+  const executeTransition = async (
     transition: WorkflowTransition, 
     finalComment: string, 
     signatureData: any | null
   ) => {
+    if (!role) {
+        enqueueSnackbar("You must be logged in to perform this action.", { variant: "error" });
+        return;
+    }
+
+    setLoading(true);
     try {
       // 1. Call Workflow Service
-      const updated = workflowService.transition(
+      const updated = await workflowService.transition(
         recordId,
         moduleKey,
         transition.action,
-        { user: signatureData?.username || "Demo User", role }, // Mock user context
+        { user: signatureData?.username || "Current User", role }, 
         finalComment,
-        transition.action === 'REJECT' ? finalComment : undefined // Pass rejection reason if applicable
+        transition.action === 'REJECT' ? finalComment : undefined 
       );
 
       // 2. Record Signature (if applicable)
       if (signatureData) {
-        workflowService.addSignature(recordId, moduleKey, {
-          meaning: signatureData.meaning,
-          statusBefore: meta.status,
-          statusAfter: updated.status,
-          signedBy: signatureData.username || "Demo User",
-          role,
-          comment: finalComment,
-        });
+        // Only attempt to add signature if the service supports it (safe check)
+        if (workflowService.addSignature) {
+            await workflowService.addSignature(recordId, moduleKey, {
+            meaning: signatureData.meaning,
+            statusBefore: meta.status,
+            statusAfter: updated.status,
+            signedBy: signatureData.username || "Current User",
+            role,
+            comment: finalComment,
+            });
+        }
       }
 
       // 3. Audit Log
@@ -154,7 +166,7 @@ export default function WorkflowActionsPanel({
         field: "status",
         oldValue: meta.status,
         newValue: updated.status,
-        user: signatureData?.username || "Demo User",
+        user: signatureData?.username || "Current User",
         role,
         reason: finalComment || transition.label,
       });
@@ -163,13 +175,14 @@ export default function WorkflowActionsPanel({
       onUpdated(updated);
       resetForm();
       
-      // Determine success message style
       const variant = transition.variant === 'error' ? 'info' : 'success';
       enqueueSnackbar(`Success: ${transition.label}`, { variant });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      enqueueSnackbar("Workflow transition failed", { variant: "error" });
+      enqueueSnackbar(err.message || "Workflow transition failed", { variant: "error" });
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -182,9 +195,6 @@ export default function WorkflowActionsPanel({
   // ---------------------------------------------------------------------------
   // 3. RENDER
   // ---------------------------------------------------------------------------
-  
-  // Visual Helper: Shows the flow of states 
-  
   return (
     <Paper
       sx={{
@@ -205,15 +215,21 @@ export default function WorkflowActionsPanel({
 
       <Divider sx={{ mb: 2 }} />
 
-      {/* --- Action Buttons (Generated from Config) --- */}
+      {/* --- Action Buttons --- */}
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
-        {availableTransitions.length > 0 ? (
+        {loading ? (
+             <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', py: 2 }}>
+                 <CircularProgress size={24} />
+             </Box>
+        ) : availableTransitions.length > 0 ? (
           availableTransitions.map((t, index) => {
-             // Icon Selection
              let Icon = PlayArrowIcon;
              if (t.action === 'APPROVE') Icon = CheckCircleIcon;
              if (t.action === 'REJECT') Icon = CancelIcon;
 
+             // Disable if comment required but missing
+             const isCommentMissing = t.requiresComment && !comment.trim();
+             
              return (
               <Button
                 key={index}
@@ -221,8 +237,7 @@ export default function WorkflowActionsPanel({
                 color={t.variant === 'error' ? "error" : t.variant === 'success' ? "success" : "primary"}
                 startIcon={<Icon />}
                 onClick={() => handleActionClick(t)}
-                // Disable rejection button strictly if no comment is typed yet
-                disabled={t.requiresComment && !comment && t.variant === 'error'} 
+                disabled={isCommentMissing && t.variant === 'error'} // Only strictly disable Reject buttons
               >
                 {t.label}
               </Button>
@@ -230,16 +245,16 @@ export default function WorkflowActionsPanel({
           })
         ) : (
           <Alert severity="info" sx={{ width: '100%' }}>
-            No actions available for your role ({role}) in this state.
+            No actions available for your role ({role || "Viewer"}) in this state.
           </Alert>
         )}
       </Box>
 
-      {/* --- Comment Field (Context-Aware) --- */}
-      {availableTransitions.some(t => t.requiresComment) && (
+      {/* --- Comment Field --- */}
+      {availableTransitions.some(t => t.requiresComment) && !loading && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
-            Comments / Justification (Required for Rejections or Obsolete)
+            Comments / Justification (Required for Rejections)
           </Typography>
           <TextField
             placeholder="Enter reason or comments here..."
@@ -261,9 +276,16 @@ export default function WorkflowActionsPanel({
       </Typography>
 
       <Box sx={{ display: "grid", gap: 1 }}>
-        {meta.approvalsLog && meta.approvalsLog.slice(0, 3).map((log) => (
+        {/* Safe check for approvalsLog array */}
+        {(meta.approvalsLog || []).length === 0 && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                No history yet.
+            </Typography>
+        )}
+        
+        {(meta.approvalsLog || []).slice(0, 3).map((log, i) => (
           <Box
-            key={log.id}
+            key={log.id || i} // Fallback key
             sx={{
               p: 1.5,
               borderRadius: 2,
@@ -276,7 +298,7 @@ export default function WorkflowActionsPanel({
                 {log.action}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                    {new Date(log.timestamp).toLocaleDateString()}
+                    {log.timestamp ? new Date(log.timestamp).toLocaleDateString() : 'N/A'}
                 </Typography>
             </Box>
             <Typography variant="caption" sx={{ color: "text.secondary", display: 'block' }}>
@@ -300,7 +322,6 @@ export default function WorkflowActionsPanel({
                 setPendingTransition(null);
             }}
             actionLabel={pendingTransition.label}
-            // If the config says this is an "APPROVE" action, force meaning to "Approval"
             forcedMeaning={pendingTransition.action === 'APPROVE' ? 'Approval' : undefined}
             onSign={(payload) => {
                 executeTransition(pendingTransition, payload.comment || comment, payload);

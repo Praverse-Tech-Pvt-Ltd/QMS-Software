@@ -6,7 +6,7 @@ import {
   DialogActions,
   Button,
   Box,
-  Avatar,
+  
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";

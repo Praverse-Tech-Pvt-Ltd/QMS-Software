@@ -1,4 +1,4 @@
-import type { AuditTrailEntry, AuditActionType } from "../types/audit.types";
+import type { AuditTrailEntry } from "../types/audit.types";
 import type { WorkflowModuleKey } from "../types/workflow.types";
 
 const getKey = (moduleKey: WorkflowModuleKey, recordId: string) =>

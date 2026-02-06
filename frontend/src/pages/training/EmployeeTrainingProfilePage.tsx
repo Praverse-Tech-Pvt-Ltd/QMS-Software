@@ -6,13 +6,12 @@ import {
   Chip,
   Button,
   Avatar,
-  Grid,
   List,
   ListItem,
   ListItemText,
-  Divider,
-  Alert,
+  Grid,
 } from "@mui/material";
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
@@ -24,7 +23,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import HistoryIcon from "@mui/icons-material/History";
 import QuizIcon from "@mui/icons-material/Quiz";
 
-// Components (We define QuizModal inline here for simplicity, or import it if preferred)
+// Components
 import {
   Dialog,
   DialogTitle,
@@ -75,13 +74,12 @@ const initialTrainings = [
 
 // --- SUB-COMPONENT: QUIZ MODAL ---
 function QuizModal({ open, onClose, title, onPass }: any) {
-  const [step, setStep] = useState(0);
+  // ✅ Removed unused 'step' state
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const handleFinish = () => {
     setSubmitted(false);
-    setStep(0);
     setAnswer("");
     onPass(); // Trigger completion in parent
     onClose();

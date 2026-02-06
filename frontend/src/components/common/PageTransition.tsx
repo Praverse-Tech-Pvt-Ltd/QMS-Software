@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
 import { keyframes, motion } from "../../theme/motion";
 
 interface PageTransitionProps {

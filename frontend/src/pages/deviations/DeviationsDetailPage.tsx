@@ -1,97 +1,155 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { Box, Button, Typography, Divider } from "@mui/material";
+import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Box, Button, Typography, Divider, TextField, MenuItem, CircularProgress, Alert, Grid } from "@mui/material";
+
 import SaveIcon from "@mui/icons-material/Save";
 
-// --- ENGINEERING STANDARDS IMPORTS ---
-import { useFetch } from "../../hooks/useFetch";
-import { deviationsService } from "../../services/deviations.service";
-import LoadingState from "../../components/common/LoadingState";
-import ErrorState from "../../components/common/ErrorState";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
+// --- IMPORTS ---
+import { deviationsService, type DeviationRecord } from "../../services/deviations.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
 // --- COMPONENT IMPORTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
-import DeviationEventPanel from "../../components/deviations/DeviationEventPanel";
-import LinkedCapasPanel from "../../components/deviations/LinkedCapasPanel";
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import ReasonForChangeModal from "../../components/common/ReasonForChangeModal";
-import SignatureStamp from "../../components/qms/SignatureStamp"; // Ensure this path is correct based on your folder structure
+import SignatureStamp from "../../components/qms/SignatureStamp";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import WorkflowTimeline from "../../components/qms/WorkflowTimeline";
+import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
+import { WORKFLOWS } from "../../config/workflows";
+import UserSelectionModal from "../../components/common/UserSelectionModal";
+import LinkedCapasPanel from "../../components/deviations/LinkedCapasPanel";
+
+// ✅ HELPER: Map Backend Status to UI Workflow Status
+const mapStatusToWorkflow = (backendStatus: string): any => {
+  switch (backendStatus) {
+    case "DRAFT": return "Draft";
+    case "INVESTIGATION": return "Investigation";
+    case "QA_REVIEW": return "Review"; // Matches 'Review' step in WORKFLOWS config
+    case "CLOSED": return "Closed";
+    default: return "Draft";
+  }
+};
 
 export default function DeviationsDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { role } = useRole();
 
-  // 1. DATA FETCHING (Using the standard Hook)
-  const {
-    data: record,
-    isLoading,
-    error,
-    refetch,
-  } = useFetch(() => deviationsService.getById(id || ""), [id]);
+  // 1. DATA FETCHING
+  const [record, setRecord] = useState<DeviationRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 2. LOCAL STATE
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
 
-  // 3. PERMISSIONS & EDIT LOGIC - Check both role and record status
-  const canEdit = permissionService.can(role, 'deviations', 'edit') && 
-                  record?.status !== "Closed";
-  const canDelete = permissionService.can(role, 'deviations', 'delete');
-  const canReopen = permissionService.can(role, 'deviations', 'reopen');
+  // 3. LOAD DATA
+  const loadData = async () => {
+      const safeId = id || ""; 
+      if (!safeId) return;
 
-  // 4. HANDLERS
+      try {
+          setLoading(true);
+          const data = await deviationsService.getById(safeId);
+          setRecord(data);
+      } catch (err) {
+          console.error(err);
+          setError("Failed to load Deviation Record.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  useEffect(() => {
+      loadData();
+  }, [id]);
+
+  // 4. PERMISSIONS
+  const canEdit = role && record 
+    ? permissionService.can(role, 'deviations', 'edit') && record.status !== "CLOSED"
+    : false;
+
+  // 5. HANDLERS
   const handleSaveClick = () => {
-    // Open the confirmation dialog first
     setSaveDialogOpen(true);
   };
 
-  const handleConfirmSave = async () => {
-    // In a real app, you might pass updated form data here
-    await deviationsService.update(id!, { ...record });
-    setSaveDialogOpen(false);
-    refetch(); // Refresh data
+  const handleConfirmSave = async (reason?: string) => {
+    const safeId = id || "";
+    if (!record || !safeId) return;
+
+    try {
+        console.log("Saving with reason:", reason);
+        await deviationsService.update(safeId, { ...record });
+        setSaveDialogOpen(false);
+        loadData();
+    } catch (err) {
+        alert("Failed to save changes.");
+    }
   };
 
-  // 5. LOADING / ERROR STATES
-  if (isLoading) return <LoadingState message="Loading Deviation Record..." />;
-  if (error || !record) return <ErrorState onRetry={refetch} />;
+  const handleAddReviewer = (user: any) => {
+    console.log("Assigning Reviewer:", user);
+    setAssignModalOpen(false);
+  };
 
-  // 6. RENDER
+  const handleValidate = () => {
+     return true;
+  };
+
+  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /> <Typography>Loading Deviation Record...</Typography></Box>;
+  if (error || !record) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
+
   return (
     <>
       <DetailTabsLayout
-        title={`${record.id}: ${record.title}`}
+        // Access deviation_id if available, else id
+        title={`${(record as any).deviation_id || record.id}: ${record.title}`}
         subtitle="Deviation Record"
         backTo="/deviations"
-        // Header Status Chip & Signature
+        
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {record.status === "Closed" && (
+            {record.status === "CLOSED" && (
               <SignatureStamp
                 isSigned={true}
                 signedBy="Quality Assurance"
                 date={new Date().toLocaleDateString()}
               />
             )}
-            <StatusChip status={record.status} />
+            <StatusChip status={mapStatusToWorkflow(record.status)} />
           </Box>
         }
-        // ✅ FIXED: Added the missing rightPanel prop
+
+        // ✅ RIGHT PANEL: Timeline + Workflow Actions
         rightPanel={
           <Box sx={{ display: "grid", gap: 3 }}>
-            {/* Workflow Timeline */}
-            <Typography variant="subtitle2" fontWeight={700}>
-              Workflow Status
-            </Typography>
-            {/* You might need to import WorkflowTimeline if not already imported */}
-            {/* <WorkflowTimeline currentStatus={record.status} steps={WORKFLOWS.deviations.steps} /> */}
+            <WorkflowTimeline 
+                currentStatus={mapStatusToWorkflow(record.status)} 
+                steps={WORKFLOWS.deviations.steps} 
+            />
+
+            <WorkflowActionsPanel
+                recordId={id || ""}
+                moduleKey="deviations"
+                meta={{
+                    ...record,
+                    id: record.id.toString(), // Fix Type Mismatch
+                    moduleKey: "deviations",
+                    status: mapStatusToWorkflow(record.status), 
+                    approvalRequests: [],
+                    approvalsLog: [],
+                    signatureLog: []
+                }}
+                onUpdated={loadData}
+                onValidate={handleValidate}
+            />
 
             <Divider />
 
@@ -99,31 +157,28 @@ export default function DeviationsDetailPage() {
               <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
                 Metadata
               </Typography>
-              <Box
-                sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
-              >
-                <Box>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}>
                   <Typography variant="caption" color="text.secondary">
                     Reported By
                   </Typography>
-                  <Typography variant="body2">John Doe</Typography>
-                </Box>
-                <Box>
+                  <Typography variant="body2">{(record as any).reported_by || "User"}</Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
                   <Typography variant="caption" color="text.secondary">
                     Department
                   </Typography>
-                  <Typography variant="body2">Production</Typography>
-                </Box>
-              </Box>
+                  <Typography variant="body2">{record.department}</Typography>
+                </Grid>
+              </Grid>
             </Box>
           </Box>
         }
-        // TAB 1: OVERVIEW (The Form)
+
+        // TAB 1: OVERVIEW 
         overview={
           <Box sx={{ p: 1 }}>
-            <Box
-              sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
-            >
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
                 Event Investigation
               </Typography>
@@ -139,18 +194,83 @@ export default function DeviationsDetailPage() {
               )}
             </Box>
 
-            <DeviationEventPanel readOnly={!canEdit} />
+            <Grid container spacing={3}>
+                <Grid size={{ xs: 12, md: 8 }}>
+                    <TextField 
+                        label="Deviation Title" 
+                        defaultValue={record.title} 
+                        fullWidth 
+                        disabled={!canEdit} 
+                    />
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }}>
+                    <TextField 
+                        select 
+                        label="Severity" 
+                        defaultValue={(record as any).severity || "Minor"} 
+                        fullWidth 
+                        disabled={!canEdit}
+                    >
+                        <MenuItem value="Minor">Minor</MenuItem>
+                        <MenuItem value="Major">Major</MenuItem>
+                        <MenuItem value="Critical">Critical</MenuItem>
+                    </TextField>
+                </Grid>
+                
+                <Grid size={{ xs: 12 }}>
+                    <TextField 
+                        label="Event Description" 
+                        defaultValue={record.description} 
+                        fullWidth 
+                        multiline 
+                        rows={4} 
+                        disabled={!canEdit} 
+                    />
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                    <TextField 
+                        label="Immediate Actions Taken" 
+                        defaultValue={(record as any).immediate_actions || ""} 
+                        fullWidth 
+                        multiline 
+                        rows={2} 
+                        disabled={!canEdit} 
+                    />
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                    <TextField 
+                        label="Root Cause Analysis" 
+                        defaultValue={(record as any).root_cause || ""} 
+                        fullWidth 
+                        multiline 
+                        rows={3} 
+                        disabled={!canEdit} 
+                        helperText="Required before submitting for review"
+                    />
+                </Grid>
+            </Grid>
+
+            {/* Linked CAPAs Component */}
             <LinkedCapasPanel readOnly={!canEdit} />
           </Box>
         }
+
         // TAB 2: ATTACHMENTS
         attachments={<AttachmentsUploader readOnly={!canEdit} />}
+
         // TAB 3: APPROVALS
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
-            <ApprovalsPanel requests={[]} canAddReviewer={canEdit} />
+            <ApprovalsPanel 
+                requests={[]} 
+                canAddReviewer={canEdit} 
+                onAddReviewer={() => setAssignModalOpen(true)}
+            />
           </Box>
         }
+
         // TAB 4: AUDIT TRAIL
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
@@ -163,19 +283,22 @@ export default function DeviationsDetailPage() {
       />
 
       {/* --- MODALS --- */}
+      <UserSelectionModal
+        open={assignModalOpen}
+        onClose={() => setAssignModalOpen(false)}
+        onSelect={handleAddReviewer}
+        title="Assign Reviewer"
+      />
 
-      {/* 1. Reason for Change (21 CFR Part 11 Requirement) */}
       <ReasonForChangeModal
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         onConfirm={(reason) => {
-          console.log("Reason logged:", reason);
           setReasonModalOpen(false);
-          handleConfirmSave();
+          handleConfirmSave(reason);
         }}
       />
 
-      {/* 2. Generic Confirm Dialog (Engineering Standard) */}
       <ConfirmDialog
         open={saveDialogOpen}
         title="Save Changes?"
@@ -183,9 +306,6 @@ export default function DeviationsDetailPage() {
         confirmText="Save"
         onClose={() => setSaveDialogOpen(false)}
         onConfirm={() => {
-          // If you want to force a reason log, open that modal next
-          // setReasonModalOpen(true);
-          // Otherwise, just save:
           handleConfirmSave();
         }}
       />

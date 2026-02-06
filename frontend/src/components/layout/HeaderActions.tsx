@@ -64,7 +64,8 @@ export default function HeaderActions() {
     navigate("/login", { replace: true });
   };
 
-  const canCreateDocument = permissionService.can(role, "dms", "create");
+  // ✅ Fix: Check if role exists before checking permissions
+  const canCreateDocument = role ? permissionService.can(role, "dms", "create") : false;
 
   return (
     <Box 
@@ -97,7 +98,7 @@ export default function HeaderActions() {
                 "&:hover fieldset": { borderColor: "#858D96" }, 
                 "&.Mui-focused fieldset": { 
                   borderColor: "#6366F1", 
-                  borderWidth: 2,
+                  borderWidth: 2, 
                 },
                 "&.Mui-focused": {
                   bgcolor: "#FFFFFF",
@@ -297,9 +298,9 @@ export default function HeaderActions() {
                 sx={{ 
                   height: 22, 
                   fontSize: "0.7rem", 
-                  fontWeight: 600,
-                  bgcolor: "#FEE2E2",
-                  color: "#DC2626",
+                  fontWeight: 600, 
+                  bgcolor: "#FEE2E2", 
+                  color: "#DC2626", 
                   border: "1px solid #FCA5A5",
                 }} 
               />
@@ -335,10 +336,10 @@ export default function HeaderActions() {
                 fullWidth 
                 sx={{ 
                   textTransform: "none", 
-                  fontWeight: 600,
-                  color: "#6366F1",
+                  fontWeight: 600, 
+                  color: "#6366F1", 
                   "&:hover": {
-                    bgcolor: "#EEF2FF",
+                    bgcolor: "#EEF2FF", 
                   }
                 }}
               >

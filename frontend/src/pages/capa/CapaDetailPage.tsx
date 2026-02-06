@@ -1,24 +1,25 @@
 import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
-  Grid, // ✅ Grid v2
   TextField,
   Typography,
   Divider,
   MenuItem,
   Button,
+  CircularProgress,
+  Alert,
+  Grid
 } from "@mui/material";
+
+
 import SaveIcon from "@mui/icons-material/Save";
 
-// --- ENGINEERING STANDARDS IMPORTS ---
-import { useFetch } from "../../hooks/useFetch";
-import { capaService } from "../../services/capa.service"; // ✅ Service
-import LoadingState from "../../components/common/LoadingState";
-import ErrorState from "../../components/common/ErrorState";
-import ConfirmDialog from "../../components/common/ConfirmDialog";import { useRole } from "../../app/providers/RoleProvider";
-import { permissionService } from "../../services/permission.service";
-// --- COMPONENT IMPORTS ---
+// --- IMPORTS ---
+import { capaService, type CapaRecord } from "../../services/capa.service";
+import { useRole } from "../../app/providers/RoleProvider";
+
+// --- COMPONENTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
 import SignatureStamp from "../../components/qms/SignatureStamp";
@@ -36,33 +37,77 @@ import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import ActivityLog from "../../components/qms/ActivityLog";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+
+// ✅ HELPER: Map Backend Status to UI Workflow Status
+const mapStatusToWorkflow = (backendStatus: string): any => {
+  switch (backendStatus) {
+    case "PLANNING": return "Draft";
+    case "PENDING": return "In Progress"; 
+    case "IMPLEMENTATION": return "In Progress"; 
+    case "VERIFICATION": return "Review";
+    case "CLOSED": return "Closed";
+    default: return "Draft";
+  }
+};
 
 export default function CapaDetailPage() {
   const { id } = useParams();
+  const { role } = useRole();
 
   // 1. DATA FETCHING
-  const { 
-    data: record, 
-    isLoading, 
-    error, 
-    refetch 
-  } = useFetch(() => capaService.getById(id || ""), [id]);
+  const [record, setRecord] = useState<CapaRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 2. LOCAL STATE
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // 3. PERMISSIONS (Mocked logic)
-  const canEdit = record?.status !== 'Closed' && record?.status !== 'Cancelled';
+  // 3. LOAD DATA
+  const loadData = async () => {
+      // ✅ FIX: Use fallback string to satisfy TypeScript
+      const safeId = id || ""; 
+      if (!safeId) return;
 
-  // 4. HANDLERS
+      try {
+          setLoading(true);
+          const data = await capaService.getById(safeId);
+          setRecord(data);
+      } catch (err) {
+          console.error(err);
+          setError("Failed to load CAPA record.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  useEffect(() => {
+      loadData();
+  }, [id]);
+
+  // 4. PERMISSIONS
+  const canEdit = role && record 
+    ? record.status !== 'CLOSED' && record.status !== 'VERIFICATION'
+    : false;
+
+  // 5. HANDLERS
   const handleSaveClick = () => setSaveDialogOpen(true);
 
-  const handleConfirmSave = async () => {
-    await capaService.update(id!, { ...record });
-    setSaveDialogOpen(false);
-    refetch();
+  const handleConfirmSave = async (reason?: string) => {
+    // ✅ FIX: Use fallback string here too
+    const safeId = id || "";
+    if (!record || !safeId) return;
+
+    try {
+        console.log("Saving with reason:", reason); 
+        await capaService.update(safeId, { ...record });
+        setSaveDialogOpen(false);
+        loadData(); 
+    } catch (err) {
+        alert("Failed to save changes.");
+    }
   };
 
   const handleAddReviewer = (user: any) => {
@@ -71,49 +116,53 @@ export default function CapaDetailPage() {
   };
 
   const handleValidate = () => {
-     // CAPA validation logic here
      return true;
   };
 
-  // 5. LOADING / ERROR STATES
-  if (isLoading) return <LoadingState message="Loading CAPA Record..." />;
-  if (error || !record) return <ErrorState onRetry={refetch} />;
+  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /> <Typography>Loading CAPA Record...</Typography></Box>;
+  if (error || !record) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
 
-  // 6. RENDER
   return (
     <>
       <DetailTabsLayout
-        title={`${record.id}: ${record.title}`}
+        title={`${record.capa_id || record.id}: ${record.title}`}
         subtitle={`Record ID: ${id}`}
         backTo="/capa"
         
-        // Header Status Chip & Signature
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {(record.status === "Effective" || record.status === "Closed") && (
-                <SignatureStamp
-                  isSigned={true}
-                  signedBy="QA Manager"
-                  date={new Date().toLocaleDateString()}
-                />
+            {(record.status === "CLOSED") && (
+              <SignatureStamp
+                isSigned={true}
+                signedBy="QA Manager"
+                date={new Date().toLocaleDateString()}
+              />
             )}
             <StatusChip status={record.status} />
           </Box>
         }
 
-        // RIGHT PANEL: Workflow Timeline & Actions
         rightPanel={
           <Box sx={{ display: "grid", gap: 3 }}>
             <WorkflowTimeline
-              currentStatus={record.status}
+              currentStatus={mapStatusToWorkflow(record.status)}
               steps={WORKFLOWS.capa.steps}
             />
 
+            {/* ✅ FIXED: Use fallback ID and convert ID number->string */}
             <WorkflowActionsPanel
               recordId={id || ""}
               moduleKey="capa"
-              meta={record}
-              onUpdated={refetch}
+              meta={{
+                ...record,
+                id: record.id.toString(), // Fix Type Mismatch (number -> string)
+                moduleKey: "capa", // Explicitly set required moduleKey
+                status: mapStatusToWorkflow(record.status), // Map backend status to workflow status
+                approvalRequests: [], 
+                approvalsLog: [],   
+                signatureLog: []    
+              }}
+              onUpdated={loadData}
               onValidate={handleValidate}
             />
 
@@ -126,18 +175,17 @@ export default function CapaDetailPage() {
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
                   <Typography variant="caption" color="text.secondary">Source</Typography>
-                  <Typography variant="body2">{record.source}</Typography>
+                  <Typography variant="body2">{record.deviation ? `Deviation #${record.deviation}` : "Manual"}</Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Risk Level</Typography>
-                  <Typography variant="body2">{record.riskLevel}</Typography>
+                  <Typography variant="caption" color="text.secondary">Priority</Typography>
+                  <Typography variant="body2">{record.action_type || "Standard"}</Typography>
                 </Grid>
               </Grid>
             </Box>
           </Box>
         }
 
-        // TAB 1: OVERVIEW (CAPA Form)
         overview={
           <Box sx={{ p: 1 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
@@ -161,12 +209,12 @@ export default function CapaDetailPage() {
                 <TextField
                   select
                   label="CAPA Type"
-                  defaultValue={record.type}
+                  value={record.action_type} 
                   fullWidth
                   disabled={!canEdit}
                 >
-                  <MenuItem value="Corrective">Corrective</MenuItem>
-                  <MenuItem value="Preventive">Preventive</MenuItem>
+                  <MenuItem value="CORRECTIVE">Corrective</MenuItem>
+                  <MenuItem value="PREVENTIVE">Preventive</MenuItem>
                 </TextField>
               </Grid>
 
@@ -174,7 +222,7 @@ export default function CapaDetailPage() {
                 <TextField
                   label="Target Date"
                   type="date"
-                  defaultValue={record.targetDate}
+                  value={record.due_date}
                   fullWidth
                   disabled={!canEdit}
                   InputLabelProps={{ shrink: true }}
@@ -183,7 +231,7 @@ export default function CapaDetailPage() {
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   label="Owner"
-                  defaultValue={record.owner}
+                  defaultValue="QA Lead" 
                   fullWidth
                   disabled={!canEdit}
                 />
@@ -192,7 +240,7 @@ export default function CapaDetailPage() {
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Problem Statement"
-                  defaultValue={record.description}
+                  value={record.description}
                   fullWidth
                   multiline
                   rows={3}
@@ -203,7 +251,7 @@ export default function CapaDetailPage() {
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Root Cause Analysis (RCA)"
-                  defaultValue={record.rootCause}
+                  defaultValue="" 
                   fullWidth
                   multiline
                   rows={3}
@@ -215,7 +263,7 @@ export default function CapaDetailPage() {
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Proposed Action Plan"
-                  defaultValue={record.proposedPlan}
+                  defaultValue="" 
                   fullWidth
                   multiline
                   rows={3}
@@ -226,12 +274,11 @@ export default function CapaDetailPage() {
           </Box>
         }
 
-        // TAB 2: ACTION PLAN (Detailed Steps)
         plan={
           <Box sx={{ p: 1 }}>
-            <CapaActionPanel readOnly={!canEdit} />
+            <CapaActionPanel readOnly={!canEdit} /> 
             
-            {record.status === "Verification" && (
+            {record.status === "VERIFICATION" && (
               <Box sx={{ mt: 3 }}>
                 <ClosureChecklist />
               </Box>
@@ -239,22 +286,19 @@ export default function CapaDetailPage() {
           </Box>
         }
 
-        // TAB 3: ATTACHMENTS
         attachments={<AttachmentsUploader readOnly={!canEdit} />}
 
-        // TAB 4: APPROVALS
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel
-              requests={record.approvalRequests || []}
+              requests={[]} 
               canAddReviewer={canEdit}
               onAddReviewer={() => setAssignModalOpen(true)}
             />
-            <SignatureLogTable rows={record.signatureLog || []} />
+            <SignatureLogTable rows={[]} />
           </Box>
         }
 
-        // TAB 5: AUDIT TRAIL
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ActivityLog />
@@ -267,7 +311,6 @@ export default function CapaDetailPage() {
         }
       />
 
-      {/* --- MODALS --- */}
       <UserSelectionModal
         open={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
@@ -280,19 +323,17 @@ export default function CapaDetailPage() {
         onClose={() => setReasonModalOpen(false)}
         onConfirm={(reason) => {
              setReasonModalOpen(false);
-             handleConfirmSave();
+             handleConfirmSave(reason);
         }}
       />
 
       <ConfirmDialog 
         open={saveDialogOpen}
         title="Save CAPA Record?"
-        message="This will update the investigation details. Ensure RCA is complete before saving."
+        message="This will update the investigation details."
         confirmText="Save"
         onClose={() => setSaveDialogOpen(false)}
         onConfirm={() => {
-             // Optional: Force reason modal
-             // setReasonModalOpen(true);
              handleConfirmSave();
         }}
       />

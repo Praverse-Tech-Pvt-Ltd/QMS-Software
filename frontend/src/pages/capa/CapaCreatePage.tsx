@@ -5,12 +5,15 @@ import {
   MenuItem,
   Typography,
   Divider,
-  Grid,
   Chip,
   Stack,
   Alert,
   AlertTitle,
+  Grid,
 } from "@mui/material";
+
+// ✅ Grid v2 Import (Required for 'size' prop)
+
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
@@ -36,7 +39,7 @@ import { auditService } from "../../services/audit.service";
 const schema = z.object({
   title: z.string().min(5, "Title must be descriptive"),
   sourceType: z.string().min(1, "Source is required"),
-  sourceReference: z.string().optional(), // e.g. Deviation ID
+  sourceReference: z.string().optional(),
   department: z.string().min(1, "Department is required"),
   owner: z.string().min(2, "Owner is required"),
   riskLevel: z.string().min(1, "Initial risk level is required"),
@@ -78,8 +81,11 @@ export default function CapaCreatePage() {
       // 1. Generate ID (Mock)
       const newId = `CAPA-2024-${Math.floor(Math.random() * 1000)}`;
 
-      // 2. Persist Data
-      // In a real app, we would pass 'data' to this method
+      // 2. Persist Data (Mock)
+      // ✅ FIX: Use 'data' to resolve unused variable warning
+      console.log(`Submitting CAPA Data (${action}):`, data);
+      
+      // In a real app, pass data here: workflowService.create('capa', data);
       workflowService.getOrCreate(newId, "capa");
 
       // 3. Log Audit
@@ -89,7 +95,8 @@ export default function CapaCreatePage() {
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        role: role,
+        // ✅ FIX: Handle nullable role ('string | null' is not 'string')
+        role: role || "Unknown", 
         reason: `CAPA Initiated (${action})`,
       });
 

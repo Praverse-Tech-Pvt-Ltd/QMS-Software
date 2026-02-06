@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/dms/', include('dms.urls')),
     path('api/quality/', include('quality.urls')),
+    path('api/training/', include('training.urls')),
 ]
 
 if settings.DEBUG:

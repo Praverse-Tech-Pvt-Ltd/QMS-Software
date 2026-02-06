@@ -1,4 +1,4 @@
-import { Box, Button, TextField, Typography, Chip, InputAdornment } from "@mui/material";
+import { Box, Button, TextField, Typography, Chip, InputAdornment, Alert, CircularProgress } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
@@ -7,57 +7,87 @@ import { useNavigate } from "react-router-dom";
 
 // Standard Imports
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
-import ModuleTable, {type ColumnDef } from "../../components/common/ModuleTable";
-import { deviationsService } from "../../services/deviations.service";
-import {type DeviationRecord } from "../../types/deviation.types";
+import ModuleTable, { type ColumnDef } from "../../components/common/ModuleTable";
+import { deviationsService, type DeviationRecord } from "../../services/deviations.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
-// Filter Options matching your image
-const STATUS_FILTERS = ["All", "Open", "QA Review", "In Progress", "Closed"];
+// Filter Options
+const STATUS_FILTERS = ["All", "Draft", "Investigation", "QA Review", "Closed"];
 
 export default function DeviationsListPage() {
   const navigate = useNavigate();
   const { role } = useRole();
+  
+  // Data State
   const [rows, setRows] = useState<DeviationRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
   
-  // Filter States
+  // Filter State
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  // Fetch Data
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await deviationsService.list();
+      setRows(data);
+    } catch (err) {
+      console.error("Failed to load Deviations", err);
+      setError("Failed to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateNew = () => {
-    if (!permissionService.can(role, "deviations", "create")) {
+    // ✅ Fix: Check if role exists before checking permissions
+    const canCreate = role ? permissionService.can(role, "deviations", "create") : false;
+
+    if (!canCreate) {
       setPermissionDenied({
         open: true,
-        message: `You don't have permission to report deviations. Your current role (${role}) does not allow this action.`,
+        message: `You don't have permission to report deviations. Role: ${role || "Unknown"}`,
       });
       return;
     }
     navigate("/deviations/new");
   };
 
-  useEffect(() => {
-    deviationsService.list().then((data) => {
-      setRows(data);
-    });
-  }, []);
-
   // Filter Logic
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
+      // Safe access for potentially missing fields using cast
+      const devId = (r as any).deviation_id || "";
+      const searchString = searchTerm.toLowerCase();
+      
       const matchesSearch =
-        r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.id.toLowerCase().includes(searchTerm.toLowerCase());
+        r.title.toLowerCase().includes(searchString) ||
+        devId.toLowerCase().includes(searchString);
 
-      // Helper to match UI status label back to backend status
       let matchesStatus = true;
       if (statusFilter !== "All") {
-          if (statusFilter === "QA Review") matchesStatus = r.status === "Review";
-          else if (statusFilter === "Open") matchesStatus = r.status === "Open" || r.status === "Draft";
-          else if (statusFilter === "In Progress") matchesStatus = r.status === "Implementation";
-          else if (statusFilter === "Closed") matchesStatus = r.status === "Closed";
-          else matchesStatus = r.status === statusFilter;
+          if (statusFilter === "QA Review") {
+              // ✅ FIX: Removed "REVIEW" as it doesn't exist in DeviationRecord type
+              matchesStatus = r.status === "QA_REVIEW";
+          } else if (statusFilter === "Draft") {
+              matchesStatus = r.status === "DRAFT";
+          } else if (statusFilter === "Investigation") {
+              matchesStatus = r.status === "INVESTIGATION";
+          } else if (statusFilter === "Closed") {
+              matchesStatus = r.status === "CLOSED";
+          } else {
+              // Fallback cast
+              matchesStatus = r.status === statusFilter.toUpperCase() as any;
+          }
       }
 
       return matchesSearch && matchesStatus;
@@ -65,16 +95,17 @@ export default function DeviationsListPage() {
   }, [rows, searchTerm, statusFilter]);
 
   // Helper for Severity Colors
-  const getSeverityColor = (severity: string) => {
-      switch(severity) {
-          case "Critical": return { bg: "#fee2e2", color: "#991b1b" }; // Red
-          case "Major": return { bg: "#ffedd5", color: "#9a3412" };    // Orange
-          case "Minor": return { bg: "#fef9c3", color: "#854d0e" };    // Yellow
+  const getSeverityColor = (severity?: string) => {
+      if (!severity) return { bg: "#f3f4f6", color: "#374151" };
+      switch(severity.toUpperCase()) {
+          case "CRITICAL": return { bg: "#fee2e2", color: "#991b1b" }; // Red
+          case "MAJOR": return { bg: "#ffedd5", color: "#9a3412" };    // Orange
+          case "MINOR": return { bg: "#fef9c3", color: "#854d0e" };    // Yellow
           default: return { bg: "#f3f4f6", color: "#374151" };
       }
   };
 
-  // ✅ COLUMN DEFINITIONS
+  // Column Definitions
   const columns: ColumnDef<DeviationRecord>[] = [
     { 
       field: "id", 
@@ -86,21 +117,22 @@ export default function DeviationsListPage() {
           sx={{ color: "#6366F1", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
           onClick={() => navigate(`/deviations/${row.id}`)}
         >
-          {row.id}
+          {/* Cast to any to access deviation_id safely */}
+          {(row as any).deviation_id || row.id}
         </Typography>
       ) 
     },
     { field: "title", headerName: "TITLE", width: "25%" },
-    { field: "reportedBy", headerName: "REPORTED BY" },
     { field: "department", headerName: "DEPARTMENT" },
     { 
-        field: "severity", 
+        field: "severity" as any, 
         headerName: "SEVERITY",
         renderCell: (row) => {
-            const style = getSeverityColor(row.severity);
+            const severity = (row as any).severity || "Minor";
+            const style = getSeverityColor(severity);
             return (
                 <Chip 
-                    label={row.severity}
+                    label={severity}
                     size="small"
                     sx={{ 
                         bgcolor: style.bg, 
@@ -113,13 +145,20 @@ export default function DeviationsListPage() {
             )
         }
     },
-    { field: "status", headerName: "STATUS" }, // Handled automatically by ModuleTable (Status Pills)
-    { field: "reportedDate", headerName: "REPORTED DATE" },
+    { field: "status", headerName: "STATUS" }, 
+    { 
+        field: "created_at", // Assuming created_at exists in base model
+        headerName: "REPORTED DATE",
+        renderCell: (row) => new Date(row.created_at).toLocaleDateString()
+    },
   ];
+
+  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /></Box>;
+  if (error) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
 
   return (
     <Box sx={{ p: 3, bgcolor: "#f8fafc", minHeight: "100vh" }}>
-      {/* 1. Header Section */}
+      {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 3 }}>
         <Box>
             <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a" }}>
@@ -145,7 +184,7 @@ export default function DeviationsListPage() {
         </Button>
       </Box>
 
-      {/* 2. Search & Filter Bar */}
+      {/* Filters */}
       <Box sx={{ 
           bgcolor: "#fff", 
           p: 2, 
@@ -185,8 +224,7 @@ export default function DeviationsListPage() {
             }}
         />
 
-        {/* Status Pills */}
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: 'wrap' }}>
             <Typography variant="body2" sx={{ fontWeight: 600, color: "#475569", mr: 1, fontSize: "0.85rem" }}>
                 Status:
             </Typography>
@@ -214,14 +252,13 @@ export default function DeviationsListPage() {
         </Box>
       </Box>
 
-      {/* 3. Data Table */}
+      {/* Table */}
       <ModuleTable
         columns={columns}
         rows={filteredRows}
         onView={role !== "Viewer" ? (id) => navigate(`/deviations/${id}`) : undefined}
       />
 
-      {/* Permission Denied Dialog */}
       <PermissionDeniedDialog
         open={permissionDenied.open}
         onClose={() => setPermissionDenied({ open: false, message: "" })}

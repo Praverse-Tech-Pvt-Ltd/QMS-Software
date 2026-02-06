@@ -1,4 +1,16 @@
-import { Box, Paper, TextField, MenuItem, Typography, Divider,  Grid, Chip, Stack, Alert, AlertTitle } from "@mui/material";
+import {
+  Box,
+  Paper,
+  TextField,
+  MenuItem,
+  Typography,
+  Divider,
+  Stack,
+  Alert,
+  AlertTitle,
+  Grid
+} from "@mui/material";
+
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
@@ -28,7 +40,6 @@ const schema = z.object({
   department: z.string().min(1, "Target Department is required"),
   coordinator: z.string().min(2, "Coordinator/Trainer name is required"),
   dueDate: z.string().min(1, "Completion due date is required"),
-  // z.coerce handles string "60" -> number 60 automatically
   durationMinutes: z.coerce.number().min(5, "Duration must be at least 5 mins"),
   description: z.string().min(10, "Learning objectives are required"),
 });
@@ -41,7 +52,6 @@ export default function TrainingCreatePage() {
   const { enqueueSnackbar } = useSnackbar();
   const { role } = useRole();
 
-  // ✅ Fix: Removed <FormValues> generic to allow resolver type inference
   const {
     register,
     control,
@@ -56,39 +66,43 @@ export default function TrainingCreatePage() {
       department: "Production",
       coordinator: "",
       dueDate: "",
-      durationMinutes: 60, // Default must match the coerced type (number)
+      durationMinutes: 60,
       description: "",
     },
   });
 
   // Reusable Create Logic
-  const handleCreate = async (data: FormValues, action: 'Draft' | 'Submit') => {
+  const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
       const newId = `TRN-2024-${Math.floor(Math.random() * 1000)}`;
       
-      workflowService.getOrCreate(newId, 'training');
+      console.log(`Creating Training Plan (${action}):`, data);
 
-      auditService.add('training', newId, {
+      // In a real app, pass data here
+      workflowService.getOrCreate(newId, "training");
+
+      auditService.add("training", newId, {
         actionType: "CREATE",
         field: "Record",
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        role: role,
-        reason: `Created Training Plan (${action})`
+        role: role || "Unknown",
+        reason: `Created Training Plan (${action})`,
       });
 
-      enqueueSnackbar(`Training Plan ${newId} created successfully`, { variant: "success" });
+      enqueueSnackbar(`Training Plan ${newId} created successfully`, {
+        variant: "success",
+      });
       navigate(`/training/${newId}`);
-
     } catch (err) {
       console.error(err);
       enqueueSnackbar("Failed to create training plan", { variant: "error" });
     }
   };
 
-  const onSaveDraft = (data: FormValues) => handleCreate(data, 'Draft');
-  const onSubmitReview = (data: FormValues) => handleCreate(data, 'Submit');
+  const onSaveDraft = (data: FormValues) => handleCreate(data, "Draft");
+  const onSubmitReview = (data: FormValues) => handleCreate(data, "Submit");
 
   return (
     <Box
@@ -201,6 +215,12 @@ export default function TrainingCreatePage() {
                     label="Target Department"
                     fullWidth
                     error={!!errors.department}
+                    // ✅ FIXED: Added Icon here
+                    InputProps={{
+                      startAdornment: (
+                        <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                      ),
+                    }}
                   >
                     <MenuItem value="Production">Production</MenuItem>
                     <MenuItem value="QA">Quality Assurance</MenuItem>
@@ -261,6 +281,11 @@ export default function TrainingCreatePage() {
                 {...register("durationMinutes")}
                 error={!!errors.durationMinutes}
                 helperText={errors.durationMinutes?.message}
+                InputProps={{
+                  startAdornment: (
+                    <AccessTimeIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                  ),
+                }}
               />
             </Grid>
           </Grid>
@@ -281,6 +306,11 @@ export default function TrainingCreatePage() {
                   {...register("coordinator")}
                   error={!!errors.coordinator}
                   helperText={errors.coordinator?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                    ),
+                  }}
                 />
              </Grid>
 
@@ -293,6 +323,11 @@ export default function TrainingCreatePage() {
                   {...register("dueDate")}
                   error={!!errors.dueDate}
                   helperText={errors.dueDate?.message}
+                  InputProps={{
+                    startAdornment: (
+                      <CalendarTodayOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                    ),
+                  }}
                 />
              </Grid>
 
@@ -317,7 +352,7 @@ export default function TrainingCreatePage() {
           </Typography>
 
           <FormActions 
-             onSaveDraft={() => handleSubmit(onSaveDraft)()} 
+             onSaveDraft={handleSubmit(onSaveDraft)} 
              isSubmitting={isSubmitting}
              labels={{ submit: "Create Plan", draft: "Save Draft" }}
           />

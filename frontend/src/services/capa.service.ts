@@ -1,56 +1,45 @@
-import { capaMock } from "../mock/capa.mock";
-import type { CapaRecord } from "../types/capa.types";
+import api from "./api";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export interface CapaRecord {
+  id: number;
+  capa_id: string;
+  deviation: number; // Linked Deviation ID
+  title: string;
+  description: string;
+  action_type: "CORRECTIVE" | "PREVENTIVE";
+  status: "PLANNING" | "PENDING" | "IMPLEMENTATION" | "VERIFICATION" | "CLOSED";
+  due_date: string;
+  // UI Helpers
+  moduleKey?: "capa";
+}
 
 export const capaService = {
   // List
   async list(): Promise<CapaRecord[]> {
-    await delay(800);
-    return capaMock;
+    const response = await api.get<CapaRecord[]>("/quality/capa/");
+    return response.data;
   },
 
   // Get Single
   async getById(id: string): Promise<CapaRecord> {
-    await delay(600);
-    const item = capaMock.find((c) => c.id === id);
+    const response = await api.get<CapaRecord>(`/quality/capa/${id}/`);
+    return response.data;
+  },
 
-    if (!item) {
-      // ✅ Fallback matching updated interface
-      const fallback: CapaRecord = {
-        id,
-        title: "New CAPA Request",
-        status: "Draft",
-        moduleKey: "capa",
-        
-        initiator: "Current User",
-        department: "Quality Assurance",
-        priority: "Medium",
-        dueDate: "2026-12-31",
-        relatedTo: "N/A",
-
-        source: "Manual",
-        riskLevel: "Medium",
-        type: "Corrective",
-        targetDate: "2026-12-31",
-        owner: "QA Lead",
-        description: "Description of the issue.",
-        rootCause: "TBD",
-        proposedPlan: "TBD",
-        
-        approvalRequests: [],
-        signatureLog: [],
-        approvalsLog: []
-      };
-      return fallback;
-    }
-    return item;
+  // Create
+  async create(data: Partial<CapaRecord>) {
+    const response = await api.post("/quality/capa/", data);
+    return response.data;
   },
 
   // Update
-  async update(id: string, data: any) {
-    await delay(1000);
-    console.log(`Updating CAPA (${id}):`, data);
-    return { id, ...data };
+  async update(id: string, data: Partial<CapaRecord>) {
+    const response = await api.patch(`/quality/capa/${id}/`, data);
+    return response.data;
+  },
+
+  // Workflow Action
+  async startImplementation(id: string | number) {
+    return await api.post(`/quality/capa/${id}/start/`);
   }
 };
