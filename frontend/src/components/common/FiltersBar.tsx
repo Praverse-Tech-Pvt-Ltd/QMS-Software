@@ -1,11 +1,16 @@
 import {
   Box,
+  Button,
   FormControl,
+  InputAdornment,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   TextField,
 } from "@mui/material";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
 import type { Department, QmsStatus } from "../../types/qms";
 import { departments, qmsStatuses } from "../../types/qms";
 
@@ -18,65 +23,130 @@ export type FiltersState = {
 export default function FiltersBar({
   filters,
   onChange,
+  onClear,
 }: {
   filters: FiltersState;
   onChange: (next: FiltersState) => void;
+  onClear?: () => void;
 }) {
+  const hasFilters = filters.search || filters.status !== "All" || filters.department !== "All";
+
   return (
-    <Box
+    <Paper
+      elevation={0}
       sx={{
-        display: "grid",
-        gap: 2,
-        gridTemplateColumns: {
-          xs: "1fr",
-          sm: "2fr 1fr 1fr",
-        },
-        alignItems: "center",
+        p: 2.5,
+        mb: 3,
+        borderRadius: 3,
+        border: "1px solid #E9ECEF",
+        bgcolor: "#FFFFFF",
       }}
     >
-      <TextField
-        label="Search"
-        placeholder="Search by ID / Title"
-        value={filters.search}
-        onChange={(e) => onChange({ ...filters, search: e.target.value })}
-        size="small"
-      />
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        {/* Search */}
+        <TextField
+          placeholder="Search by ID, title, or keyword..."
+          value={filters.search}
+          onChange={(e) => onChange({ ...filters, search: e.target.value })}
+          size="small"
+          sx={{
+            minWidth: 280,
+            flex: 1,
+            "& .MuiOutlinedInput-root": {
+              bgcolor: "#FAFBFC",
+              "&:hover": {
+                bgcolor: "#F7F8FA",
+              },
+              "&.Mui-focused": {
+                bgcolor: "#FFFFFF",
+              },
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchOutlinedIcon sx={{ color: "#858D96", fontSize: 20 }} />
+              </InputAdornment>
+            ),
+          }}
+        />
 
-      <FormControl size="small">
-        <InputLabel>Status</InputLabel>
-        <Select
-          label="Status"
-          value={filters.status}
-          onChange={(e) =>
-            onChange({ ...filters, status: e.target.value as any })
-          }
-        >
-          <MenuItem value="All">All</MenuItem>
-          {qmsStatuses.map((s) => (
-            <MenuItem key={s} value={s}>
-              {s}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+        {/* Status Filter */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Status</InputLabel>
+          <Select
+            label="Status"
+            value={filters.status}
+            onChange={(e) =>
+              onChange({ ...filters, status: e.target.value as any })
+            }
+            sx={{
+              bgcolor: "#FAFBFC",
+              "&:hover": {
+                bgcolor: "#F7F8FA",
+              },
+            }}
+          >
+            <MenuItem value="All">All Status</MenuItem>
+            {qmsStatuses.map((s) => (
+              <MenuItem key={s} value={s}>
+                {s}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
-      <FormControl size="small">
-        <InputLabel>Department</InputLabel>
-        <Select
-          label="Department"
-          value={filters.department}
-          onChange={(e) =>
-            onChange({ ...filters, department: e.target.value as any })
-          }
-        >
-          <MenuItem value="All">All</MenuItem>
-          {departments.map((d) => (
-            <MenuItem key={d} value={d}>
-              {d}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-    </Box>
+        {/* Department Filter */}
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Department</InputLabel>
+          <Select
+            label="Department"
+            value={filters.department}
+            onChange={(e) =>
+              onChange({ ...filters, department: e.target.value as any })
+            }
+            sx={{
+              bgcolor: "#FAFBFC",
+              "&:hover": {
+                bgcolor: "#F7F8FA",
+              },
+            }}
+          >
+            <MenuItem value="All">All Departments</MenuItem>
+            {departments.map((d) => (
+              <MenuItem key={d} value={d}>
+                {d}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Clear Filters */}
+        {hasFilters && onClear && (
+          <Button
+            variant="text"
+            size="small"
+            startIcon={<FilterListOutlinedIcon />}
+            onClick={onClear}
+            sx={{
+              color: "#858D96",
+              "&:hover": {
+                color: "#6366F1",
+                bgcolor: "#F3F4F6",
+              },
+            }}
+          >
+            Clear Filters
+          </Button>
+        )}
+      </Box>
+    </Paper>
   );
 }

@@ -1,158 +1,127 @@
-import { 
-  Box, 
-  Grid, // ✅ Use Grid2 for modern syntax
-  Paper, 
-  Typography, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText,
-  Avatar 
-} from "@mui/material";
-import CircleIcon from "@mui/icons-material/Circle";
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
-import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
-import SecurityIcon from "@mui/icons-material/Security";
-import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
-import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
-import BusinessIcon from "@mui/icons-material/Business";
-import { useNavigate } from "react-router-dom";
+import { Box, Typography, Paper, Tabs, Tab, Chip } from "@mui/material";
+import { useState } from "react";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
-// Configuration for all settings cards
-const SETTINGS_SECTIONS = [
-  {
-    title: "Profile Settings",
-    description: "Manage your personal information and preferences",
-    icon: <PersonOutlineIcon color="primary" />,
-    items: ["Personal Information", "Email Preferences", "Password & Security"],
-    path: "/settings/profile"
-  },
-  {
-    title: "Notification Settings",
-    description: "Configure how you receive notifications",
-    icon: <NotificationsNoneIcon color="primary" />,
-    items: ["Email Notifications", "System Alerts", "Task Reminders"],
-    path: "/settings/notifications"
-  },
-  {
-    title: "Security & Access",
-    description: "Manage security settings and access controls",
-    icon: <SecurityIcon color="primary" />,
-    items: ["Two-Factor Authentication", "Session Management", "API Keys"],
-    path: "/settings/security"
-  },
-  {
-    title: "System Configuration",
-    description: "Configure system-wide settings and integrations",
-    icon: <SettingsSuggestIcon color="primary" />,
-    items: ["Document Templates", "Workflow Configuration", "Integration Settings"],
-    path: "/settings/system"
-  },
-  {
-    title: "User Management",
-    description: "Manage users, roles, and permissions",
-    icon: <GroupOutlinedIcon color="primary" />,
-    items: ["User Accounts", "Role Assignments", "Access Permissions"],
-    path: "/settings/users"
-  },
-  {
-    title: "Organization Settings",
-    description: "Configure organizational information and structure",
-    icon: <BusinessIcon color="primary" />,
-    items: ["Company Details", "Department Structure", "Site Management"],
-    path: "/settings/organization"
-  }
-];
+// Section Components
+import OrganizationSettings from "../../components/settings/OrganizationSettings";
+import UsersAndRoles from "../../components/settings/UsersAndRoles";
+import ComplianceSettings from "../../components/settings/ComplianceSettings";
+import SystemInfo from "../../components/settings/SystemInfo";
+// import ChangePassword from "../../components/settings/ChangePassword";
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`settings-tabpanel-${index}`}
+      aria-labelledby={`settings-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+    </div>
+  );
+}
 
 export default function SettingsPage() {
-  const navigate = useNavigate();
+  const { role } = useRole();
+  const [activeTab, setActiveTab] = useState(0);
 
-  return (
-    <Box sx={{ p: 3, bgcolor: "#f8fafc", minHeight: "100vh" }}>
-      {/* Page Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a" }}>
-          Settings
+  const canEdit = permissionService.can(role, 'settings', 'edit');
+  const canView = permissionService.can(role, 'settings', 'view');
+
+  // Define available tabs based on role
+  const tabs = [
+    { label: "Organization", component: <OrganizationSettings />, roles: ["Admin"] },
+    { label: "Users & Roles", component: <UsersAndRoles />, roles: ["Admin", "QA"] },
+    { label: "Compliance", component: <ComplianceSettings />, roles: ["Admin", "QA", "QC"] },
+    // { label: "Password", component: <ChangePassword />, roles: ["Admin", "QA", "QC"] },
+    { label: "About", component: <SystemInfo />, roles: ["Admin", "QA", "QC"] },
+  ];
+
+  // Filter tabs based on role access
+  const availableTabs = tabs.filter(tab => tab.roles.includes(role));
+
+  if (!canView) {
+    return (
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <Typography variant="h5" color="error">
+          Access Denied
         </Typography>
-        <Typography variant="body2" sx={{ mt: 0.5, color: "#64748b" }}>
-          Manage system configuration and preferences
+        <Typography variant="body1" sx={{ mt: 2 }}>
+          You do not have permission to view Settings.
         </Typography>
       </Box>
+    );
+  }
 
-      {/* Settings Grid */}
-      <Grid container spacing={3}>
-        {SETTINGS_SECTIONS.map((section) => (
-          // ✅ FIX: Use 'size' prop instead of 'item xs={12} md={6}'
-          <Grid size={{ xs: 12, md: 6 }} key={section.title}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                height: "100%",
-                border: "1px solid #e2e8f0",
-                borderRadius: 3,
-                transition: "all 0.2s ease-in-out",
-                "&:hover": {
-                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-                  borderColor: "#cbd5e1"
-                }
-              }}
-            >
-              <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-                {/* Icon Box */}
-                <Avatar
-                  sx={{
-                    bgcolor: "#eff6ff", // Light blue background
-                    color: "#1d4ed8",   // Dark blue icon
-                    width: 48,
-                    height: 48,
-                  }}
-                >
-                  {section.icon}
-                </Avatar>
+  return (
+    <Box>
+      {/* Page Header */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>
+            System Settings
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5 }}>
+            Configure system parameters, user access, and compliance settings
+          </Typography>
+        </Box>
+        <Chip
+          label={canEdit ? "Editor Access" : "Read-Only"}
+          color={canEdit ? "primary" : "default"}
+          sx={{ fontWeight: 600 }}
+        />
+      </Box>
 
-                {/* Title & Desc */}
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, fontSize: "1rem", color: "#1e293b" }}>
-                    {section.title}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#64748b", fontSize: "0.875rem" }}>
-                    {section.description}
-                  </Typography>
-                </Box>
-              </Box>
+      {/* Settings Container */}
+      <Paper
+        sx={{
+          borderRadius: 4,
+          border: "1px solid #e2e8f0",
+          overflow: "hidden",
+        }}
+      >
+        {/* Tabs Navigation */}
+        <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "#f8fafc" }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_, newValue) => setActiveTab(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              px: 2,
+              "& .MuiTab-root": {
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                minHeight: 56,
+              },
+            }}
+          >
+            {availableTabs.map((tab, index) => (
+              <Tab key={index} label={tab.label} />
+            ))}
+          </Tabs>
+        </Box>
 
-              {/* List Items */}
-              <List disablePadding>
-                {section.items.map((item) => (
-                  <ListItem 
-                    key={item} 
-                    disablePadding 
-                    sx={{ 
-                        mb: 1, 
-                        cursor: "pointer",
-                        "&:hover span": { color: "#2563eb", textDecoration: "underline" }
-                    }}
-                    onClick={() => console.log(`Navigating to ${item}`)}
-                  >
-                    <ListItemIcon sx={{ minWidth: 24 }}>
-                      <CircleIcon sx={{ fontSize: 6, color: "#2563eb" }} />
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={item} 
-                      primaryTypographyProps={{ 
-                        variant: "body2", 
-                        color: "#334155",
-                        fontWeight: 500
-                      }} 
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+        {/* Tab Content */}
+        <Box sx={{ p: 4 }}>
+          {availableTabs.map((tab, index) => (
+            <TabPanel key={index} value={activeTab} index={index}>
+              {tab.component}
+            </TabPanel>
+          ))}
+        </Box>
+      </Paper>
     </Box>
   );
 }

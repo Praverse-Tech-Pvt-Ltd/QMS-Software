@@ -9,6 +9,8 @@ import { deviationsService } from "../../services/deviations.service";
 import LoadingState from "../../components/common/LoadingState";
 import ErrorState from "../../components/common/ErrorState";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
 // --- COMPONENT IMPORTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
@@ -24,6 +26,7 @@ import SignatureStamp from "../../components/qms/SignatureStamp"; // Ensure this
 export default function DeviationsDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { role } = useRole();
 
   // 1. DATA FETCHING (Using the standard Hook)
   const {
@@ -37,8 +40,11 @@ export default function DeviationsDetailPage() {
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // 3. PERMISSIONS & EDIT LOGIC (Mocked for now)
-  const canEdit = record?.status !== "Closed";
+  // 3. PERMISSIONS & EDIT LOGIC - Check both role and record status
+  const canEdit = permissionService.can(role, 'deviations', 'edit') && 
+                  record?.status !== "Closed";
+  const canDelete = permissionService.can(role, 'deviations', 'delete');
+  const canReopen = permissionService.can(role, 'deviations', 'reopen');
 
   // 4. HANDLERS
   const handleSaveClick = () => {

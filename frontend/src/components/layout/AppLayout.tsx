@@ -16,7 +16,7 @@ export default function AppLayout() {
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#f8fafc" }}>
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F7F8FA" }}>
       <CssBaseline />
 
       {/* --- SIDEBAR NAVIGATION --- */}
@@ -38,6 +38,8 @@ export default function AppLayout() {
             "& .MuiDrawer-paper": { 
                 boxSizing: "border-box", 
                 width: DRAWER_WIDTH,
+                bgcolor: "#FAFBFC",
+                borderRight: "1px solid #E9ECEF",
             },
           }}
         >
@@ -50,8 +52,27 @@ export default function AppLayout() {
                 display: { xs: "none", md: "block" },
                 width: DRAWER_WIDTH,
                 height: "100vh",
-                // Sidebar component inside has sticky positioning, 
-                // so we just provide the container
+                bgcolor: "#FAFBFC",
+                borderRight: "1px solid #E9ECEF",
+                position: "fixed",
+                top: 0,
+                left: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                zIndex: 1000,
+                "&::-webkit-scrollbar": {
+                  width: "6px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  bgcolor: "transparent",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  bgcolor: "#CBD5E0",
+                  borderRadius: "3px",
+                  "&:hover": {
+                    bgcolor: "#A0AEC0",
+                  },
+                },
             }}
         >
            <Sidebar />
@@ -75,11 +96,11 @@ export default function AppLayout() {
                 display: { xs: "flex", md: "none" }, 
                 alignItems: "center",
                 p: 2, 
-                bgcolor: "white", 
-                borderBottom: "1px solid #f1f5f9" 
+                bgcolor: "#FFFFFF", 
+                borderBottom: "1px solid #E9ECEF",
             }}
         >
-           <IconButton onClick={handleDrawerToggle} edge="start" sx={{ mr: 2, color: "#64748b" }}>
+           <IconButton onClick={handleDrawerToggle} edge="start" sx={{ mr: 2 }}>
              <MenuIcon />
            </IconButton>
         </Box>
@@ -88,7 +109,14 @@ export default function AppLayout() {
         <HeaderActions />
 
         {/* Page Content */}
-        <Box sx={{ flexGrow: 1, overflowX: "hidden" }}>
+        <Box sx={{ 
+          flexGrow: 1, 
+          overflowX: "hidden",
+          p: { xs: 2, sm: 3, md: 4 },
+          maxWidth: "1600px",
+          mx: "auto",
+          width: "100%",
+        }}>
           <Outlet />
         </Box>
       </Box>

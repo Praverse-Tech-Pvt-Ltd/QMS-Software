@@ -15,7 +15,10 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { useNavigate } from "react-router-dom";
 
 import StatusChip from "../../components/qms/StatusChip";
+import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 import type { WorkflowStatus } from "../../types/workflow.types";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
 type DocumentRow = {
   id: string;
@@ -37,9 +40,20 @@ const STATUS_FILTERS: ("All" | WorkflowStatus)[] = [
 
 export default function DmsListPage() {
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] = useState<"All" | WorkflowStatus>(
-    "All",
-  );
+  const { role } = useRole();
+  const [statusFilter, setStatusFilter] = useState<"All" | WorkflowStatus>("All");
+  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
+
+  const handleCreateNew = () => {
+    if (!permissionService.can(role, "dms", "create")) {
+      setPermissionDenied({
+        open: true,
+        message: `You don't have permission to create documents. Your current role (${role}) does not allow this action.`,
+      });
+      return;
+    }
+    navigate("/dms/new");
+  };
 
   const documents: DocumentRow[] = [
     {
@@ -110,6 +124,7 @@ export default function DmsListPage() {
         <Button
           variant="contained"
           startIcon={<AddOutlinedIcon />}
+          onClick={handleCreateNew}
           sx={{ borderRadius: 3, fontWeight: 700 }}
         >
           Create New
@@ -170,7 +185,7 @@ export default function DmsListPage() {
                 "Department",
                 "Status",
                 "Updated",
-                "Actions",
+                ...(role !== "Viewer" ? ["Actions"] : []),
               ].map((h) => (
                 <Box
                   key={h}
@@ -221,19 +236,28 @@ export default function DmsListPage() {
                 <Box component="td" sx={{ px: 3, py: 2 }}>
                   {doc.updated}
                 </Box>
-                <Box component="td" sx={{ px: 3, py: 2 }}>
-                  <IconButton
-                    size="small"
-                    onClick={() => navigate(`/dms/${doc.id}`)}
-                  >
-                    <VisibilityOutlinedIcon />
-                  </IconButton>
-                </Box>
+                {role !== "Viewer" && (
+                  <Box component="td" sx={{ px: 3, py: 2 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => navigate(`/dms/${doc.id}`)}
+                    >
+                      <VisibilityOutlinedIcon />
+                    </IconButton>
+                  </Box>
+                )}
               </Box>
             ))}
           </Box>
         </Box>
       </Paper>
+
+      {/* Permission Denied Dialog */}
+      <PermissionDeniedDialog
+        open={permissionDenied.open}
+        onClose={() => setPermissionDenied({ open: false, message: "" })}
+        message={permissionDenied.message}
+      />
     </Box>
   );
 }

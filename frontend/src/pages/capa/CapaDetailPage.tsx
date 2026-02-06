@@ -16,8 +16,8 @@ import { useFetch } from "../../hooks/useFetch";
 import { capaService } from "../../services/capa.service"; // ✅ Service
 import LoadingState from "../../components/common/LoadingState";
 import ErrorState from "../../components/common/ErrorState";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
-
+import ConfirmDialog from "../../components/common/ConfirmDialog";import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 // --- COMPONENT IMPORTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";

@@ -6,20 +6,36 @@ import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
 // Standard Imports
+import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 import ModuleTable, {type ColumnDef } from "../../components/common/ModuleTable";
 import { deviationsService } from "../../services/deviations.service";
 import {type DeviationRecord } from "../../types/deviation.types";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
 // Filter Options matching your image
 const STATUS_FILTERS = ["All", "Open", "QA Review", "In Progress", "Closed"];
 
 export default function DeviationsListPage() {
   const navigate = useNavigate();
+  const { role } = useRole();
   const [rows, setRows] = useState<DeviationRecord[]>([]);
+  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+
+  const handleCreateNew = () => {
+    if (!permissionService.can(role, "deviations", "create")) {
+      setPermissionDenied({
+        open: true,
+        message: `You don't have permission to report deviations. Your current role (${role}) does not allow this action.`,
+      });
+      return;
+    }
+    navigate("/deviations/new");
+  };
 
   useEffect(() => {
     deviationsService.list().then((data) => {
@@ -67,7 +83,7 @@ export default function DeviationsListPage() {
       renderCell: (row) => (
         <Typography 
           variant="body2" 
-          sx={{ color: "#2563eb", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
+          sx={{ color: "#6366F1", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
           onClick={() => navigate(`/deviations/${row.id}`)}
         >
           {row.id}
@@ -116,9 +132,9 @@ export default function DeviationsListPage() {
         <Button 
             variant="contained" 
             startIcon={<AddIcon />}
-            onClick={() => navigate("/deviations/new")}
+            onClick={handleCreateNew}
             sx={{ 
-                bgcolor: "#1e40af", 
+                bgcolor: "#4F46E5", 
                 textTransform: "none",
                 fontWeight: 600,
                 borderRadius: 2,
@@ -202,7 +218,14 @@ export default function DeviationsListPage() {
       <ModuleTable
         columns={columns}
         rows={filteredRows}
-        onView={(id) => navigate(`/deviations/${id}`)}
+        onView={role !== "Viewer" ? (id) => navigate(`/deviations/${id}`) : undefined}
+      />
+
+      {/* Permission Denied Dialog */}
+      <PermissionDeniedDialog
+        open={permissionDenied.open}
+        onClose={() => setPermissionDenied({ open: false, message: "" })}
+        message={permissionDenied.message}
       />
     </Box>
   );

@@ -16,8 +16,8 @@ import { useFetch } from "../../hooks/useFetch";
 import { changeService } from "../../services/change.service"; // ✅ Service
 import LoadingState from "../../components/common/LoadingState";
 import ErrorState from "../../components/common/ErrorState";
-import ConfirmDialog from "../../components/common/ConfirmDialog";
-
+import ConfirmDialog from "../../components/common/ConfirmDialog";import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 // --- COMPONENT IMPORTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
@@ -38,6 +38,7 @@ import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
 
 export default function ChangeControlDetailPage() {
   const { id } = useParams();
+  const { role } = useRole();
 
   // 1. DATA FETCHING
   const { 
@@ -52,8 +53,10 @@ export default function ChangeControlDetailPage() {
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // 3. PERMISSIONS (Mocked logic)
-  const canEdit = record?.status !== 'Closed' && record?.status !== 'Cancelled';
+  // 3. PERMISSIONS - Check both role and record status
+  const canEdit = permissionService.can(role, 'change', 'edit') && 
+                  record?.status !== 'Closed' && record?.status !== 'Cancelled';
+  const canDelete = permissionService.can(role, 'change', 'delete');
 
   // 4. HANDLERS
   const handleSaveClick = () => setSaveDialogOpen(true);

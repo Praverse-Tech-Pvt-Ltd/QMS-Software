@@ -6,20 +6,36 @@ import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
 // Standard Imports
+import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 import ModuleTable, {type ColumnDef } from "../../components/common/ModuleTable";
 import { trainingService } from "../../services/training.service";
 import {type TrainingPlan } from "../../types/training.types";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
 // Filter Options matching your image
 const STATUS_FILTERS = ["All", "Open", "In Progress", "Completed", "Overdue"];
 
 export default function TrainingListPage() {
   const navigate = useNavigate();
+  const { role } = useRole();
   const [rows, setRows] = useState<TrainingPlan[]>([]);
+  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+
+  const handleCreateNew = () => {
+    if (!permissionService.can(role, "training", "create")) {
+      setPermissionDenied({
+        open: true,
+        message: `You don't have permission to create training records. Your current role (${role}) does not allow this action.`,
+      });
+      return;
+    }
+    navigate("/training/new");
+  };
 
   useEffect(() => {
     trainingService.list().then((data) => {
@@ -60,7 +76,7 @@ export default function TrainingListPage() {
       renderCell: (row) => (
         <Typography 
           variant="body2" 
-          sx={{ color: "#2563eb", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
+          sx={{ color: "#6366F1", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
           onClick={() => navigate(`/training/${row.id}`)}
         >
           {row.id}
@@ -90,7 +106,7 @@ export default function TrainingListPage() {
                     height: '100%', 
                     width: `${row.completionRate}%`, 
                     // Green if 100%, Blue otherwise, Grey if 0
-                    backgroundColor: row.completionRate === 100 ? '#16a34a' : (row.completionRate === 0 ? '#cbd5e1' : '#2563eb'), 
+                    backgroundColor: row.completionRate === 100 ? '#16a34a' : (row.completionRate === 0 ? '#cbd5e1' : '#6366F1'), 
                     borderRadius: 4 
                 }} />
             </div>
@@ -120,9 +136,9 @@ export default function TrainingListPage() {
         <Button 
             variant="contained" 
             startIcon={<AddIcon />}
-            onClick={() => navigate("/training/new")}
+            onClick={handleCreateNew}
             sx={{ 
-                bgcolor: "#1e40af", 
+                bgcolor: "#4F46E5", 
                 textTransform: "none",
                 fontWeight: 600,
                 borderRadius: 2,
@@ -207,7 +223,14 @@ export default function TrainingListPage() {
       <ModuleTable
         columns={columns}
         rows={filteredRows}
-        onView={(id) => navigate(`/training/${id}`)}
+        onView={role !== "Viewer" ? (id) => navigate(`/training/${id}`) : undefined}
+      />
+
+      {/* Permission Denied Dialog */}
+      <PermissionDeniedDialog
+        open={permissionDenied.open}
+        onClose={() => setPermissionDenied({ open: false, message: "" })}
+        message={permissionDenied.message}
       />
     </Box>
   );

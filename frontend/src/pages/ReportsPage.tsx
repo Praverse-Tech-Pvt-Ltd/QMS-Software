@@ -2,6 +2,8 @@ import {
   Box,  Grid, Paper, Typography, MenuItem, TextField, Button, LinearProgress 
 } from "@mui/material";
 import DownloadIcon from '@mui/icons-material/Download';
+import { useRole } from "../app/providers/RoleProvider";
+import { permissionService } from "../services/permission.service";
 
 // Simple "Bar Chart" using CSS
 const BarChartPlaceholder = ({ data }: any) => (
@@ -21,6 +23,9 @@ const BarChartPlaceholder = ({ data }: any) => (
 );
 
 export default function ReportsPage() {
+  const { role } = useRole();
+  const canExport = permissionService.can(role, 'reports', 'export');
+  
   return (
     <Box>
        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -30,7 +35,13 @@ export default function ReportsPage() {
                    <MenuItem value="Q1 2024">Q1 2024</MenuItem>
                    <MenuItem value="2023 Full Year">2023 Full Year</MenuItem>
                </TextField>
-               <Button startIcon={<DownloadIcon />} variant="outlined">Export PDF</Button>
+               <Button 
+                 startIcon={<DownloadIcon />} 
+                 variant="outlined"
+                 disabled={!canExport}
+               >
+                 Export PDF
+               </Button>
            </Box>
        </Box>
 

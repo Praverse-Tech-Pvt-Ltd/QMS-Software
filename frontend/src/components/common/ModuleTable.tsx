@@ -12,6 +12,7 @@ import {
   Typography,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import { transitions, shadows, motion } from "../../theme/motion";
 
 // ✅ Type Definition for Columns
 export interface ColumnDef<T = any> {
@@ -63,7 +64,16 @@ export default function ModuleTable({
   };
 
   return (
-    <TableContainer component={Paper} elevation={0} sx={{ border: "1px solid #e2e8f0", borderRadius: 3, overflow: "hidden" }}>
+    <TableContainer 
+      component={Paper} 
+      elevation={0} 
+      sx={{ 
+        border: "1px solid #e2e8f0", 
+        borderRadius: 3, 
+        overflow: "hidden",
+        boxShadow: shadows.card,
+      }}
+    >
       <Table sx={{ minWidth: 650 }}>
         <TableHead sx={{ bgcolor: "#F8F9FA" }}>
           <TableRow>
@@ -83,22 +93,35 @@ export default function ModuleTable({
                 {col.headerName}
               </TableCell>
             ))}
-            {/* Actions Column */}
-            <TableCell align="right" sx={{ fontWeight: 700, color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase" }}>
-              ACTIONS
-            </TableCell>
+            {/* Actions Column - Only show if onView is provided */}
+            {onView && (
+              <TableCell align="right" sx={{ fontWeight: 700, color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase" }}>
+                ACTIONS
+              </TableCell>
+            )}
           </TableRow>
         </TableHead>
         <TableBody>
           {rows.length === 0 ? (
              <TableRow>
-               <TableCell colSpan={columns.length + 1} align="center" sx={{ py: 4, color: "text.secondary" }}>
+               <TableCell colSpan={columns.length + (onView ? 1 : 0)} align="center" sx={{ py: 4, color: "text.secondary" }}>
                  No records found.
                </TableCell>
              </TableRow>
           ) : (
             rows.map((row) => (
-              <TableRow key={row.id} hover sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
+              <TableRow 
+                key={row.id} 
+                hover 
+                sx={{ 
+                  "&:last-child td, &:last-child th": { border: 0 },
+                  cursor: "pointer",
+                  transition: transitions.tableRow.hover,
+                  "&:hover": {
+                    backgroundColor: "#f8fafc",
+                  },
+                }}
+              >
                 {columns.map((col) => (
                   <TableCell key={String(col.field)} align={col.align || "left"}>
                     {/* 1. Custom Render (Progress Bar, Links) */}
@@ -111,8 +134,13 @@ export default function ModuleTable({
                         label={getStatusLabel(row.status, row)} 
                         size="small" 
                         color={getStatusColor(row.status, row) as any} 
-                        variant="filled" // Solid color
-                        sx={{ fontWeight: 600, fontSize: "0.75rem", borderRadius: 1.5 }}
+                        variant="filled"
+                        sx={{ 
+                          fontWeight: 600, 
+                          fontSize: "0.75rem", 
+                          borderRadius: 1.5,
+                          transition: transitions.status.change,
+                        }}
                       />
                     ) : (
                     /* 3. Default Text */
@@ -123,16 +151,28 @@ export default function ModuleTable({
                   </TableCell>
                 ))}
                 
-                {/* Actions: View Icon */}
-                <TableCell align="right">
-                  <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-                    {onView && (
-                      <IconButton size="small" onClick={() => onView(row.id)} sx={{ color: "#94a3b8" }}>
+                {/* Actions: View Icon - Only show if onView is provided */}
+                {onView && (
+                  <TableCell align="right">
+                    <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                      <IconButton 
+                        size="small" 
+                        onClick={() => onView(row.id)} 
+                        sx={{ 
+                          color: "#94a3b8",
+                          transition: transitions.fast,
+                          "&:hover": {
+                            color: "#6366F1",
+                            transform: `translateY(-${motion.distance.micro}px)`,
+                            backgroundColor: "#F5F7FF",
+                          },
+                        }}
+                      >
                         <VisibilityIcon fontSize="small" />
                       </IconButton>
-                    )}
-                  </Box>
-                </TableCell>
+                    </Box>
+                  </TableCell>
+                )}
               </TableRow>
             ))
           )}

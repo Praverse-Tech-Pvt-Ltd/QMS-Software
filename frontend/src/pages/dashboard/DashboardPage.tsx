@@ -13,6 +13,8 @@ import {
   TextField,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { motion, transitions, shadows, keyframes } from "../../theme/motion";
+import { useState } from "react";
 
 // Icons
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -30,12 +32,12 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 import type { ModuleKey } from "../../types/permissions.types";
+import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-
-  // ✅ 2. Get the Current Role
   const { role } = useRole();
+  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
 
   // --- KPI & Task Data (Static for now) ---
   const kpis = [
@@ -96,7 +98,7 @@ export default function DashboardPage() {
       case "High":
         return "#ea580c";
       case "Medium":
-        return "#2563eb";
+        return "#6366F1";
       default:
         return "#4b5563";
     }
@@ -108,7 +110,7 @@ export default function DashboardPage() {
         return {
           bgcolor: "#eff6ff",
           color: "#1d4ed8",
-          border: "1px solid #bfdbfe",
+          border: "1px solid #C7D2FE",
         };
       case "In Progress":
         return {
@@ -161,13 +163,29 @@ export default function DashboardPage() {
     },
   ];
 
-  // ✅ 4. FILTER ACTIONS: Only show if the user can 'create' in that module
-  const allowedActions = allActions.filter((action) =>
-    permissionService.can(role, action.module, "create"),
-  );
+  // ✅ 4. Handler for quick action clicks with permission check
+  const handleQuickActionClick = (action: typeof allActions[0]) => {
+    const hasPermission = permissionService.can(role, action.module, "create");
+    
+    if (!hasPermission) {
+      setPermissionDenied({
+        open: true,
+        message: `You don't have permission to create ${action.label}. Your current role (${role}) does not allow this action.`,
+      });
+      return;
+    }
+    navigate(action.path);
+  };
 
   return (
-    <Box sx={{ maxWidth: 1600, mx: "auto" }}>
+    <Box 
+      sx={{ 
+        maxWidth: 1600, 
+        mx: "auto",
+        animation: "fadeInUp 400ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+        ...keyframes.fadeInUp,
+      }}
+    >
       {/* Header */}
       <Box
         sx={{
@@ -204,12 +222,24 @@ export default function DashboardPage() {
               fontWeight: 600,
               borderRadius: 2,
               px: 2,
+              transition: transitions.button.default,
+              "&:hover": {
+                borderColor: "#cbd5e0",
+                bgcolor: "#f8fafc",
+                transform: "translateY(-1px)",
+                boxShadow: shadows.subtle,
+              },
+              "&:active": {
+                transform: "translateY(0)",
+                transition: transitions.button.press,
+              },
             }}
           >
             This Month
           </Button>
           <Button
             variant="outlined"
+            disabled={!permissionService.can(role, 'dashboard', 'export')}
             sx={{
               bgcolor: "white",
               borderColor: "#e2e8f0",
@@ -218,6 +248,21 @@ export default function DashboardPage() {
               fontWeight: 600,
               borderRadius: 2,
               px: 2,
+              transition: transitions.button.default,
+              "&:hover": {
+                borderColor: "#cbd5e0",
+                bgcolor: "#f8fafc",
+                transform: "translateY(-1px)",
+                boxShadow: shadows.subtle,
+              },
+              "&:active": {
+                transform: "translateY(0)",
+                transition: transitions.button.press,
+              },
+              "&:disabled": {
+                bgcolor: "#f3f4f6",
+                color: "#9ca3af",
+              },
             }}
           >
             Export PDF
@@ -227,7 +272,7 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {kpis.map((kpi) => (
+        {kpis.map((kpi, index) => (
           <Grid key={kpi.label} size={{ xs: 12, sm: 6, md: 3 }}>
             <Paper
               elevation={0}
@@ -235,11 +280,19 @@ export default function DashboardPage() {
                 p: 3,
                 borderRadius: 4,
                 border: "1px solid #e2e8f0",
-                boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                boxShadow: shadows.card,
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
+                transition: transitions.card.hover,
+                animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} ${index * 50}ms both`,
+                ...keyframes.fadeInUp,
+                "&:hover": {
+                  transform: `translateY(-${motion.distance.small}px)`,
+                  boxShadow: shadows.cardHover,
+                  borderColor: "#cbd5e0",
+                },
               }}
             >
               <Typography
@@ -309,7 +362,9 @@ export default function DashboardPage() {
               borderRadius: 4,
               border: "1px solid #e2e8f0",
               overflow: "hidden",
-              boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05)",
+              boxShadow: shadows.card,
+              animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 250ms both`,
+              ...keyframes.fadeInUp,
             }}
           >
             <Box
@@ -394,7 +449,14 @@ export default function DashboardPage() {
                   <TableRow
                     key={t.id}
                     hover
-                    sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                    sx={{ 
+                      "&:last-child td, &:last-child th": { border: 0 },
+                      cursor: "pointer",
+                      transition: transitions.tableRow.hover,
+                      "&:hover": {
+                        backgroundColor: "#f8fafc",
+                      },
+                    }}
                   >
                     <TableCell
                       sx={{
@@ -425,6 +487,7 @@ export default function DashboardPage() {
                           borderRadius: 1.5,
                           height: 24,
                           fontSize: "0.75rem",
+                          transition: transitions.status.change,
                         }}
                       />
                     </TableCell>
@@ -450,71 +513,75 @@ export default function DashboardPage() {
         {/* RIGHT COL: Actions & Alerts */}
         <Grid size={{ xs: 12, lg: 4 }}>
           <Box sx={{ display: "grid", gap: 3 }}>
-            {/* ✅ QUICK ACTIONS (FILTERED) */}
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.05)",
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 800, mb: 3, color: "#0f172a" }}
+            {/* ✅ QUICK ACTIONS (FILTERED) - Hidden for Viewer */}
+            {role !== "Viewer" && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 3,
+                  borderRadius: 4,
+                  border: "1px solid #e2e8f0",
+                  boxShadow: shadows.card,
+                  animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 300ms both`,
+                  ...keyframes.fadeInUp,
+                }}
               >
-                Quick Actions
-              </Typography>
-
-              {allowedActions.length === 0 ? (
                 <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  align="center"
-                  sx={{ py: 2 }}
+                  variant="h6"
+                  sx={{ fontWeight: 800, mb: 3, color: "#0f172a" }}
                 >
-                  No quick actions available for your role.
+                  Quick Actions
                 </Typography>
-              ) : (
+
                 <Grid container spacing={2}>
-                  {allowedActions.map((action) => (
-                    <Grid size={6} key={action.label}>
-                      <Button
-                        variant="outlined"
-                        onClick={() => navigate(action.path)}
-                        sx={{
-                          width: "100%",
-                          aspectRatio: "1/1",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 1.5,
-                          borderRadius: 3,
-                          border: "1px solid #e2e8f0",
-                          color: "#475569",
-                          bgcolor: "#fff",
-                          textTransform: "none",
-                          boxShadow: "0 1px 2px 0 rgba(0,0,0,0.05)",
-                          "&:hover": {
-                            bgcolor: "#f8fafc",
-                            borderColor: "#94a3b8",
-                            color: "#0f172a",
-                            transform: "translateY(-1px)",
-                          },
-                        }}
-                      >
-                        {action.icon}
-                        <Typography variant="body2" fontWeight={600}>
-                          {action.label}
-                        </Typography>
-                      </Button>
-                    </Grid>
-                  ))}
+                  {allActions.map((action) => {
+                    const hasPermission = permissionService.can(role, action.module, "create");
+                    
+                    return (
+                      <Grid size={6} key={action.label}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => handleQuickActionClick(action)}
+                          sx={{
+                            width: "100%",
+                            aspectRatio: "1/1",
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 1.5,
+                            borderRadius: 3,
+                            border: "1px solid #e2e8f0",
+                            color: hasPermission ? "#475569" : "#9ca3af",
+                            bgcolor: "#fff",
+                            textTransform: "none",
+                            boxShadow: shadows.subtle,
+                            transition: transitions.button.default,
+                            opacity: hasPermission ? 1 : 0.6,
+                            "&:hover": {
+                              bgcolor: "#f8fafc",
+                              borderColor: hasPermission ? "#94a3b8" : "#e2e8f0",
+                              color: hasPermission ? "#0f172a" : "#9ca3af",
+                              transform: `translateY(-${motion.distance.small}px)`,
+                              boxShadow: shadows.card,
+                            },
+                            "&:active": {
+                              transform: `translateY(-${motion.distance.micro}px)`,
+                              transition: transitions.button.press,
+                            },
+                          }}
+                        >
+                          {action.icon}
+                          <Typography variant="body2" fontWeight={600}>
+                            {action.label}
+                          </Typography>
+                        </Button>
+                      </Grid>
+                    );
+                  })}
                 </Grid>
-              )}
-            </Paper>
+              </Paper>
+            )}
 
             {/* System Alert & AI Assistant */}
             <Paper
@@ -524,6 +591,8 @@ export default function DashboardPage() {
                 borderRadius: 4,
                 bgcolor: "#fffbeb",
                 border: "1px solid #fcd34d",
+                animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 350ms both`,
+                ...keyframes.fadeInUp,
               }}
             >
               <Box sx={{ display: "flex", gap: 1.5, mb: 2 }}>
@@ -559,7 +628,16 @@ export default function DashboardPage() {
                   textTransform: "none",
                   borderRadius: 2,
                   boxShadow: "none",
-                  "&:hover": { bgcolor: "#b45309", boxShadow: "none" },
+                  transition: transitions.button.default,
+                  "&:hover": { 
+                    bgcolor: "#b45309", 
+                    boxShadow: shadows.subtle,
+                    transform: "translateY(-1px)",
+                  },
+                  "&:active": {
+                    transform: "translateY(0)",
+                    transition: transitions.button.press,
+                  },
                 }}
               >
                 Review Audit Readiness
@@ -571,30 +649,193 @@ export default function DashboardPage() {
               sx={{
                 p: 3,
                 borderRadius: 4,
-                bgcolor: "#eff6ff",
-                border: "1px dashed #60a5fa",
+                bgcolor: "#F5F7FF",
+                border: "1px solid #C7D2FE",
+                position: "relative",
+                overflow: "hidden",
+                transition: transitions.card.hover,
+                animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 400ms both`,
+                ...keyframes.fadeInUp,
+                "&:hover": {
+                  borderColor: "#818CF8",
+                  boxShadow: shadows.card,
+                },
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  top: -2,
+                  left: -2,
+                  right: -2,
+                  height: 3,
+                  background: "linear-gradient(90deg, #6366F1 0%, #818CF8 100%)",
+                  borderRadius: "4px 4px 0 0",
+                },
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <AutoAwesomeOutlinedIcon color="primary" />
-                <Typography fontWeight={800} color="primary.main">
-                  AI Assistant
-                </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 2,
+                      bgcolor: "#EEF2FF",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "1px solid #C7D2FE",
+                    }}
+                  >
+                    <AutoAwesomeOutlinedIcon
+                      sx={{ color: "#6366F1", fontSize: 22 }}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography
+                      fontWeight={800}
+                      sx={{
+                        color: "#4F46E5",
+                        fontSize: "1rem",
+                        letterSpacing: "-0.3px",
+                      }}
+                    >
+                      AI Assistant
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "#64748b",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          bgcolor: "#10b981",
+                          display: "inline-block",
+                          animation: "pulse 2s ease-in-out infinite",
+                          "@keyframes pulse": {
+                            "0%, 100%": { opacity: 1 },
+                            "50%": { opacity: 0.5 },
+                          },
+                        }}
+                      />
+                      Ready to help
+                    </Typography>
+                  </Box>
+                </Box>
+                <Chip
+                  label="AI"
+                  size="small"
+                  sx={{
+                    bgcolor: "#6366F1",
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: "0.7rem",
+                    height: 22,
+                  }}
+                />
               </Box>
+
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#475569",
+                  mb: 2,
+                  lineHeight: 1.6,
+                }}
+              >
+                Ask about processes, documents, compliance, or get instant
+                workflow assistance.
+              </Typography>
+
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Ask QMS..."
+                placeholder="Ask me anything about QMS..."
                 sx={{
-                  mt: 2,
                   bgcolor: "white",
-                  "& .MuiOutlinedInput-root": { borderRadius: 2 },
+                  borderRadius: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    bgcolor: "white",
+                    transition: "all 0.2s ease",
+                    "& fieldset": {
+                      borderColor: "#e2e8f0",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#818CF8",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#6366F1",
+                      borderWidth: 2,
+                    },
+                  },
+                  "& .MuiInputBase-input": {
+                    py: 1.5,
+                    fontSize: "0.9rem",
+                  },
                 }}
               />
+
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  mt: 2,
+                  flexWrap: "wrap",
+                }}
+              >
+                {[
+                  { icon: "📋", text: "My tasks" },
+                  { icon: "📄", text: "Documents" },
+                  { icon: "⚡", text: "Quick help" },
+                ].map((suggestion, idx) => (
+                  <Chip
+                    key={idx}
+                    label={`${suggestion.icon} ${suggestion.text}`}
+                    size="small"
+                    onClick={() => {}}
+                    sx={{
+                      bgcolor: "white",
+                      color: "#475569",
+                      border: "1px solid #e2e8f0",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        bgcolor: "#EEF2FF",
+                        borderColor: "#818CF8",
+                        color: "#4F46E5",
+                        transform: "translateY(-1px)",
+                      },
+                    }}
+                  />
+                ))}
+              </Box>
             </Paper>
           </Box>
         </Grid>
       </Grid>
+
+      {/* Permission Denied Dialog */}
+      <PermissionDeniedDialog
+        open={permissionDenied.open}
+        onClose={() => setPermissionDenied({ open: false, message: "" })}
+        message={permissionDenied.message}
+      />
     </Box>
   );
 }

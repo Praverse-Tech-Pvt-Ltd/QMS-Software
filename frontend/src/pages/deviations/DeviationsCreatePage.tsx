@@ -6,12 +6,23 @@ import {
   Typography,
   Divider,
   Grid,
+  Chip,
+  Stack,
+  Alert,
+  AlertTitle,
 } from "@mui/material";
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
 import SectionTabs from "../../components/qms/SectionTabs";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { useNavigate } from "react-router-dom";
+import { motion, transitions, shadows, keyframes } from "../../theme/motion";
 import { useSnackbar } from "notistack";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -112,26 +123,72 @@ export default function DeviationsCreatePage() {
   const onSubmitReview = (data: FormValues) => handleCreate(data, "Submit");
 
   return (
-    <Box>
+    <Box 
+      sx={{ 
+        animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth}`,
+        ...keyframes.fadeInUp,
+      }}
+    >
       <PageHeader
         title="Raise Deviation / Incident"
         subtitle="Report a quality event or non-conformance"
         showBack
       />
 
-      <Paper
-        sx={{
-          mt: 3,
-          p: 4,
-          borderRadius: 3,
-          border: "1px solid rgba(0,0,0,0.06)",
-          maxWidth: 1200,
+      <Alert 
+        severity="warning" 
+        icon={<WarningAmberIcon />}
+        sx={{ 
+          mt: 3, 
+          maxWidth: 1200, 
           mx: "auto",
+          borderRadius: 3,
+          border: "1px solid #FCD34D",
+          bgcolor: "#FFFBEB",
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
-          Event Report
-        </Typography>
+        <AlertTitle sx={{ fontWeight: 700 }}>Report Quality Events Promptly</AlertTitle>
+        All deviations must be reported within 24 hours of discovery. Complete all required fields accurately.
+      </Alert>
+
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 5,
+          borderRadius: 4,
+          border: "1px solid #E9ECEF",
+          boxShadow: shadows.card,
+          maxWidth: 1200,
+          mx: "auto",
+          background: "linear-gradient(to bottom, #FFFFFF 0%, #FAFBFC 100%)",
+        }}
+      >
+        <Box sx={{ mb: 4 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} mb={1}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                bgcolor: "#FEE2E2",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ReportProblemOutlinedIcon sx={{ color: "#DC2626", fontSize: 22 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a" }}>
+                Event Report
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#64748b" }}>
+                Required fields are marked with *
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
 
         <Box
           component="form"
@@ -142,12 +199,26 @@ export default function DeviationsCreatePage() {
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField
-                label="Short Description / Title"
+                label="Short Description / Title *"
                 placeholder="e.g. Temperature Excursion in Warehouse B"
                 fullWidth
                 {...register("title")}
                 error={!!errors.title}
-                helperText={errors.title?.message}
+                helperText={errors.title?.message || "Provide a clear, concise description"}
+                InputProps={{
+                  startAdornment: (
+                    <ReportProblemOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
 
@@ -159,9 +230,23 @@ export default function DeviationsCreatePage() {
                   <TextField
                     {...field}
                     select
-                    label="Department"
+                    label="Department *"
                     fullWidth
                     error={!!errors.department}
+                    InputProps={{
+                      startAdornment: (
+                        <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: "#FFFFFF",
+                        transition: transitions.fast,
+                        "&.Mui-focused": {
+                          boxShadow: shadows.subtle,
+                        },
+                      },
+                    }}
                   >
                     <MenuItem value="Production">Production</MenuItem>
                     <MenuItem value="QA">Quality Assurance</MenuItem>
@@ -175,13 +260,27 @@ export default function DeviationsCreatePage() {
 
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
-                label="Date of Incident"
+                label="Date of Incident *"
                 type="date"
                 fullWidth
                 InputLabelProps={{ shrink: true }}
                 {...register("incidentDate")}
                 error={!!errors.incidentDate}
                 helperText={errors.incidentDate?.message}
+                InputProps={{
+                  startAdornment: (
+                    <CalendarTodayOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 18 }} />
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
 

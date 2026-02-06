@@ -1,8 +1,15 @@
-import { Box, Paper, TextField, MenuItem, Typography, Divider,  Grid } from "@mui/material";
+import { Box, Paper, TextField, MenuItem, Typography, Divider,  Grid, Chip, Stack, Alert, AlertTitle } from "@mui/material";
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 import { useNavigate } from "react-router-dom";
+import { motion, transitions, shadows, keyframes } from "../../theme/motion";
 import { useSnackbar } from "notistack";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -84,26 +91,72 @@ export default function TrainingCreatePage() {
   const onSubmitReview = (data: FormValues) => handleCreate(data, 'Submit');
 
   return (
-    <Box>
+    <Box
+      sx={{ 
+        animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth}`,
+        ...keyframes.fadeInUp,
+      }}
+    >
       <PageHeader
         title="Create Training Plan"
         subtitle="Configure a new training module or event"
         showBack
       />
 
-      <Paper
-        sx={{
-          mt: 3,
-          p: 4,
+      <Alert 
+        severity="info" 
+        icon={<InfoOutlinedIcon />}
+        sx={{ 
+          mt: 3, 
+          maxWidth: 1200, 
+          mx: "auto",
           borderRadius: 3,
-          border: "1px solid rgba(0,0,0,0.06)",
-          maxWidth: 1200,
-          mx: "auto"
+          border: "1px solid #C7D2FE",
+          bgcolor: "#F5F7FF",
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
-          Plan Configuration
-        </Typography>
+        <AlertTitle sx={{ fontWeight: 700 }}>Training Management</AlertTitle>
+        Define the training requirements, select assessment methods, and assign completion deadlines.
+      </Alert>
+
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 5,
+          borderRadius: 4,
+          border: "1px solid #E9ECEF",
+          boxShadow: shadows.card,
+          maxWidth: 1200,
+          mx: "auto",
+          background: "linear-gradient(to bottom, #FFFFFF 0%, #FAFBFC 100%)",
+        }}
+      >
+        <Box sx={{ mb: 4 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} mb={1}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                bgcolor: "#DBEAFE",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <SchoolOutlinedIcon sx={{ color: "#2563EB", fontSize: 22 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a" }}>
+                Plan Configuration
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#64748b" }}>
+                Required fields are marked with *
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
 
         <Box
           component="form"
@@ -114,12 +167,26 @@ export default function TrainingCreatePage() {
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField
-                label="Training Module Title"
+                label="Training Module Title *"
                 placeholder="e.g. Annual Gowning & Hygiene Refresher"
                 fullWidth
                 {...register("title")}
                 error={!!errors.title}
-                helperText={errors.title?.message}
+                helperText={errors.title?.message || "Describe the training topic clearly"}
+                InputProps={{
+                  startAdornment: (
+                    <SchoolOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
 

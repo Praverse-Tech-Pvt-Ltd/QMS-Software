@@ -21,6 +21,8 @@ import type {
 import { WORKFLOWS } from "../../config/workflows"; 
 import { workflowService } from "../../services/workflow.service";
 import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
+import type { ModuleKey } from "../../types/permissions.types";
 import { auditService } from "../../services/audit.service";
 import ESignModal from "./ESignModal";
 
@@ -57,10 +59,21 @@ export default function WorkflowActionsPanel({
     // Get all possible transitions from the current status
     const potentialTransitions = moduleConfig.transitions[meta.status] || [];
 
-    // Filter by User Role (RBAC)
-    return potentialTransitions.filter((t) => 
-      t.requiredRole.includes(role) || t.requiredRole.includes('Admin')
-    );
+    // Filter by User Role (RBAC) AND Permission Check
+    return potentialTransitions.filter((t) => {
+      // Check if role is allowed by workflow config
+      const roleAllowed = t.requiredRole.includes(role) || t.requiredRole.includes('Admin');
+      
+      // Check if role has the required permission for the action type
+      let permissionAllowed = true;
+      if (t.action === 'APPROVE') {
+        permissionAllowed = permissionService.can(role, moduleKey as ModuleKey, 'approve');
+      } else if (t.action === 'SUBMIT') {
+        permissionAllowed = permissionService.can(role, moduleKey as ModuleKey, 'edit');
+      }
+      
+      return roleAllowed && permissionAllowed;
+    });
   }, [moduleKey, meta.status, role]);
 
   // ---------------------------------------------------------------------------

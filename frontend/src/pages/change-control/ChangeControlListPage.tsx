@@ -6,20 +6,36 @@ import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
 // Standard Imports
+import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 import ModuleTable, { type ColumnDef } from "../../components/common/ModuleTable";
 import { changeService } from "../../services/change.service";
 import {type ChangeRecord } from "../../types/change.types";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
 // Filter Options matching your image
 const STATUS_FILTERS = ["All", "Draft", "QA Review", "Approved", "In Progress", "Effective"];
 
 export default function ChangeControlListPage() {
   const navigate = useNavigate();
+  const { role } = useRole();
   const [rows, setRows] = useState<ChangeRecord[]>([]);
+  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+
+  const handleCreateNew = () => {
+    if (!permissionService.can(role, "change", "create")) {
+      setPermissionDenied({
+        open: true,
+        message: `You don't have permission to initiate change control. Your current role (${role}) does not allow this action.`,
+      });
+      return;
+    }
+    navigate("/change-control/new");
+  };
 
   useEffect(() => {
     changeService.list().then((data) => {
@@ -51,7 +67,7 @@ export default function ChangeControlListPage() {
       switch(type) {
           case "Critical": return { bg: "#fee2e2", color: "#991b1b" }; // Red
           case "Major": return { bg: "#ffedd5", color: "#9a3412" };    // Orange
-          case "Minor": return { bg: "#dbeafe", color: "#1e40af" };    // Blue
+          case "Minor": return { bg: "#EEF2FF", color: "#4F46E5" };    // Blue
           default: return { bg: "#f3f4f6", color: "#374151" };
       }
   };
@@ -65,7 +81,7 @@ export default function ChangeControlListPage() {
       renderCell: (row) => (
         <Typography 
           variant="body2" 
-          sx={{ color: "#2563eb", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
+          sx={{ color: "#6366F1", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
           onClick={() => navigate(`/change-control/${row.id}`)}
         >
           {row.id}
@@ -116,9 +132,9 @@ export default function ChangeControlListPage() {
         <Button 
             variant="contained" 
             startIcon={<AddIcon />}
-            onClick={() => navigate("/change-control/new")}
+            onClick={handleCreateNew}
             sx={{ 
-                bgcolor: "#1e40af", 
+                bgcolor: "#4F46E5", 
                 textTransform: "none",
                 fontWeight: 600,
                 borderRadius: 2,
@@ -202,7 +218,14 @@ export default function ChangeControlListPage() {
       <ModuleTable
         columns={columns}
         rows={filteredRows}
-        onView={(id) => navigate(`/change-control/${id}`)}
+        onView={role !== "Viewer" ? (id) => navigate(`/change-control/${id}`) : undefined}
+      />
+
+      {/* Permission Denied Dialog */}
+      <PermissionDeniedDialog
+        open={permissionDenied.open}
+        onClose={() => setPermissionDenied({ open: false, message: "" })}
+        message={permissionDenied.message}
       />
     </Box>
   );

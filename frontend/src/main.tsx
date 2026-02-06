@@ -12,7 +12,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <SnackbarProvider maxSnack={3} autoHideDuration={2500}>
+      <SnackbarProvider 
+        maxSnack={3} 
+        autoHideDuration={4000}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        style={{ zIndex: 9999 }}
+      >
       <RoleProvider>
         <BrowserRouter>
           <App />

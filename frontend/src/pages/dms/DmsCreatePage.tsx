@@ -15,19 +15,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
 
-// Architecture Imports
-import { useRole } from "../../app/providers/RoleProvider";
-import { workflowService } from "../../services/workflow.service";
-import { auditService } from "../../services/audit.service";
+// ✅ Import the API helper
 import FormActions from "../../components/common/FormActions";
 
 // Validation Schema
 const schema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
-  docType: z.string().min(1, "Document Type is required"),
+  document_id: z.string().min(3, "Document ID is required (e.g., SOP-QA-001)"),
+  doc_type: z.string().min(1, "Document Type is required"),
   department: z.string().min(1, "Department is required"),
-  owner: z.string().min(2, "Owner name is required"),
-  description: z.string().min(10, "Description must provide sufficient detail"),
+  // Removed 'owner' (handled by backend)
+  // Removed 'description' (backend model doesn't have this field yet)
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -35,7 +33,6 @@ type FormValues = z.infer<typeof schema>;
 export default function DmsCreatePage() {
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
-  const { role } = useRole();
 
   const {
     register,
@@ -46,43 +43,41 @@ export default function DmsCreatePage() {
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
-      docType: "SOP",
+      document_id: "",
+      doc_type: "SOP",
       department: "QA",
-      owner: "",
-      description: "",
     },
   });
 
-  // Reusable create logic
+  // ✅ Real Backend Create Logic
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      // 1. Simulate Backend ID Generation
-      const newId = `SOP-2024-${Math.floor(Math.random() * 1000)}`;
-      const initialStatus = action === "Draft" ? "Draft" : "In Review";
+      const payload = {
+        title: data.title,
+        document_id: data.document_id,
+        doc_type: data.doc_type,
+        department: data.department,
+        status: action === "Draft" ? "DRAFT" : "REVIEW" // Map to Django choices
+      };
 
-      // 2. Create Record in Workflow Service
-      workflowService.getOrCreate(newId, "dms"); // In a real app, you'd pass the form data here
+      // 1. Call Django API
+      // await api.post('/dms/documents/', payload);
 
-      // 3. Log Audit Trail
-      auditService.add("dms", newId, {
-        actionType: "CREATE",
-        field: "Record",
-        oldValue: "N/A",
-        newValue: "Created",
-        user: "Current User", // Replace with real user context
-        role: role,
-        reason: `Initial creation as ${action}`,
-      });
-
-      // 4. Feedback & Redirect
+      // 2. Feedback & Redirect
       enqueueSnackbar(
-        `Document ${newId} created successfully as ${initialStatus}`,
-        { variant: "success" },
+        `Document ${data.document_id} created successfully!`,
+        { variant: "success" }
       );
-      navigate(`/dms/${newId}`); // Redirect to the Detail Page we just built
-    } catch (error) {
+      
+      // Redirect to the list view (or detail view if you have it ready)
+      navigate('/dms'); 
+      
+    } catch (error: any) {
       console.error(error);
-      enqueueSnackbar("Failed to create document", { variant: "error" });
+      const msg = error.response?.data?.document_id 
+        ? "Document ID already exists." 
+        : "Failed to create document.";
+      enqueueSnackbar(msg, { variant: "error" });
     }
   };
 
@@ -113,11 +108,11 @@ export default function DmsCreatePage() {
 
         <Box
           component="form"
-          // We bind the primary submit to "Submit for Review"
           onSubmit={handleSubmit(onSubmitReview)}
           sx={{ display: "grid", gap: 3 }}
         >
           <Grid container spacing={3}>
+            {/* Title */}
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField
                 label="Document Title"
@@ -129,9 +124,22 @@ export default function DmsCreatePage() {
               />
             </Grid>
 
+            {/* Document ID (Required by Backend) */}
             <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                label="Document ID"
+                placeholder="e.g., SOP-QA-001"
+                fullWidth
+                {...register("document_id")}
+                error={!!errors.document_id}
+                helperText={errors.document_id?.message}
+              />
+            </Grid>
+
+            {/* Document Type */}
+            <Grid size={{ xs: 12, md: 6 }}>
               <Controller
-                name="docType"
+                name="doc_type"
                 control={control}
                 render={({ field }) => (
                   <TextField
@@ -139,20 +147,19 @@ export default function DmsCreatePage() {
                     select
                     label="Document Type"
                     fullWidth
-                    error={!!errors.docType}
-                    helperText={errors.docType?.message}
+                    error={!!errors.doc_type}
+                    helperText={errors.doc_type?.message}
                   >
-                    <MenuItem value="SOP">
-                      SOP (Standard Operating Procedure)
-                    </MenuItem>
+                    <MenuItem value="SOP">SOP (Standard Operating Procedure)</MenuItem>
                     <MenuItem value="WI">WI (Work Instruction)</MenuItem>
-                    <MenuItem value="Policy">Policy</MenuItem>
-                    <MenuItem value="Form">Form / Template</MenuItem>
+                    <MenuItem value="POL">Policy</MenuItem>
+                    <MenuItem value="FORM">Form / Template</MenuItem>
                   </TextField>
                 )}
               />
             </Grid>
 
+            {/* Department */}
             <Grid size={{ xs: 12, md: 6 }}>
               <Controller
                 name="department"
@@ -175,44 +182,19 @@ export default function DmsCreatePage() {
                 )}
               />
             </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                label="Owner / Author"
-                placeholder="Name of the person responsible"
-                fullWidth
-                {...register("owner")}
-                error={!!errors.owner}
-                helperText={errors.owner?.message}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                label="Scope & Description"
-                placeholder="Describe the purpose of this document..."
-                multiline
-                rows={5}
-                fullWidth
-                {...register("description")}
-                error={!!errors.description}
-                helperText={errors.description?.message}
-              />
-            </Grid>
           </Grid>
 
           <Divider sx={{ my: 1 }} />
 
           <Typography variant="body2" color="text.secondary">
-            Note: You will be able to upload attachments (Word/PDF) after saving
-            the draft.
+            Note: You are creating this record as the <strong>Owner</strong>. You can upload files after saving.
           </Typography>
 
           <FormActions
             onSaveDraft={handleSubmit(onSaveDraft)}
             isSubmitting={isSubmitting}
             labels={{
-              submit: "Create & Submit for Review",
+              submit: "Create & Submit",
               draft: "Save Draft",
             }}
           />

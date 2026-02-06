@@ -17,6 +17,8 @@ import { dmsService } from "../../services/dms.service";
 import LoadingState from "../../components/common/LoadingState";
 import ErrorState from "../../components/common/ErrorState";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
 // --- COMPONENT IMPORTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
@@ -37,6 +39,7 @@ import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 export default function DmsDetailPage() {
   const { id } = useParams();
+  const { role } = useRole();
   
   // 1. DATA FETCHING
   const { 
@@ -56,8 +59,10 @@ export default function DmsDetailPage() {
   const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
-  // 3. PERMISSIONS (Mocked)
-  const canEdit = record?.status === 'Draft' || record?.status === 'Review';
+  // 3. PERMISSIONS - Check both role and record status
+  const canEdit = permissionService.can(role, 'dms', 'edit') && 
+                  (record?.status === 'Draft' || record?.status === 'Review');
+  const canDelete = permissionService.can(role, 'dms', 'delete');
 
   // 4. HANDLERS
   const handleSaveClick = () => setSaveDialogOpen(true);

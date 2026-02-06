@@ -6,11 +6,22 @@ import {
   Typography,
   Divider,
   Grid,
+  Chip,
+  Stack,
+  Alert,
+  AlertTitle,
 } from "@mui/material";
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
+import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
+import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import PriorityHighIcon from "@mui/icons-material/PriorityHigh";
 
 import { useNavigate } from "react-router-dom";
+import { motion, transitions, shadows, keyframes } from "../../theme/motion";
 import { useSnackbar } from "notistack";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -97,26 +108,72 @@ export default function CapaCreatePage() {
   const onSubmitReview = (data: FormValues) => handleCreate(data, "Submit");
 
   return (
-    <Box>
+    <Box
+      sx={{ 
+        animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth}`,
+        ...keyframes.fadeInUp,
+      }}
+    >
       <PageHeader
         title="Initiate CAPA"
         subtitle="Corrective and Preventive Action Request"
         showBack
       />
 
-      <Paper
-        sx={{
-          mt: 3,
-          p: 4,
-          borderRadius: 3,
-          border: "1px solid rgba(0,0,0,0.06)",
-          maxWidth: 1200,
+      <Alert 
+        severity="info" 
+        icon={<InfoOutlinedIcon />}
+        sx={{ 
+          mt: 3, 
+          maxWidth: 1200, 
           mx: "auto",
+          borderRadius: 3,
+          border: "1px solid #C7D2FE",
+          bgcolor: "#F5F7FF",
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 800, mb: 3 }}>
-          CAPA Initiation Form
-        </Typography>
+        <AlertTitle sx={{ fontWeight: 700 }}>CAPA Investigation Process</AlertTitle>
+        Define the problem statement, identify root causes, and establish corrective/preventive actions.
+      </Alert>
+
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 5,
+          borderRadius: 4,
+          border: "1px solid #E9ECEF",
+          boxShadow: shadows.card,
+          maxWidth: 1200,
+          mx: "auto",
+          background: "linear-gradient(to bottom, #FFFFFF 0%, #FAFBFC 100%)",
+        }}
+      >
+        <Box sx={{ mb: 4 }}>
+          <Stack direction="row" alignItems="center" spacing={1.5} mb={1}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                bgcolor: "#FEF3C7",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <FactCheckOutlinedIcon sx={{ color: "#F59E0B", fontSize: 22 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a" }}>
+                CAPA Initiation Form
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#64748b" }}>
+                Required fields are marked with *
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
 
         <Box
           component="form"
@@ -127,12 +184,26 @@ export default function CapaCreatePage() {
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField
-                label="CAPA Title / Short Description"
+                label="CAPA Title / Short Description *"
                 placeholder="e.g. Labeling Error on Line 4 packaging"
                 fullWidth
                 {...register("title")}
                 error={!!errors.title}
-                helperText={errors.title?.message}
+                helperText={errors.title?.message || "Provide a clear problem summary"}
+                InputProps={{
+                  startAdornment: (
+                    <FactCheckOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
 
@@ -144,9 +215,24 @@ export default function CapaCreatePage() {
                   <TextField
                     {...field}
                     select
-                    label="Responsible Department"
+                    label="Responsible Department *"
                     fullWidth
                     error={!!errors.department}
+                    helperText={errors.department?.message || "Owning department"}
+                    InputProps={{
+                      startAdornment: (
+                        <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: "#FFFFFF",
+                        transition: transitions.fast,
+                        "&.Mui-focused": {
+                          boxShadow: shadows.subtle,
+                        },
+                      },
+                    }}
                   >
                     <MenuItem value="QA">Quality Assurance</MenuItem>
                     <MenuItem value="QC">Quality Control</MenuItem>
@@ -165,17 +251,35 @@ export default function CapaCreatePage() {
                   <TextField
                     {...field}
                     select
-                    label="Source of CAPA"
+                    label="Source of CAPA *"
                     fullWidth
                     error={!!errors.sourceType}
+                    helperText={errors.sourceType?.message || "Origin/trigger for CAPA"}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: "#FFFFFF",
+                        transition: transitions.fast,
+                        "&.Mui-focused": {
+                          boxShadow: shadows.subtle,
+                        },
+                      },
+                    }}
                   >
-                    <MenuItem value="Deviation">Deviation / Incident</MenuItem>
-                    <MenuItem value="Internal Audit">Internal Audit</MenuItem>
-                    <MenuItem value="External Audit">
-                      Regulatory / External Audit
+                    <MenuItem value="Deviation">
+                      <Chip label="Deviation / Incident" size="small" color="error" sx={{ fontSize: 12 }} />
                     </MenuItem>
-                    <MenuItem value="Complaint">Customer Complaint</MenuItem>
-                    <MenuItem value="OOS">Out of Specification (OOS)</MenuItem>
+                    <MenuItem value="Internal Audit">
+                      <Chip label="Internal Audit" size="small" color="info" sx={{ fontSize: 12 }} />
+                    </MenuItem>
+                    <MenuItem value="External Audit">
+                      <Chip label="Regulatory / External Audit" size="small" color="warning" sx={{ fontSize: 12 }} />
+                    </MenuItem>
+                    <MenuItem value="Complaint">
+                      <Chip label="Customer Complaint" size="small" color="secondary" sx={{ fontSize: 12 }} />
+                    </MenuItem>
+                    <MenuItem value="OOS">
+                      <Chip label="Out of Specification (OOS)" size="small" color="error" sx={{ fontSize: 12 }} />
+                    </MenuItem>
                   </TextField>
                 )}
               />
@@ -188,7 +292,16 @@ export default function CapaCreatePage() {
                 fullWidth
                 {...register("sourceReference")}
                 error={!!errors.sourceReference}
-                helperText={errors.sourceReference?.message}
+                helperText={errors.sourceReference?.message || "Link to originating record"}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
 
@@ -200,71 +313,146 @@ export default function CapaCreatePage() {
                   <TextField
                     {...field}
                     select
-                    label="Initial Risk Assessment"
+                    label="Initial Risk Assessment *"
                     fullWidth
                     error={!!errors.riskLevel}
+                    helperText={errors.riskLevel?.message || "Impact severity"}
+                    InputProps={{
+                      startAdornment: (
+                        <PriorityHighIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                      ),
+                    }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        bgcolor: "#FFFFFF",
+                        transition: transitions.fast,
+                        "&.Mui-focused": {
+                          boxShadow: shadows.subtle,
+                        },
+                      },
+                    }}
                   >
-                    <MenuItem value="Low">Low</MenuItem>
-                    <MenuItem value="Medium">Medium</MenuItem>
-                    <MenuItem value="High">High</MenuItem>
-                    <MenuItem value="Critical">Critical</MenuItem>
+                    <MenuItem value="Critical">
+                      <Chip label="Critical" size="small" sx={{ bgcolor: "#DC2626", color: "white", fontSize: 12 }} />
+                    </MenuItem>
+                    <MenuItem value="High">
+                      <Chip label="High" size="small" sx={{ bgcolor: "#F59E0B", color: "white", fontSize: 12 }} />
+                    </MenuItem>
+                    <MenuItem value="Medium">
+                      <Chip label="Medium" size="small" sx={{ bgcolor: "#3B82F6", color: "white", fontSize: 12 }} />
+                    </MenuItem>
+                    <MenuItem value="Low">
+                      <Chip label="Low" size="small" sx={{ bgcolor: "#10B981", color: "white", fontSize: 12 }} />
+                    </MenuItem>
                   </TextField>
                 )}
               />
             </Grid>
           </Grid>
 
-          <Divider />
+          <Divider sx={{ my: 1 }} />
 
           {/* Problem Details */}
-          <Typography variant="h6" sx={{ fontWeight: 800, mt: 1 }}>
-            Problem Definition
-          </Typography>
+          <Box sx={{ mb: 3, mt: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5 }}>
+              Problem Definition
+            </Typography>
+            <Typography variant="caption" sx={{ color: "#64748b" }}>
+              Describe the issue requiring corrective/preventive action
+            </Typography>
+          </Box>
 
           <Grid container spacing={3}>
             <Grid size={{ xs: 12 }}>
               <TextField
-                label="Detailed Problem Statement"
+                label="Detailed Problem Statement *"
                 multiline
                 rows={4}
                 fullWidth
                 placeholder="Describe the non-conformance clearly. What happened? What is the impact?"
                 {...register("problemStatement")}
                 error={!!errors.problemStatement}
-                helperText={errors.problemStatement?.message}
+                helperText={errors.problemStatement?.message || "Clearly state the problem and its business impact"}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
-                label="CAPA Owner"
+                label="CAPA Owner *"
                 fullWidth
                 placeholder="Assign a responsible person"
                 {...register("owner")}
                 error={!!errors.owner}
-                helperText={errors.owner?.message}
+                helperText={errors.owner?.message || "Lead investigator"}
+                InputProps={{
+                  startAdornment: (
+                    <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
-                label="Target Closure Date"
+                label="Target Closure Date *"
                 type="date"
                 fullWidth
                 InputLabelProps={{ shrink: true }}
                 {...register("targetDate")}
                 error={!!errors.targetDate}
-                helperText={errors.targetDate?.message}
+                helperText={errors.targetDate?.message || "Expected completion"}
+                InputProps={{
+                  startAdornment: (
+                    <CalendarTodayOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                  ),
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    bgcolor: "#FFFFFF",
+                    transition: transitions.fast,
+                    "&.Mui-focused": {
+                      boxShadow: shadows.subtle,
+                    },
+                  },
+                }}
               />
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ my: 3 }} />
 
-          <Typography variant="body2" color="text.secondary">
-            Note: Root Cause Analysis (RCA) and Action Plan definition will
-            occur in the Investigation phase.
-          </Typography>
+          <Alert 
+            severity="warning" 
+            icon={<InfoOutlinedIcon />}
+            sx={{ 
+              borderRadius: 3, 
+              bgcolor: "#FEF3C7",
+              border: "1px solid #FDE68A",
+              "& .MuiAlert-icon": { color: "#F59E0B" },
+            }}
+          >
+            <Typography variant="body2" sx={{ color: "#92400E", fontWeight: 600 }}>
+              Root Cause Analysis (RCA) and Action Plan definition will occur in the Investigation phase.
+            </Typography>
+          </Alert>
 
           <FormActions
             onSaveDraft={handleSubmit(onSaveDraft)}

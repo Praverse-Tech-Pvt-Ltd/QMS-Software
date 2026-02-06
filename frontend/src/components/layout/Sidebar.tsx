@@ -30,7 +30,8 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
-import { permissionService } from "../../services/permission.service"; // ✅ IMPORT SERVICE
+import { permissionService } from "../../services/permission.service";
+import { transitions, motion } from "../../theme/motion";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -59,34 +60,33 @@ export default function Sidebar() {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        borderRight: "1px solid rgba(0,0,0,0.08)",
-        bgcolor: "white",
+        bgcolor: "#FAFBFC",
       }}
     >
       {/* --- 1. LOGO SECTION --- */}
-      <Box sx={{ p: 3, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+      <Box sx={{ px: 2, py: 2, borderBottom: "1px solid #E9ECEF" }}>
         <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
           <Box
             sx={{
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               borderRadius: 2,
-              bgcolor: "#1e40af",
+              bgcolor: "#6366F1",
               color: "white",
               display: "grid",
               placeItems: "center",
               fontWeight: 900,
-              fontSize: 20,
-              boxShadow: "0 4px 6px -1px rgba(30, 64, 175, 0.2)"
+              fontSize: 18,
+              boxShadow: "0 2px 4px rgba(99, 102, 241, 0.2)"
             }}
           >
             N
           </Box>
           <Box>
-            <Typography fontWeight={900} sx={{ lineHeight: 1.1, color: "#0f172a", fontSize: "1rem" }}>
+            <Typography fontWeight={700} sx={{ lineHeight: 1.1, color: "#1A1D21", fontSize: "0.9375rem", letterSpacing: "-0.02em" }}>
               NexGen Pharma
             </Typography>
-            <Typography variant="caption" sx={{ letterSpacing: 0.5, color: "#64748b", fontWeight: 700, fontSize: "0.65rem" }}>
+            <Typography variant="caption" sx={{ letterSpacing: 0.5, color: "#858D96", fontWeight: 600, fontSize: "0.625rem" }}>
               QUALITY SYSTEMS
             </Typography>
           </Box>
@@ -94,18 +94,48 @@ export default function Sidebar() {
       </Box>
 
       {/* --- 2. NAVIGATION --- */}
-      <Box sx={{ flex: 1, px: 2, py: 3, overflowY: "auto" }}>
-        <List dense sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+      <Box sx={{ flex: 1, px: 2, py: 1.5, overflowY: "auto" }}>
+        <List dense sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
           
           {/* Dashboard - Visible to Everyone */}
           {permissionService.can(role, 'dashboard', 'view') && (
             <ListItemButton
               selected={isActive("/")}
               onClick={() => navigate("/")}
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                borderRadius: 2,
+                minHeight: 38,
+                px: 2,
+                py: 0.75,
+                transition: transitions.sidebar.item,
+                "&.Mui-selected": {
+                  bgcolor: "#EEF2FF",
+                  borderLeft: "3px solid #6366F1",
+                  "&:hover": {
+                    bgcolor: "#E0E7FF",
+                  },
+                },
+                "&:hover": {
+                  bgcolor: "#F3F4F6",
+                  transform: `translateX(${motion.distance.micro}px)`,
+                },
+              }}
             >
-              <ListItemIcon><DashboardOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Dashboard" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemIcon sx={{ 
+                minWidth: 36, 
+                color: isActive("/") ? "#6366F1" : "#858D96",
+                transition: transitions.fast,
+              }}>
+                <DashboardOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Dashboard" 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive("/") ? 600 : 400,
+                  fontSize: "0.8125rem",
+                  color: isActive("/") ? "#1A1D21" : "#5C6370",
+                }} 
+              />
             </ListItemButton>
           )}
 
@@ -113,10 +143,40 @@ export default function Sidebar() {
           <ListItemButton
             selected={isActive("/tasks")}
             onClick={() => navigate("/tasks")}
-            sx={{ borderRadius: 2 }}
+            sx={{ 
+              borderRadius: 2,
+              minHeight: 38,
+              px: 2,
+              py: 0.75,
+              transition: transitions.sidebar.item,
+              "&.Mui-selected": {
+                bgcolor: "#EEF2FF",
+                borderLeft: "3px solid #6366F1",
+                "&:hover": {
+                  bgcolor: "#E0E7FF",
+                },
+              },
+              "&:hover": {
+                bgcolor: "#F3F4F6",
+                transform: `translateX(${motion.distance.micro}px)`,
+              },
+            }}
           >
-            <ListItemIcon><AssignmentOutlinedIcon /></ListItemIcon>
-            <ListItemText primary="My Inbox" primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemIcon sx={{ 
+              minWidth: 36, 
+              color: isActive("/tasks") ? "#6366F1" : "#858D96",
+              transition: transitions.fast,
+            }}>
+              <AssignmentOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText 
+              primary="My Tasks" 
+              primaryTypographyProps={{ 
+                fontWeight: isActive("/tasks") ? 600 : 400,
+                fontSize: "0.8125rem",
+                color: isActive("/tasks") ? "#1A1D21" : "#5C6370",
+              }} 
+            />
           </ListItemButton>
 
           {/* ✅ DMS - Protected */}
@@ -124,10 +184,40 @@ export default function Sidebar() {
             <ListItemButton
               selected={isActive("/dms")}
               onClick={() => navigate("/dms")}
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                borderRadius: 2,
+                minHeight: 38,
+                px: 2,
+                py: 0.75,
+                transition: transitions.sidebar.item,
+                "&.Mui-selected": {
+                  bgcolor: "#EEF2FF",
+                  borderLeft: "3px solid #6366F1",
+                  "&:hover": {
+                    bgcolor: "#E0E7FF",
+                  },
+                },
+                "&:hover": {
+                  bgcolor: "#F3F4F6",
+                  transform: `translateX(${motion.distance.micro}px)`,
+                },
+              }}
             >
-              <ListItemIcon><DescriptionOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Document Management" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemIcon sx={{ 
+                minWidth: 36, 
+                color: isActive("/dms") ? "#6366F1" : "#858D96",
+                transition: transitions.fast,
+              }}>
+                <DescriptionOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Document Management" 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive("/dms") ? 600 : 400,
+                  fontSize: "0.8125rem",
+                  color: isActive("/dms") ? "#1A1D21" : "#5C6370",
+                }} 
+              />
             </ListItemButton>
           )}
 
@@ -137,30 +227,90 @@ export default function Sidebar() {
               <ListItemButton
                 onClick={() => setTrainingOpen((v) => !v)}
                 selected={isActive("/training")}
-                sx={{ borderRadius: 2 }}
+                sx={{ 
+                  borderRadius: 2,
+                  minHeight: 38,
+                  px: 2,
+                  py: 0.75,
+                  transition: transitions.sidebar.item,
+                  "&.Mui-selected": {
+                    bgcolor: "#EEF2FF",
+                    borderLeft: "3px solid #6366F1",
+                    "&:hover": {
+                      bgcolor: "#E0E7FF",
+                    },
+                  },
+                  "&:hover": {
+                    bgcolor: "#F3F4F6",
+                    transform: `translateX(${motion.distance.micro}px)`,
+                  },
+                }}
               >
-                <ListItemIcon><SchoolOutlinedIcon /></ListItemIcon>
-                <ListItemText primary="Training / LMS" primaryTypographyProps={{ fontWeight: 600 }} />
+                <ListItemIcon sx={{ 
+                  minWidth: 36, 
+                  color: isActive("/training") ? "#6366F1" : "#858D96",
+                  transition: transitions.fast,
+                }}>
+                  <SchoolOutlinedIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText 
+                  primary="Training" 
+                  primaryTypographyProps={{ 
+                    fontWeight: isActive("/training") ? 600 : 400,
+                    fontSize: "0.8125rem",
+                    color: isActive("/training") ? "#1A1D21" : "#5C6370",
+                  }} 
+                />
                 {trainingOpen ? <ExpandLessOutlinedIcon fontSize="small" /> : <ExpandMoreOutlinedIcon fontSize="small" />}
               </ListItemButton>
 
               <Collapse in={trainingOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding sx={{ pl: 2 }}>
-                   <ListItemButton
+                  <ListItemButton
                     selected={location.pathname === "/training"}
                     onClick={() => navigate("/training")}
-                    sx={{ borderRadius: 2 }}
+                    sx={{ 
+                      borderRadius: 2,
+                      minHeight: 32,
+                      py: 0.5,
+                      "&:hover": {
+                        bgcolor: "#F3F4F6",
+                      },
+                    }}
                   >
-                     <ListItemText primary="Training Records" primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }} />
+                    <ListItemText 
+                      primary="Training Records" 
+                      primaryTypographyProps={{ 
+                        fontSize: "0.75rem", 
+                        fontWeight: 500,
+                        color: "#5C6370",
+                      }} 
+                    />
                   </ListItemButton>
                   
-                  <ListItemButton
-                    selected={location.pathname === "/training/matrix"}
-                    onClick={() => navigate("/training/matrix")}
-                    sx={{ borderRadius: 2 }}
-                  >
-                     <ListItemText primary="Training Matrix" primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }} />
-                  </ListItemButton>
+                  {permissionService.can(role, 'training_matrix', 'view') && (
+                    <ListItemButton
+                      selected={location.pathname === "/training/matrix"}
+                      onClick={() => navigate("/training/matrix")}
+                      sx={{ 
+                        borderRadius: 2,
+                        minHeight: 32,
+                        py: 0.5,
+                        "&:hover": {
+                          bgcolor: "#F3F4F6",
+                        },
+                      }}
+                    >
+                      <ListItemText 
+                        primary="Training Matrix" 
+                        primaryTypographyProps={{ 
+                          fontSize: "0.75rem", 
+                          fontWeight: 500,
+                          color: "#5C6370",
+                        }} 
+                      />
+                    </ListItemButton>
+                  )}
                 </List>
               </Collapse>
             </>
@@ -171,10 +321,36 @@ export default function Sidebar() {
             <ListItemButton
               selected={isActive("/deviations")}
               onClick={() => navigate("/deviations")}
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                borderRadius: 2,
+                minHeight: 38,
+                px: 2,
+                py: 0.75,
+                transition: transitions.sidebar.item,
+                "&.Mui-selected": {
+                  bgcolor: "#EEF2FF",
+                  borderLeft: "3px solid #6366F1",
+                  "&:hover": {
+                    bgcolor: "#E0E7FF",
+                  },
+                },
+                "&:hover": {
+                  bgcolor: "#F3F4F6",
+                  transform: `translateX(${motion.distance.micro}px)`,
+                },
+              }}
             >
-              <ListItemIcon><ReportProblemOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Deviation / Incident" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/deviations") ? "#6366F1" : "#858D96", transition: transitions.fast }}>
+                <ReportProblemOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Deviations" 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive("/deviations") ? 600 : 400,
+                  fontSize: "0.8125rem",
+                  color: isActive("/deviations") ? "#1A1D21" : "#5C6370",
+                }} 
+              />
             </ListItemButton>
           )}
 
@@ -183,10 +359,36 @@ export default function Sidebar() {
             <ListItemButton
               selected={isActive("/capa")}
               onClick={() => navigate("/capa")}
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                borderRadius: 2,
+                minHeight: 38,
+                px: 2,
+                py: 0.75,
+                transition: transitions.sidebar.item,
+                "&.Mui-selected": {
+                  bgcolor: "#EEF2FF",
+                  borderLeft: "3px solid #6366F1",
+                  "&:hover": {
+                    bgcolor: "#E0E7FF",
+                  },
+                },
+                "&:hover": {
+                  bgcolor: "#F3F4F6",
+                  transform: `translateX(${motion.distance.micro}px)`,
+                },
+              }}
             >
-              <ListItemIcon><FactCheckOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="CAPA" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/capa") ? "#6366F1" : "#858D96", transition: transitions.fast }}>
+                <FactCheckOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="CAPA" 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive("/capa") ? 600 : 400,
+                  fontSize: "0.8125rem",
+                  color: isActive("/capa") ? "#1A1D21" : "#5C6370",
+                }} 
+              />
             </ListItemButton>
           )}
 
@@ -195,10 +397,36 @@ export default function Sidebar() {
             <ListItemButton
               selected={isActive("/change-control")}
               onClick={() => navigate("/change-control")}
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                borderRadius: 2,
+                minHeight: 38,
+                px: 2,
+                py: 0.75,
+                transition: transitions.sidebar.item,
+                "&.Mui-selected": {
+                  bgcolor: "#EEF2FF",
+                  borderLeft: "3px solid #6366F1",
+                  "&:hover": {
+                    bgcolor: "#E0E7FF",
+                  },
+                },
+                "&:hover": {
+                  bgcolor: "#F3F4F6",
+                  transform: `translateX(${motion.distance.micro}px)`,
+                },
+              }}
             >
-              <ListItemIcon><ChangeCircleOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Change Control" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/change-control") ? "#6366F1" : "#858D96", transition: transitions.fast }}>
+                <ChangeCircleOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Change Control" 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive("/change-control") ? 600 : 400,
+                  fontSize: "0.8125rem",
+                  color: isActive("/change-control") ? "#1A1D21" : "#5C6370",
+                }} 
+              />
             </ListItemButton>
           )}
 
@@ -207,24 +435,76 @@ export default function Sidebar() {
             <ListItemButton
               selected={isActive("/reports")}
               onClick={() => navigate("/reports")}
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                borderRadius: 2,
+                minHeight: 38,
+                px: 2,
+                py: 0.75,
+                transition: transitions.sidebar.item,
+                "&.Mui-selected": {
+                  bgcolor: "#EEF2FF",
+                  borderLeft: "3px solid #6366F1",
+                  "&:hover": {
+                    bgcolor: "#E0E7FF",
+                  },
+                },
+                "&:hover": {
+                  bgcolor: "#F3F4F6",
+                  transform: `translateX(${motion.distance.micro}px)`,
+                },
+              }}
             >
-              <ListItemIcon><AssessmentOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Reports & Analytics" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/reports") ? "#6366F1" : "#858D96", transition: transitions.fast }}>
+                <AssessmentOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Reports" 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive("/reports") ? 600 : 400,
+                  fontSize: "0.8125rem",
+                  color: isActive("/reports") ? "#1A1D21" : "#5C6370",
+                }} 
+              />
             </ListItemButton>
           )}
 
-          <Divider sx={{ my: 2, borderColor: "#f1f5f9" }} />
+          <Divider sx={{ my: 1, borderColor: "#E9ECEF" }} />
 
           {/* ✅ Settings - Protected */}
           {permissionService.can(role, 'settings', 'view') && (
             <ListItemButton 
               selected={isActive("/settings")}
               onClick={() => navigate("/settings")}
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                borderRadius: 2,
+                minHeight: 38,
+                px: 2,
+                py: 0.75,
+                transition: transitions.sidebar.item,
+                "&.Mui-selected": {
+                  bgcolor: "#EEF2FF",
+                  borderLeft: "3px solid #6366F1",
+                  "&:hover": {
+                    bgcolor: "#E0E7FF",
+                  },
+                },
+                "&:hover": {
+                  bgcolor: "#F3F4F6",
+                  transform: `translateX(${motion.distance.micro}px)`,
+                },
+              }}
             >
-              <ListItemIcon><SettingsOutlinedIcon /></ListItemIcon>
-              <ListItemText primary="Settings" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/settings") ? "#6366F1" : "#858D96", transition: transitions.fast }}>
+                <SettingsOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Settings" 
+                primaryTypographyProps={{ 
+                  fontWeight: isActive("/settings") ? 600 : 400,
+                  fontSize: "0.8125rem",
+                  color: isActive("/settings") ? "#1A1D21" : "#5C6370",
+                }} 
+              />
             </ListItemButton>
           )}
 
@@ -234,22 +514,22 @@ export default function Sidebar() {
       </Box>
 
       {/* --- 3. PROFILE CARD --- */}
-      <Box sx={{ p: 2, borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+      <Box sx={{ px: 2, py: 1.5, borderTop: "1px solid #E9ECEF" }}>
         <Box
           sx={{
-            p: 2,
-            borderRadius: 3,
-            bgcolor: "#f8fafc",
-            border: "1px solid #e2e8f0",
+            p: 1.5,
+            borderRadius: 2,
+            bgcolor: "#F7F8FA",
+            border: "1px solid #E9ECEF",
           }}
         >
-          <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
-            <Avatar sx={{ bgcolor: "#1e40af", width: 36, height: 36, fontSize: 14, fontWeight: 700 }}>AP</Avatar>
+          <Box sx={{ display: "flex", gap: 1.5, mb: 1.5, alignItems: "center" }}>
+            <Avatar sx={{ bgcolor: "#6366F1", width: 32, height: 32, fontSize: 13, fontWeight: 700 }}>AP</Avatar>
             <Box>
-              <Typography variant="body2" fontWeight={700} color="#0f172a">
+              <Typography variant="body2" fontWeight={600} color="#2D3339" sx={{ fontSize: "0.8125rem" }}>
                 Alexander Pierce
               </Typography>
-              <Typography variant="caption" color="#64748b" fontWeight={500} sx={{ textTransform: 'capitalize' }}>
+              <Typography variant="caption" color="#858D96" fontWeight={500} sx={{ textTransform: 'capitalize', fontSize: "0.75rem" }}>
                 {role} {/* Shows current dynamic role */}
               </Typography>
             </Box>
@@ -258,16 +538,22 @@ export default function Sidebar() {
           <Button
             fullWidth
             variant="outlined"
-            startIcon={<LogoutOutlinedIcon />}
+            startIcon={<LogoutOutlinedIcon fontSize="small" />}
             size="small"
             sx={{ 
                 textTransform: "none", 
                 fontWeight: 600, 
-                borderColor: "#cbd5e1",
-                color: "#475569",
-                bgcolor: "white",
+                borderColor: "#DFE2E6",
+                color: "#5C6370",
+                bgcolor: "#FFFFFF",
                 boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                "&:hover": { bgcolor: "#f1f5f9", borderColor: "#94a3b8", color: "#1e293b" }
+                minHeight: 32,
+                fontSize: "0.8125rem",
+                "&:hover": { 
+                  bgcolor: "#FAFBFC", 
+                  borderColor: "#858D96", 
+                  color: "#2D3339" 
+                }
             }}
             onClick={handleLogout}
           >

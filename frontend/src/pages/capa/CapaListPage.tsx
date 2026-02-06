@@ -6,20 +6,36 @@ import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
 // Standard Imports
+import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 import ModuleTable, {type ColumnDef } from "../../components/common/ModuleTable";
 import { capaService } from "../../services/capa.service";
 import { type CapaRecord } from "../../types/capa.types";
+import { useRole } from "../../app/providers/RoleProvider";
+import { permissionService } from "../../services/permission.service";
 
 // Filter Options matching your image
 const STATUS_FILTERS = ["All", "Open", "QA Review", "In Progress", "Completed"];
 
 export default function CapaListPage() {
   const navigate = useNavigate();
+  const { role } = useRole();
   const [rows, setRows] = useState<CapaRecord[]>([]);
+  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+
+  const handleCreateNew = () => {
+    if (!permissionService.can(role, "capa", "create")) {
+      setPermissionDenied({
+        open: true,
+        message: `You don't have permission to create CAPA records. Your current role (${role}) does not allow this action.`,
+      });
+      return;
+    }
+    navigate("/capa/new");
+  };
 
   useEffect(() => {
     capaService.list().then((data) => {
@@ -53,7 +69,7 @@ export default function CapaListPage() {
       switch(priority) {
           case "Critical": return { color: "#dc2626", fontWeight: 700 }; // Red text
           case "High": return { color: "#ea580c", fontWeight: 700 };     // Orange text
-          case "Medium": return { color: "#2563eb", fontWeight: 700 };   // Blue text
+          case "Medium": return { color: "#6366F1", fontWeight: 700 };   // Blue text
           case "Low": return { color: "#16a34a", fontWeight: 700 };      // Green text
           default: return { color: "#4b5563" };
       }
@@ -68,7 +84,7 @@ export default function CapaListPage() {
       renderCell: (row) => (
         <Typography 
           variant="body2" 
-          sx={{ color: "#2563eb", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
+          sx={{ color: "#6366F1", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
           onClick={() => navigate(`/capa/${row.id}`)}
         >
           {row.id}
@@ -95,7 +111,7 @@ export default function CapaListPage() {
         renderCell: (row) => (
             <Typography 
                 variant="body2" 
-                sx={{ color: "#2563eb", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
+                sx={{ color: "#6366F1", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
                 onClick={(e) => {
                     e.stopPropagation();
                     // In a real app, you might navigate to the Deviation page here
@@ -123,9 +139,9 @@ export default function CapaListPage() {
         <Button 
             variant="contained" 
             startIcon={<AddIcon />}
-            onClick={() => navigate("/capa/new")}
+            onClick={handleCreateNew}
             sx={{ 
-                bgcolor: "#1e40af", 
+                bgcolor: "#4F46E5", 
                 textTransform: "none",
                 fontWeight: 600,
                 borderRadius: 2,
@@ -209,7 +225,14 @@ export default function CapaListPage() {
       <ModuleTable
         columns={columns}
         rows={filteredRows}
-        onView={(id) => navigate(`/capa/${id}`)}
+        onView={role !== "Viewer" ? (id) => navigate(`/capa/${id}`) : undefined}
+      />
+
+      {/* Permission Denied Dialog */}
+      <PermissionDeniedDialog
+        open={permissionDenied.open}
+        onClose={() => setPermissionDenied({ open: false, message: "" })}
+        message={permissionDenied.message}
       />
     </Box>
   );
