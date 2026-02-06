@@ -1,37 +1,37 @@
+# Enterprise QMS (Inspection‑Ready Frontend System)
 
-# Enterprise QMS Frontend (Inspection‑Ready UX)
+This repository contains a production‑grade Quality Management System (QMS) frontend designed to simulate how an enterprise pharmaceutical QMS behaves during audits, inspections, and daily operations.
 
-This repository contains a **production‑grade Quality Management System (QMS) frontend** designed to demonstrate how an enterprise pharmaceutical QMS behaves during audits, inspections, and day‑to‑day operations.  
-The backend is **mocked**, but the UI, workflows, permissions, and data structures are built exactly like a real system.
+The backend is mocked, but the UI, workflows, permissions, and data structures are built exactly like a real production system.
 
 ---
 
-## 🎯 High‑Level Objective
+## High‑Level Objective
 
-A fully connected, **role‑based QMS frontend** where users can:
+A fully connected, role‑based QMS frontend where users can:
 
-- Create and manage quality records
-- Move records through controlled workflows
-- Perform e‑signatures
+- Create and manage quality records (SOPs, Deviations, CAPAs, Change Controls, Training)
+- Move records through controlled, auditable workflows
+- Perform simulated e‑signatures
 - View complete audit trails
-- Link records (Deviation ↔ CAPA ↔ Change Control ↔ SOP ↔ Training)
-- Manage daily work through tasks and notifications
+- Link related records (Deviation ↔ CAPA ↔ Change Control ↔ SOP ↔ Training)
+- Manage daily work via My Tasks, Notifications, and Global Search
 
 ---
 
-## 🧱 Architecture Overview
+## Frontend Architecture
 
-- **Frontend**: React + TypeScript + MUI
-- **State & Data**: Mock services shaped like real APIs
-- **Auth**: Mock role‑based auth (RBAC)
-- **Workflow Engine**: Centralized and reusable across modules
-- **Design**: Inspection‑ready, enterprise UX
+- React + TypeScript + Vite
+- MUI (Material UI) + Tailwind CSS
+- React Query with mocked services
+- React Router with protected routes
+- Enterprise, inspection‑ready UX
 
 ---
 
-## A) Security & Permissions (RBAC)
+## Security & Permissions (RBAC)
 
-### Roles
+Roles:
 - Admin
 - QA
 - QC
@@ -39,164 +39,88 @@ A fully connected, **role‑based QMS frontend** where users can:
 - Warehouse
 - Viewer
 
-### Implemented
-- Permissions matrix per module & action
-- Route guards for unauthorized access
-- Action‑level permissions (Create / Edit / Submit / Approve / Close / Reopen)
-- Read‑only locked records with reason display
-- Dedicated **Access Denied** page
-- Consistent permission error handling
+Features:
+- Route guards
+- Action‑level permissions
+- Locked record read‑only states
+- Access Denied page
 
 ---
 
-## B) Workflow Engine (Shared)
+## Workflow Engine
 
-### Supported Modules
-- DMS
-- Deviations
-- CAPA
-- Change Control
+Draft → Submitted → QA Review → Approved → Effective / Closed
 
-### Workflow Capabilities
-- Config‑driven workflow definitions
-- Status timelines
-- Validated transitions
-- Reject / Return to Draft with comments
-- Mandatory field & attachment checks
-- Multi‑approver (parallel & sequential)
-- Due dates & escalation indicators
+Reusable across DMS, Deviation, CAPA, Change Control.
 
 ---
 
-## C) E‑Signature (UI‑Only)
+## E‑Signature
 
-- Re‑authentication placeholder (username/password)
-- Signature meaning:
-  - Review
-  - Approval
-  - Execution
-  - Verification
-- Confirmation statement
-- Signature stamp on record header
-- Dedicated **Signature History** tab
+- Username & password re‑auth (mock)
+- Signature meaning
+- Signature history log
 
 ---
 
-## D) Audit Trail
+## Audit Trail
 
-- Action‑level audit logging
-- Old vs new value tracking
-- Reason‑for‑change enforcement
-- Filters: date, user, action, field
-- Export (JSON / CSV – mocked)
+- Field‑level change tracking
+- Reason for change
+- Exportable logs
 
 ---
 
-## E) Document Management System (DMS)
+## Document Management (DMS)
 
-- SOP lifecycle:
-  - Draft → Review → Approved → Effective → Superseded / Archived
-- Versioning:
-  - v1.0 / v1.1 / v2.0
-- Version history & comparison UI
-- Controlled copy badge
-- Print / download controls
+- SOP lifecycle with versioning
+- Version history
 - Periodic review dashboard
+- Controlled copy UI
 
 ---
 
-## F) Training / LMS
+## Training & LMS
 
-- Training Matrix (Role → SOP mapping)
-- Department‑based views
+- Training matrix
 - Employee training profiles
-- Completion % and overdue tracking
-- Training history timeline
-- Effectiveness checks (quiz + OJT placeholders)
-- SOP version change impact → retraining assignment
-
----
-
-## G) Deviation, CAPA & Change Control
-
-### Deviations
-- Pharma‑specific fields (batch, material, equipment, severity)
-- Tabs:
-  - Containment
-  - Investigation
-  - Risk Assessment
-  - CAPA Linkage
-  - Approvals
-  - Audit Trail
-
-### CAPA
-- Action plan table
-- Owners, due dates, evidence
 - Effectiveness checks
-- Closure checklist
-
-### Change Control
-- Impact assessment (validation, regulatory, training, etc.)
-- Implementation plan
-- Verification & closure
+- Retraining impact analysis
 
 ---
 
-## H) Daily Usage Features
+## Deviation, CAPA & Change Control
+
+- Pharma‑specific fields
+- Multi‑tab workflows
+- Evidence and closure checklists
+
+---
+
+## Daily Usage Features
 
 - My Tasks Inbox
-- Notifications Center
-- Global Search (cross‑module)
-- Reports UI (Pareto & trends – placeholders)
+- Notifications
+- Global Search
+- Reports UI placeholders
 
 ---
 
-## I) Engineering Quality
+## Engineering Quality
 
-- Standardized components:
-  - Tables
-  - Forms
-  - Tabs
-  - Status chips
-  - Workflow timelines
-  - Modals
-  - Attachment uploaders
-  - Comment threads
-- Clean folder & route structure
-- Error / loading / empty states everywhere
-- Mock service layer shaped like real APIs
-- Storybook‑ready component design
+- Standardized components
+- Clean folder structure
+- Error/loading states
+- Ready for backend integration
 
 ---
 
-## 📦 Deliverables Included
+## Disclaimer
 
-- ✅ Enterprise‑grade frontend UI
-- ✅ Updated README (this file)
-- ✅ Mock JSON data (users, SOPs, tasks, deviations, CAPA, CC)
-- ✅ Inspection‑ready UX patterns
-- ✅ Demo‑ready workflows
+This project is for educational and internship demonstration purposes only.
 
 ---
 
-## 🚀 Demo Scenarios Supported
+## Author
 
-- SOP creation → review → approval → effective → supersede
-- Deviation creation → QA review → approval → CAPA linkage → closure
-- E‑signature & audit trail visibility
-- Task inbox & notification flow
-- Global search across modules
-
----
-
-## ⚠️ Disclaimer
-
-This project is a **UI‑only demonstration**.  
-Authentication, digital signatures, and compliance logic must be implemented server‑side for regulated production use.
-
----
-
-## 👨‍💻 Author
-
-Built as an **enterprise‑grade QMS UX showcase** for audits, demos, interviews, and SaaS validation.
-
+Enterprise QMS UX project.

@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  # The Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: qms_db_container
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/ # Persist data even if container stops
+    environment:
+      - POSTGRES_DB=qms_db
+      - POSTGRES_USER=qms_user
+      - POSTGRES_PASSWORD=qms_password
+    ports:
+      - "5432:5432" # Maps Docker port 5432 to your Localhost port 5432
+
+volumes:
+  postgres_data:

@@ -16,6 +16,7 @@ import { useSnackbar } from "notistack";
 import { useNavigate } from "react-router-dom";
 
 // ✅ Import the API helper
+import api from "../../services/api"; 
 import FormActions from "../../components/common/FormActions";
 
 // Validation Schema
@@ -61,7 +62,7 @@ export default function DmsCreatePage() {
       };
 
       // 1. Call Django API
-      // await api.post('/dms/documents/', payload);
+      await api.post('/dms/documents/', payload);
 
       // 2. Feedback & Redirect
       enqueueSnackbar(
