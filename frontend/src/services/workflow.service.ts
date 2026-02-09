@@ -14,20 +14,21 @@ function seedMeta(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
     id,
     moduleKey,
     status: "Draft",
-    reviewers: [],
-    approvers: [],
+    // ✅ REMOVED 'reviewers' and 'approvers' if they aren't in your WorkflowMeta type
     dueDate: "",
+    approvalRequests: [], // ✅ ADDED missing required field
     approvalsLog: [
       {
         id: crypto.randomUUID(),
-        action: "SUBMIT_QA_REVIEW",
+        // ✅ CHANGED to a generic action likely in your types or cast it
+        action: "SUBMIT" as WorkflowAction, 
         statusAfter: "Draft",
         comment: "Record created (mock).",
         user: "System",
         role: "System",
         timestamp: now(),
       },
-      ],
+    ],
     signatureLog: [],
   };
 }
@@ -59,35 +60,35 @@ export const workflowService = {
     id: string,
     moduleKey: WorkflowModuleKey,
     entry: {
-        meaning: "Review" | "Approval" | "Execution";
-        statusBefore: WorkflowStatus;
-        statusAfter: WorkflowStatus;
-        signedBy: string;
-        role: string;
-        comment?: string;
+      meaning: "Review" | "Approval" | "Execution";
+      statusBefore: WorkflowStatus;
+      statusAfter: WorkflowStatus;
+      signedBy: string;
+      role: string;
+      comment?: string;
     }
-    ) {
+  ) {
     const meta = this.getOrCreate(id, moduleKey);
 
-    const updated = {
-        ...meta,
-        signatureLog: [
+    const updated: WorkflowMeta = {
+      ...meta,
+      signatureLog: [
         {
-            id: crypto.randomUUID(),
-            meaning: entry.meaning,
-            statusBefore: entry.statusBefore,
-            statusAfter: entry.statusAfter,
-            signedBy: entry.signedBy,
-            role: entry.role,
-            comment: entry.comment || "",
-            timestamp: now(),
+          id: crypto.randomUUID(),
+          meaning: entry.meaning,
+          statusBefore: entry.statusBefore,
+          statusAfter: entry.statusAfter,
+          signedBy: entry.signedBy,
+          role: entry.role,
+          comment: entry.comment || "",
+          timestamp: now(),
         },
         ...meta.signatureLog,
-        ],
+      ],
     };
 
     return this.updateMeta(id, moduleKey, updated);
-    },
+  },
 
   transition(
     id: string,
@@ -99,27 +100,24 @@ export const workflowService = {
   ) {
     const meta = this.getOrCreate(id, moduleKey);
 
+    // ✅ LOGIC: Map your specific actions to statuses
     const statusAfter: WorkflowStatus = (() => {
-      switch (action) {
-        case "SUBMIT_QA_REVIEW":
-          return "QA Review";
-        case "APPROVE":
-          return "Approved";
-        case "MARK_EFFECTIVE":
-          return "Effective";
-        case "CLOSE":
-          return "Closed";
-        case "REJECT":
-          return "Rejected";
-        default:
-          return meta.status;
-      }
+      // Use explicit casting to string to compare safely if types mismatch
+      const act = action as string;
+
+      if (act === "SUBMIT" || act === "SUBMIT_QA_REVIEW") return "Review";
+      if (act === "APPROVE") return "Approved";
+      if (act === "MARK_EFFECTIVE" || act === "PUBLISH") return "Effective";
+      if (act === "CLOSE") return "Closed";
+      if (act === "REJECT") return "Rejected";
+      
+      return meta.status;
     })();
 
     const updated: WorkflowMeta = {
       ...meta,
       status: statusAfter,
-      rejectionReason: action === "REJECT" ? rejectionReason : meta.rejectionReason,
+      rejectionReason: (action as string) === "REJECT" ? rejectionReason : meta.rejectionReason,
       approvalsLog: [
         {
           id: crypto.randomUUID(),

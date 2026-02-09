@@ -53,6 +53,7 @@ export default function SignupPage() {
         email: email,
         password: password,
         first_name: name,
+        role: "Viewer", 
       });
 
       // 2. ✅ Auto-Login Immediately (Get the Token)
