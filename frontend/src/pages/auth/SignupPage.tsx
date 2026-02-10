@@ -1,12 +1,9 @@
 import {
   Box,
   Button,
-  Checkbox,
-  FormControlLabel,
   TextField,
   Typography,
   Paper,
-  Alert,
   InputAdornment,
   IconButton,
   LinearProgress,

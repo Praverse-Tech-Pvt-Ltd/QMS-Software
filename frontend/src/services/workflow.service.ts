@@ -6,7 +6,7 @@ import type {
 } from "../types/workflow.types";
 
 // ================================
-// 🎯 ENHANCED WORKFLOW ENGINE V2
+// 🎯 ENHANCED WORKFLOW ENGINE V2.1
 // ================================
 
 // Event System
@@ -17,7 +17,7 @@ type WorkflowEventType =
   | "workflow.error"
   | "workflow.validated";
 
-interface WorkflowEvent {
+export interface WorkflowEvent {
   id: string;
   type: WorkflowEventType;
   timestamp: string;
@@ -31,29 +31,30 @@ interface StateTransition {
   from: WorkflowStatus[];
   to: WorkflowStatus;
   action: WorkflowAction;
+  allowedRoles: string[]; // 🛡️ NEW: RBAC Support
   validate?: (meta: WorkflowMeta) => ValidationResult;
   onTransition?: (meta: WorkflowMeta) => void;
 }
 
-interface ValidationResult {
+export interface ValidationResult {
   valid: boolean;
   errors?: string[];
 }
 
 // Advanced Storage Strategy
-interface StorageStrategy {
+export interface StorageStrategy {
   get(key: string): string | null;
   set(key: string, value: string): void;
   remove(key: string): void;
 }
 
-class LocalStorageStrategy implements StorageStrategy {
+export class LocalStorageStrategy implements StorageStrategy {
   get(key: string) { return localStorage.getItem(key); }
   set(key: string, value: string) { localStorage.setItem(key, value); }
   remove(key: string) { localStorage.removeItem(key); }
 }
 
-class MemoryStorageStrategy implements StorageStrategy {
+export class MemoryStorageStrategy implements StorageStrategy {
   private cache = new Map<string, string>();
   get(key: string) { return this.cache.get(key) || null; }
   set(key: string, value: string) { this.cache.set(key, value); }
@@ -65,15 +66,56 @@ const getKey = (moduleKey: WorkflowModuleKey) => `qms_workflow_${moduleKey}`;
 const now = () => new Date().toISOString();
 
 // State Machine Definition
+// 🛡️ Added allowedRoles for security
 const STATE_MACHINE: StateTransition[] = [
-  { from: ["Draft"], to: "Review", action: "SUBMIT" },
-  { from: ["Review"], to: "Approved", action: "APPROVE" },
-  { from: ["Review"], to: "Rejected", action: "REJECT" },
-  { from: ["Approved"], to: "Effective", action: "PUBLISH" },
-  { from: ["Effective", "Approved"], to: "Closed", action: "CLOSE" },
-  { from: ["Rejected"], to: "Draft", action: "SUBMIT" },
-  { from: ["Investigation"], to: "Root Cause Analysis", action: "SUBMIT_RCA" },
-  { from: ["Implementation"], to: "Verification", action: "VERIFY_EFFECTIVENESS" },
+  { 
+    from: ["Draft"], 
+    to: "Review", 
+    action: "SUBMIT", 
+    allowedRoles: ["Admin", "Author", "QALead", "Manager"] 
+  },
+  { 
+    from: ["Review"], 
+    to: "Approved", 
+    action: "APPROVE", 
+    allowedRoles: ["Admin", "QALead", "Manager"] 
+  },
+  { 
+    from: ["Review"], 
+    to: "Rejected", 
+    action: "REJECT", 
+    allowedRoles: ["Admin", "QALead", "Manager"] 
+  },
+  { 
+    from: ["Approved"], 
+    to: "Effective", 
+    action: "PUBLISH", 
+    allowedRoles: ["Admin", "QALead"] 
+  },
+  { 
+    from: ["Effective", "Approved"], 
+    to: "Closed", 
+    action: "CLOSE", 
+    allowedRoles: ["Admin", "QALead"] 
+  },
+  { 
+    from: ["Rejected"], 
+    to: "Draft", 
+    action: "SUBMIT", 
+    allowedRoles: ["Admin", "Author"] 
+  },
+  { 
+    from: ["Investigation"], 
+    to: "Root Cause Analysis", 
+    action: "SUBMIT_RCA", 
+    allowedRoles: ["Admin", "Investigator", "QALead"] 
+  },
+  { 
+    from: ["Implementation"], 
+    to: "Verification", 
+    action: "VERIFY_EFFECTIVENESS", 
+    allowedRoles: ["Admin", "QALead"] 
+  },
 ];
 
 function seedMeta(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
@@ -82,6 +124,7 @@ function seedMeta(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
     moduleKey,
     status: "Draft",
     dueDate: "",
+    rejectionReason: undefined,
     approvalRequests: [],
     approvalsLog: [
       {
@@ -94,7 +137,6 @@ function seedMeta(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
         timestamp: now(),
       },
     ],
-    ],
     signatureLog: [],
   };
 }
@@ -103,7 +145,7 @@ function seedMeta(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
 // 🚀 ENHANCED WORKFLOW SERVICE
 // ================================
 
-class WorkflowEngine {
+export class WorkflowEngine {
   private storage: StorageStrategy;
   private eventQueue: WorkflowEvent[] = [];
   private subscribers = new Map<WorkflowEventType, ((event: WorkflowEvent) => void)[]>();
@@ -112,7 +154,7 @@ class WorkflowEngine {
     this.storage = storage || new LocalStorageStrategy();
   }
 
-  // Event System
+  // --- Event System ---
   private emit(type: WorkflowEventType, moduleKey: WorkflowModuleKey, recordId: string, payload: unknown) {
     const event: WorkflowEvent = {
       id: crypto.randomUUID(),
@@ -153,7 +195,7 @@ class WorkflowEngine {
     return events;
   }
 
-  // Storage Operations
+  // --- Storage Operations ---
   private getMap(moduleKey: WorkflowModuleKey): Record<string, WorkflowMeta> {
     const key = getKey(moduleKey);
     const data = this.storage.get(key);
@@ -165,10 +207,11 @@ class WorkflowEngine {
     this.storage.set(key, JSON.stringify(map));
   }
 
-  // Validation
+  // --- Validation & Permission Checks ---
   private validateTransition(
     meta: WorkflowMeta,
-    action: WorkflowAction
+    action: WorkflowAction,
+    actorRole: string
   ): ValidationResult {
     const transition = STATE_MACHINE.find(
       t => t.action === action && t.from.includes(meta.status)
@@ -181,6 +224,14 @@ class WorkflowEngine {
       };
     }
 
+    // 🛡️ RBAC Check
+    if (!transition.allowedRoles.includes(actorRole) && actorRole !== "Admin") {
+      return {
+        valid: false,
+        errors: [`Permission denied: Role '${actorRole}' cannot perform '${action}'`],
+      };
+    }
+
     if (transition.validate) {
       return transition.validate(meta);
     }
@@ -188,7 +239,21 @@ class WorkflowEngine {
     return { valid: true };
   }
 
-  // Core Methods
+  /**
+   * Helper for UI: Returns actions the current user can perform
+   */
+  getAvailableActions(status: WorkflowStatus, role: string): WorkflowAction[] {
+    return STATE_MACHINE
+      .filter(t => t.from.includes(status) && (t.allowedRoles.includes(role) || role === "Admin"))
+      .map(t => t.action);
+  }
+
+  canPerformAction(status: WorkflowStatus, action: WorkflowAction, role: string): boolean {
+    const actions = this.getAvailableActions(status, role);
+    return actions.includes(action);
+  }
+
+  // --- Core Methods ---
   getOrCreate(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
     const map = this.getMap(moduleKey);
 
@@ -214,12 +279,6 @@ class WorkflowEngine {
     id: string,
     moduleKey: WorkflowModuleKey,
     entry: {
-      meaning: "Review" | "Approval" | "Execution";
-      statusBefore: WorkflowStatus;
-      statusAfter: WorkflowStatus;
-      signedBy: string;
-      role: string;
-      comment?: string;
       meaning: "Review" | "Approval" | "Execution";
       statusBefore: WorkflowStatus;
       statusAfter: WorkflowStatus;
@@ -261,8 +320,8 @@ class WorkflowEngine {
     try {
       const meta = this.getOrCreate(id, moduleKey);
 
-      // Validate transition
-      const validation = this.validateTransition(meta, action);
+      // Validate transition & permissions
+      const validation = this.validateTransition(meta, action, actor.role);
       
       if (!validation.valid) {
         this.emit("workflow.error", moduleKey, id, { errors: validation.errors });
@@ -291,11 +350,11 @@ class WorkflowEngine {
       const updated: WorkflowMeta = {
         ...meta,
         status: statusAfter,
-        rejectionReason: action === "REJECT" ? rejectionReason : meta.rejectionReason,
+        rejectionReason: action === "REJECT" ? rejectionReason : undefined, // Clear rejection reason if not rejecting
         approvalsLog: [logEntry, ...meta.approvalsLog],
       };
 
-      // Execute transition hook
+      // Execute transition hook (e.g., clear approvals, set due date)
       if (transition.onTransition) {
         transition.onTransition(updated);
       }
@@ -314,7 +373,7 @@ class WorkflowEngine {
     }
   }
 
-  // Query Methods
+  // --- Query Methods ---
   getAllByModule(moduleKey: WorkflowModuleKey): WorkflowMeta[] {
     const map = this.getMap(moduleKey);
     return Object.values(map);
@@ -330,7 +389,7 @@ class WorkflowEngine {
     );
   }
 
-  // Bulk Operations
+  // --- Bulk Operations (Optimized) ---
   bulkTransition(
     ids: string[],
     moduleKey: WorkflowModuleKey,
@@ -340,21 +399,59 @@ class WorkflowEngine {
   ): { success: WorkflowMeta[]; failed: { id: string; error: string }[] } {
     const success: WorkflowMeta[] = [];
     const failed: { id: string; error: string }[] = [];
+    
+    // Optimization: Read map ONCE
+    const map = this.getMap(moduleKey);
+    let mapDirty = false;
 
-    for (const id of ids) {
-      const result = this.transition(id, moduleKey, action, actor, comment);
-      
-      if ("error" in result) {
-        failed.push({ id, error: result.error });
-      } else {
-        success.push(result);
-      }
+    ids.forEach(id => {
+       // Helper function to simulate transition without re-reading map
+       // Note: reusing core logic but adapted for memory efficiency
+       try {
+         const meta = map[id] || seedMeta(id, moduleKey);
+         
+         const validation = this.validateTransition(meta, action, actor.role);
+         if (!validation.valid) {
+           failed.push({ id, error: validation.errors?.join(", ") || "Invalid transition" });
+           return;
+         }
+
+         const transition = STATE_MACHINE.find(t => t.action === action && t.from.includes(meta.status))!;
+         
+         // Update object in memory
+         const statusAfter = transition.to;
+         const updated = {
+           ...meta,
+           status: statusAfter,
+           approvalsLog: [{
+             id: crypto.randomUUID(),
+             action,
+             statusAfter,
+             comment: comment || "Bulk action",
+             user: actor.user,
+             role: actor.role,
+             timestamp: now(),
+           }, ...meta.approvalsLog]
+         };
+
+         map[id] = updated;
+         success.push(updated);
+         mapDirty = true;
+
+       } catch(e) {
+         failed.push({ id, error: String(e) });
+       }
+    });
+
+    // Optimization: Write map ONCE
+    if (mapDirty) {
+      this.setMap(moduleKey, map);
     }
 
     return { success, failed };
   }
 
-  // Statistics
+  // --- Statistics ---
   getStats(moduleKey: WorkflowModuleKey) {
     const all = this.getAllByModule(moduleKey);
     
@@ -387,7 +484,7 @@ class WorkflowEngine {
     return times.reduce((a, b) => a + b, 0) / times.length;
   }
 
-  // Debugging & Monitoring
+  // --- Debugging & Monitoring ---
   debug(moduleKey?: WorkflowModuleKey) {
     console.group("🔍 Workflow Debug Info");
     
@@ -417,7 +514,3 @@ class WorkflowEngine {
 
 // Export singleton instance
 export const workflowService = new WorkflowEngine();
-
-// Export class for testing with different storage strategies
-export { WorkflowEngine, LocalStorageStrategy, MemoryStorageStrategy };
-export type { WorkflowEvent, WorkflowEventType, ValidationResult };
