@@ -94,6 +94,7 @@ function seedMeta(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
         timestamp: now(),
       },
     ],
+    ],
     signatureLog: [],
   };
 }
@@ -213,6 +214,12 @@ class WorkflowEngine {
     id: string,
     moduleKey: WorkflowModuleKey,
     entry: {
+      meaning: "Review" | "Approval" | "Execution";
+      statusBefore: WorkflowStatus;
+      statusAfter: WorkflowStatus;
+      signedBy: string;
+      role: string;
+      comment?: string;
       meaning: "Review" | "Approval" | "Execution";
       statusBefore: WorkflowStatus;
       statusAfter: WorkflowStatus;

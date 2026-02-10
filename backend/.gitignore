@@ -15,7 +15,7 @@ venv/
 env/
 .venv/
 secrets.json
-
+seed_db.py
 # --- Media & Static ---
 # Ignore user-uploaded files (DMS files) but keep the folder structure
 media/
