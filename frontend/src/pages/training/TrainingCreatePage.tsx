@@ -117,33 +117,43 @@ export default function TrainingCreatePage() {
         showBack
       />
 
-      <Alert 
-        severity="info" 
-        icon={<InfoOutlinedIcon />}
-        sx={{ 
-          mt: 3, 
-          maxWidth: 1200, 
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 2.5,
+          maxWidth: 1200,
           mx: "auto",
           borderRadius: 3,
-          border: "1px solid #C7D2FE",
-          bgcolor: "#F5F7FF",
+          border: "1px solid #bbf7d0",
+          bgcolor: "#f0fdf4",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 2,
         }}
       >
-        <AlertTitle sx={{ fontWeight: 700 }}>Training Management</AlertTitle>
-        Define the training requirements, select assessment methods, and assign completion deadlines.
-      </Alert>
+        <InfoOutlinedIcon sx={{ color: "#10b981", mt: 0.5 }} />
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a", mb: 0.5 }}>
+            Training Management
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#64748b", fontSize: "14px" }}>
+            Define the training requirements, select assessment methods, and assign completion deadlines.
+          </Typography>
+        </Box>
+      </Paper>
 
       <Paper
         elevation={0}
         sx={{
           mt: 3,
-          p: 5,
-          borderRadius: 4,
-          border: "1px solid #E9ECEF",
-          boxShadow: shadows.card,
+          p: 4,
+          borderRadius: 3,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
           maxWidth: 1200,
           mx: "auto",
-          background: "linear-gradient(to bottom, #FFFFFF 0%, #FAFBFC 100%)",
+          bgcolor: "#ffffff",
         }}
       >
         <Box sx={{ mb: 4 }}>

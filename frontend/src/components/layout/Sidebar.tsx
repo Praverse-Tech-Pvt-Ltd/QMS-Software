@@ -514,55 +514,6 @@ export default function Sidebar() {
 
         </List>
       </Box>
-
-      {/* --- 3. PROFILE CARD --- */}
-      <Box sx={{ px: 2, py: 1.5, borderTop: "1px solid #E9ECEF" }}>
-        <Box
-          sx={{
-            p: 1.5,
-            borderRadius: 2,
-            bgcolor: "#F7F8FA",
-            border: "1px solid #E9ECEF",
-          }}
-        >
-          <Box sx={{ display: "flex", gap: 1.5, mb: 1.5, alignItems: "center" }}>
-            <Avatar sx={{ bgcolor: "#6366F1", width: 32, height: 32, fontSize: 13, fontWeight: 700 }}>AP</Avatar>
-            <Box>
-              <Typography variant="body2" fontWeight={600} color="#2D3339" sx={{ fontSize: "0.8125rem" }}>
-                Alexander Pierce
-              </Typography>
-              <Typography variant="caption" color="#858D96" fontWeight={500} sx={{ textTransform: 'capitalize', fontSize: "0.75rem" }}>
-                {role || "Viewer"} {/* Fallback if null */}
-              </Typography>
-            </Box>
-          </Box>
-
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<LogoutOutlinedIcon fontSize="small" />}
-            size="small"
-            sx={{ 
-                textTransform: "none", 
-                fontWeight: 600, 
-                borderColor: "#DFE2E6",
-                color: "#5C6370",
-                bgcolor: "#FFFFFF",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-                minHeight: 32,
-                fontSize: "0.8125rem",
-                "&:hover": { 
-                  bgcolor: "#FAFBFC", 
-                  borderColor: "#858D96", 
-                  color: "#2D3339" 
-                }
-            }}
-            onClick={handleLogout}
-          >
-            Sign Out
-          </Button>
-        </Box>
-      </Box>
     </Box>
   );
 }

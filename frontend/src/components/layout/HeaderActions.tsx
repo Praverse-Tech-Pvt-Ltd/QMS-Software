@@ -25,18 +25,20 @@ import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 import { transitions, shadows, motion } from "../../theme/motion";
+import CreateDocumentModal from "../common/CreateDocumentModal";
 
 const ROLES = ["Admin", "QA", "QC", "Production", "Warehouse", "Viewer"] as const;
 
-export default function HeaderActions() {
+function HeaderActions() {
   const navigate = useNavigate();
   const { role, setRole } = useRole();
   const [scrolled, setScrolled] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   
   // Detect scroll for elevation effect
   useEffect(() => {
@@ -56,16 +58,23 @@ export default function HeaderActions() {
   const notifyOpen = Boolean(notifyAnchorEl);
 
   // --- Handlers ---
-  const handleUserMenuClose = () => setAnchorEl(null);
-  const handleNotifyMenuClose = () => setNotifyAnchorEl(null);
+  const handleUserMenuClose = useCallback(() => setAnchorEl(null), []);
+  const handleNotifyMenuClose = useCallback(() => setNotifyAnchorEl(null), []);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("qms_token");
     navigate("/login", { replace: true });
-  };
+  }, [navigate]);
 
-  // ✅ Fix: Check if role exists before checking permissions
-  const canCreateDocument = role ? permissionService.can(role, "dms", "create") : false;
+  // ✅ Memoize permission check
+  const canCreateDocument = useMemo(
+    () => (role ? permissionService.can(role, "dms", "create") : false),
+    [role]
+  );
+
+  // ✅ Memoize modal handlers
+  const handleOpenCreateModal = useCallback(() => setCreateModalOpen(true), []);
+  const handleCloseCreateModal = useCallback(() => setCreateModalOpen(false), []);
 
   return (
     <Box 
@@ -187,17 +196,19 @@ export default function HeaderActions() {
             <Button
               variant="contained"
               startIcon={<AddOutlinedIcon />}
-              onClick={() => navigate("/dms/new")}
+              onClick={handleOpenCreateModal}
               sx={{ 
-                bgcolor: "#6366F1", 
+                bgcolor: "#667eea", 
                 borderRadius: 2, 
                 textTransform: "none", 
                 fontWeight: 600, 
                 display: { xs: "none", md: "flex" }, 
-                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)", 
+                boxShadow: "0 2px 8px rgba(102, 126, 234, 0.25)", 
+                transition: "all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)",
                 "&:hover": { 
-                  bgcolor: "#4F46E5",
-                  boxShadow: "0 4px 8px rgba(31, 111, 235, 0.25)",
+                  bgcolor: "#764ba2",
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 4px 12px rgba(102, 126, 234, 0.35)",
                 } 
               }}
             >
@@ -206,18 +217,63 @@ export default function HeaderActions() {
           )}
 
            {/* User Profile */}
-           <IconButton 
-             onClick={(e) => setAnchorEl(e.currentTarget)} 
-             sx={{ 
-               ml: 0.5, 
-               color: "#5C6370",
+           <Box
+             onClick={(e) => setAnchorEl(e.currentTarget)}
+             sx={{
+               display: "flex",
+               alignItems: "center",
+               gap: 1.5,
+               ml: 1,
+               px: 1.5,
+               py: 0.75,
+               borderRadius: 2,
+               cursor: "pointer",
+               border: "1px solid",
+               borderColor: userOpen ? "#6366F1" : "#e2e8f0",
+               bgcolor: userOpen ? "#f0f4ff" : "transparent",
+               transition: transitions.fast,
                "&:hover": {
-                 bgcolor: "#F3F4F6",
-               }
+                 bgcolor: "#f8fafc",
+                 borderColor: "#cbd5e1",
+               },
              }}
            >
-             <AccountCircleOutlinedIcon />
-           </IconButton>
+             <Avatar
+               sx={{
+                 width: 36,
+                 height: 36,
+                 bgcolor: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                 fontSize: "14px",
+                 fontWeight: 600,
+               }}
+             >
+               AP
+             </Avatar>
+             <Box sx={{ display: { xs: "none", lg: "block" } }}>
+               <Typography
+                 variant="body2"
+                 sx={{
+                   fontWeight: 600,
+                   color: "#0f172a",
+                   lineHeight: 1.2,
+                   fontSize: "14px",
+                 }}
+               >
+                 Alexander Pierce
+               </Typography>
+               <Typography
+                 variant="caption"
+                 sx={{
+                   color: "#64748b",
+                   fontSize: "12px",
+                   display: "block",
+                   lineHeight: 1,
+                 }}
+               >
+                 Chief Quality Officer
+               </Typography>
+             </Box>
+           </Box>
 
            {/* --- USER MENU --- */}
            <Menu
@@ -226,47 +282,140 @@ export default function HeaderActions() {
             onClose={handleUserMenuClose}
             onClick={handleUserMenuClose}
             PaperProps={{ 
-              elevation: 16, 
+              elevation: 0, 
               sx: { 
                 overflow: 'visible', 
-                mt: 1.5, 
+                mt: 2, 
                 borderRadius: 3, 
-                minWidth: 200, 
-                border: "1px solid #E9ECEF",
-                boxShadow: "0 16px 32px -8px rgba(0, 0, 0, 0.2)",
+                minWidth: 280, 
+                border: "1px solid #e2e8f0",
+                boxShadow: "0 20px 40px -12px rgba(0, 0, 0, 0.15)",
               } 
             }}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
-            <Box sx={{ px: 2.5, py: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} color="#2D3339">Alexander Pierce</Typography>
-              <Typography variant="caption" color="#858D96">Chief Quality Officer</Typography>
+            {/* Profile Header */}
+            <Box sx={{ px: 3, py: 3, bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                <Avatar
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    fontSize: "18px",
+                    fontWeight: 700,
+                  }}
+                >
+                  AP
+                </Avatar>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={700} color="#0f172a" sx={{ lineHeight: 1.2, mb: 0.5 }}>
+                    Alexander Pierce
+                  </Typography>
+                  <Typography variant="caption" color="#64748b" sx={{ display: "block" }}>
+                    Chief Quality Officer
+                  </Typography>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  pt: 2,
+                  borderTop: "1px solid #e2e8f0",
+                }}
+              >
+                <Box sx={{ flex: 1, textAlign: "center" }}>
+                  <Typography variant="h6" fontWeight={700} color="#0f172a">12</Typography>
+                  <Typography variant="caption" color="#64748b">Tasks</Typography>
+                </Box>
+                <Box sx={{ flex: 1, textAlign: "center", borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0" }}>
+                  <Typography variant="h6" fontWeight={700} color="#0f172a">8</Typography>
+                  <Typography variant="caption" color="#64748b">Pending</Typography>
+                </Box>
+                <Box sx={{ flex: 1, textAlign: "center" }}>
+                  <Typography variant="h6" fontWeight={700} color="#0f172a">32</Typography>
+                  <Typography variant="caption" color="#64748b">Approved</Typography>
+                </Box>
+              </Box>
             </Box>
-            <Divider sx={{ borderColor: "#E9ECEF" }} />
-            <MenuItem 
-              onClick={() => navigate("/settings")} 
-              sx={{ 
-                py: 1.5, 
-                px: 2.5,
-                "&:hover": { bgcolor: "#F3F4F6" }
-              }}
-            >
-              <Avatar sx={{ width: 24, height: 24, mr: 1.5, bgcolor: "transparent", color: "#5C6370" }} /> 
-              Profile
-            </MenuItem>
-            <MenuItem 
-              onClick={handleLogout} 
-              sx={{ 
-                color: "#DC2626", 
-                py: 1.5, 
-                px: 2.5,
-                "&:hover": { bgcolor: "#FEE2E2" }
-              }}
-            >
-              <LogoutOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} /> 
-              Sign Out
-            </MenuItem>
+
+            {/* Menu Items */}
+            <Box sx={{ py: 1 }}>
+              <MenuItem 
+                onClick={() => navigate("/settings")} 
+                sx={{ 
+                  py: 1.5, 
+                  px: 3,
+                  gap: 2,
+                  transition: transitions.fast,
+                  "&:hover": { 
+                    bgcolor: "#f8fafc",
+                    "& .menu-icon": {
+                      color: "#6366F1",
+                      transform: "translateX(2px)",
+                    }
+                  }
+                }}
+              >
+                <AccountCircleOutlinedIcon className="menu-icon" fontSize="small" sx={{ color: "#64748b", transition: transitions.fast }} /> 
+                <Typography variant="body2" fontWeight={600} color="#475569">
+                  My Profile
+                </Typography>
+              </MenuItem>
+              <MenuItem 
+                onClick={() => navigate("/settings")} 
+                sx={{ 
+                  py: 1.5, 
+                  px: 3,
+                  gap: 2,
+                  transition: transitions.fast,
+                  "&:hover": { 
+                    bgcolor: "#f8fafc",
+                    "& .menu-icon": {
+                      color: "#6366F1",
+                      transform: "translateX(2px)",
+                    }
+                  }
+                }}
+              >
+                <AssignmentIndOutlinedIcon className="menu-icon" fontSize="small" sx={{ color: "#64748b", transition: transitions.fast }} /> 
+                <Typography variant="body2" fontWeight={600} color="#475569">
+                  My Tasks
+                </Typography>
+              </MenuItem>
+            </Box>
+
+            <Divider sx={{ borderColor: "#e2e8f0", my: 1 }} />
+
+            {/* Sign Out */}
+            <Box sx={{ pb: 1 }}>
+              <MenuItem 
+                onClick={handleLogout} 
+                sx={{ 
+                  py: 1.5, 
+                  px: 3,
+                  gap: 2,
+                  transition: transitions.fast,
+                  "&:hover": { 
+                    bgcolor: "#fef2f2",
+                    "& .menu-icon": {
+                      color: "#dc2626",
+                      transform: "translateX(2px)",
+                    },
+                    "& .menu-text": {
+                      color: "#dc2626",
+                    }
+                  }
+                }}
+              >
+                <LogoutOutlinedIcon className="menu-icon" fontSize="small" sx={{ color: "#64748b", transition: transitions.fast }} /> 
+                <Typography className="menu-text" variant="body2" fontWeight={600} color="#475569" sx={{ transition: transitions.fast }}>
+                  Sign Out
+                </Typography>
+              </MenuItem>
+            </Box>
           </Menu>
 
           {/* --- ✅ NOTIFICATION MENU --- */}
@@ -350,6 +499,14 @@ export default function HeaderActions() {
 
         </Box>
       </Box>
+
+      {/* Create Document Modal */}
+      <CreateDocumentModal
+        open={createModalOpen}
+        onClose={handleCloseCreateModal}
+      />
     </Box>
   );
 }
+
+export default React.memo(HeaderActions);

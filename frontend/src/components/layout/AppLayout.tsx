@@ -5,11 +5,14 @@ import MenuIcon from "@mui/icons-material/Menu";
 
 import Sidebar from "./Sidebar";
 import HeaderActions from "./HeaderActions";
+import CommandPalette from "../common/CommandPalette";
+import LoadingBar, { useLoadingBar } from "../common/LoadingBar";
 
 const DRAWER_WIDTH = 280;
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const loadingBar = useLoadingBar();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -18,6 +21,10 @@ export default function AppLayout() {
   return (
     <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F7F8FA" }}>
       <CssBaseline />
+
+      {/* Global Components */}
+      <LoadingBar isLoading={loadingBar.isLoading} />
+      <CommandPalette />
 
       {/* --- SIDEBAR NAVIGATION --- */}
       <Box
