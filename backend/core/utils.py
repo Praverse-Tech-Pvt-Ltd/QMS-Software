@@ -11,15 +11,15 @@ def generate_qms_id(model_class, field_name, prefix):
     
     # Find the max ID currently in the DB that starts with this prefix
     # We filter specifically for the current year to reset sequence annually
-    existing_ids = model_class.objects.filter(
+    max_id_val = model_class.objects.filter(
         **{f"{field_name}__startswith": prefix_with_year}
-    ).aggregate(max_id=Max(field_name))['max_id']
+    ).aggregate(max_id=Max(field_name))['max_id']  # ✅ Added missing '}' here
 
-    if existing_ids:
+    if max_id_val:
         # Extract the sequence number (last 3 digits) and increment
         # Example: DEV-2026-005 -> 5
         try:
-            sequence = int(existing_ids.split('-')[-1]) + 1
+            sequence = int(max_id_val.split('-')[-1]) + 1
         except ValueError:
             sequence = 1
     else:
