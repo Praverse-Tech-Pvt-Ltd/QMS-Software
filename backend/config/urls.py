@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from core.views import dashboard_stats, my_tasks
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,6 +26,8 @@ urlpatterns = [
     path('api/dms/', include('dms.urls')),
     path('api/quality/', include('quality.urls')),
     path('api/training/', include('training.urls')),
+    path('api/dashboard/stats/', dashboard_stats),
+    path('api/dashboard/tasks/', my_tasks),
 ]
 
 if settings.DEBUG:

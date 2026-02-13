@@ -10,16 +10,14 @@ import {
   TableRow,
   Chip,
   TextField,
-  Grid
+  Grid,
+  CircularProgress
 } from "@mui/material";
-
-
 
 import { useNavigate } from "react-router-dom";
 import { motion, transitions, shadows, keyframes } from "../../theme/motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-// Icons
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import TrendingDownIcon from "@mui/icons-material/TrendingDown";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -31,333 +29,147 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 
-// ✅ 1. Import Role & Permission Logic
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 import type { ModuleKey } from "../../types/permissions.types";
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
+import { fetchDashboardStats, fetchMyTasks } from "../../services/api";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    quality: { deviations: 0, capas: 0, change_controls: 0 },
+    user: { pending_training: 0, assigned_capas: 0, total_tasks: 0 }
+  });
+  const [recentTasks, setRecentTasks] = useState<any[]>([]);
 
-  // --- KPI & Task Data (Static for now) ---
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [statsData, tasksData] = await Promise.all([
+          fetchDashboardStats(),
+          fetchMyTasks()
+        ]);
+        setStats(statsData);
+        setRecentTasks(tasksData.slice(0, 5));
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDashboardData();
+  }, []);
+
+  // ✅ FIXED: Using id and type directly
+  const handleTaskClick = (id: string, type: string) => {
+    switch (type) {
+      case 'CAPA': 
+        navigate(`/capa/${id}`);
+        break;
+      case 'Change Control': 
+        navigate(`/change-control/${id}`);
+        break;
+      case 'Training': 
+        navigate(`/training/${id.replace('TRN-', '')}`);
+        break;
+      case 'Deviation': 
+        navigate(`/deviations/${id}`);
+        break;
+      default: 
+        navigate(`/tasks/${id}`);
+        break;
+    }
+  };
+
   const kpis = [
-    { label: "Pending Approvals", value: "12", change: "+2.1%", trend: "up" },
-    { label: "Open Deviations", value: "08", change: "-5.4%", trend: "down" },
-    {
-      label: "Overdue Trainings",
-      value: "05",
-      change: "STEADY",
-      trend: "neutral",
-    },
-    { label: "Active CAPAs", value: "14", change: "-3.2%", trend: "down" },
-  ];
-
-  const tasks = [
-    {
-      id: "TSK-2845",
-      title: "Review and approve SOP-QA-2024-015 Manufacturing Process",
-      status: "QA Review",
-      priority: "High",
-      due: "2026-01-25",
-    },
-    {
-      id: "TSK-2842",
-      title: "Complete CAPA investigation for batch deviation DEV-098",
-      status: "In Progress",
-      priority: "Critical",
-      due: "2026-01-24",
-    },
-    {
-      id: "TSK-2839",
-      title: "Sign off training completion for GDP module",
-      status: "Open",
-      priority: "Medium",
-      due: "2026-01-28",
-    },
-    {
-      id: "TSK-2840",
-      title: "Quarterly Audit Report Review",
-      status: "Draft",
-      priority: "Low",
-      due: "2026-02-01",
-    },
+    { label: "My Pending Tasks", value: stats.user.total_tasks.toString().padStart(2, '0'), change: "Active", trend: "neutral" },
+    { label: "Open Deviations", value: stats.quality.deviations.toString().padStart(2, '0'), change: "-5.4%", trend: "down" },
+    { label: "Overdue Trainings", value: stats.user.pending_training.toString().padStart(2, '0'), change: stats.user.pending_training > 0 ? "ACTION REQ" : "Good", trend: stats.user.pending_training > 0 ? "down" : "up" },
+    { label: "Active CAPAs", value: stats.quality.capas.toString().padStart(2, '0'), change: "-3.2%", trend: "down" },
   ];
 
   const trendIcon = (trend: string) => {
-    if (trend === "up")
-      return <TrendingUpIcon fontSize="small" sx={{ color: "#16a34a" }} />;
-    if (trend === "down")
-      return <TrendingDownIcon fontSize="small" sx={{ color: "#dc2626" }} />;
+    if (trend === "up") return <TrendingUpIcon fontSize="small" sx={{ color: "#16a34a" }} />;
+    if (trend === "down") return <TrendingDownIcon fontSize="small" sx={{ color: "#dc2626" }} />;
     return <RemoveIcon fontSize="small" sx={{ color: "#9ca3af" }} />;
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case "Critical":
-        return "#dc2626";
-      case "High":
-        return "#ea580c";
-      case "Medium":
-        return "#6366F1";
-      default:
-        return "#4b5563";
+      case "Critical": return "#dc2626";
+      case "High": return "#ea580c";
+      case "Medium": return "#6366F1";
+      default: return "#4b5563";
     }
   };
 
   const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "QA Review":
-        return {
-          bgcolor: "#eff6ff",
-          color: "#1d4ed8",
-          border: "1px solid #C7D2FE",
-        };
-      case "In Progress":
-        return {
-          bgcolor: "#f0fdf4",
-          color: "#15803d",
-          border: "1px solid #bbf7d0",
-        };
-      case "Open":
-        return {
-          bgcolor: "#f3f4f6",
-          color: "#374151",
-          border: "1px solid #e5e7eb",
-        };
-      case "Draft":
-        return {
-          bgcolor: "#fff7ed",
-          color: "#c2410c",
-          border: "1px solid #fed7aa",
-        };
-      default:
-        return { bgcolor: "#f3f4f6", color: "#374151" };
-    }
+    const s = status.toUpperCase();
+    if (s.includes("REVIEW")) return { bgcolor: "#eff6ff", color: "#1d4ed8", border: "1px solid #C7D2FE" };
+    if (s.includes("PROGRESS") || s.includes("ACTIVE")) return { bgcolor: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" };
+    if (s.includes("OPEN") || s.includes("PENDING")) return { bgcolor: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" };
+    if (s.includes("DRAFT")) return { bgcolor: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" };
+    if (s.includes("OVERDUE")) return { bgcolor: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" };
+    return { bgcolor: "#f3f4f6", color: "#374151" };
   };
 
-  // ✅ 3. Define Actions with their required Module Permission
   const allActions = [
-    {
-      label: "New Doc",
-      icon: <DescriptionOutlinedIcon fontSize="large" />,
-      path: "/dms/new",
-      module: "dms" as ModuleKey,
-    },
-    {
-      label: "Deviation",
-      icon: <ReportProblemOutlinedIcon fontSize="large" />,
-      path: "/deviations/new",
-      module: "deviations" as ModuleKey,
-    },
-    {
-      label: "Log Training",
-      icon: <SchoolOutlinedIcon fontSize="large" />,
-      path: "/training/new",
-      module: "training" as ModuleKey,
-    },
-    {
-      label: "CAPA",
-      icon: <FactCheckOutlinedIcon fontSize="large" />,
-      path: "/capa/new",
-      module: "capa" as ModuleKey,
-    },
+    { label: "New Doc", icon: <DescriptionOutlinedIcon fontSize="large" />, path: "/dms/new", module: "dms" as ModuleKey },
+    { label: "Deviation", icon: <ReportProblemOutlinedIcon fontSize="large" />, path: "/deviations/new", module: "deviations" as ModuleKey },
+    { label: "Log Training", icon: <SchoolOutlinedIcon fontSize="large" />, path: "/training/new", module: "training" as ModuleKey },
+    { label: "CAPA", icon: <FactCheckOutlinedIcon fontSize="large" />, path: "/capa/new", module: "capa" as ModuleKey },
   ];
 
-  // ✅ 4. Handler for quick action clicks with permission check
   const handleQuickActionClick = (action: typeof allActions[0]) => {
-    // ✅ FIX: Handle nullable role
     if (!role) {
-        setPermissionDenied({
-            open: true,
-            message: "You must be logged in to perform this action.",
-        });
+        setPermissionDenied({ open: true, message: "You must be logged in to perform this action." });
         return;
     }
-
     const hasPermission = permissionService.can(role, action.module, "create");
-    
     if (!hasPermission) {
-      setPermissionDenied({
-        open: true,
-        message: `You don't have permission to create ${action.label}. Your current role (${role}) does not allow this action.`,
-      });
+      setPermissionDenied({ open: true, message: `You don't have permission to create ${action.label}.` });
       return;
     }
     navigate(action.path);
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <Box 
-      sx={{ 
-        maxWidth: 1600, 
-        mx: "auto",
-        animation: "fadeInUp 400ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-        ...keyframes.fadeInUp,
-      }}
-    >
+    <Box sx={{ maxWidth: 1600, mx: "auto", animation: "fadeInUp 400ms cubic-bezier(0.2, 0.8, 0.2, 1)", ...keyframes.fadeInUp }}>
       {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          mb: 4,
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 4 }}>
         <Box>
-          <Typography
-            variant="h4"
-            sx={{
-              fontWeight: 800,
-              color: "#0f172a",
-              mb: 0.5,
-              letterSpacing: "-0.5px",
-            }}
-          >
-            Quality Dashboard Overview
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Monitoring real-time compliance metrics for current cycle.
-          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5, letterSpacing: "-0.5px" }}>Quality Dashboard Overview</Typography>
+          <Typography variant="body1" color="text.secondary">Monitoring real-time compliance metrics for current cycle.</Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1.5 }}>
-          <Button
-            variant="outlined"
-            sx={{
-              bgcolor: "white",
-              borderColor: "#e2e8f0",
-              color: "#475569",
-              textTransform: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              px: 2,
-              transition: transitions.button.default,
-              "&:hover": {
-                borderColor: "#cbd5e0",
-                bgcolor: "#f8fafc",
-                transform: "translateY(-1px)",
-                boxShadow: shadows.subtle,
-              },
-              "&:active": {
-                transform: "translateY(0)",
-                transition: transitions.button.press,
-              },
-            }}
-          >
-            This Month
-          </Button>
-          <Button
-            variant="outlined"
-            // ✅ FIX: Handle nullable role for disabled check
-            disabled={!role || !permissionService.can(role, 'dashboard', 'export')}
-            sx={{
-              bgcolor: "white",
-              borderColor: "#e2e8f0",
-              color: "#475569",
-              textTransform: "none",
-              fontWeight: 600,
-              borderRadius: 2,
-              px: 2,
-              transition: transitions.button.default,
-              "&:hover": {
-                borderColor: "#cbd5e0",
-                bgcolor: "#f8fafc",
-                transform: "translateY(-1px)",
-                boxShadow: shadows.subtle,
-              },
-              "&:active": {
-                transform: "translateY(0)",
-                transition: transitions.button.press,
-              },
-              "&:disabled": {
-                bgcolor: "#f3f4f6",
-                color: "#9ca3af",
-              },
-            }}
-          >
-            Export PDF
-          </Button>
+          <Button variant="outlined" sx={{ bgcolor: "white", borderColor: "#e2e8f0", color: "#475569", textTransform: "none", fontWeight: 600, borderRadius: 2 }}>This Month</Button>
+          <Button variant="outlined" disabled={!role || !permissionService.can(role, 'dashboard', 'export')} sx={{ bgcolor: "white", borderColor: "#e2e8f0", color: "#475569", textTransform: "none", fontWeight: 600, borderRadius: 2 }}>Export PDF</Button>
         </Box>
       </Box>
 
       {/* KPI Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {kpis.map((kpi, index) => (
+        {kpis.map((kpi) => (
           <Grid key={kpi.label} size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                border: "1px solid #e2e8f0",
-                boxShadow: shadows.card,
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                transition: transitions.card.hover,
-                animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} ${index * 50}ms both`,
-                ...keyframes.fadeInUp,
-                "&:hover": {
-                  transform: `translateY(-${motion.distance.small}px)`,
-                  boxShadow: shadows.cardHover,
-                  borderColor: "#cbd5e0",
-                },
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{ fontWeight: 600, color: "#64748b", mb: 2 }}
-              >
-                {kpi.label}
-              </Typography>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-end",
-                }}
-              >
-                <Typography
-                  variant="h3"
-                  sx={{ fontWeight: 800, color: "#0f172a", lineHeight: 1 }}
-                >
-                  {kpi.value}
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 0.5,
-                    bgcolor:
-                      kpi.trend === "up"
-                        ? "#f0fdf4"
-                        : kpi.trend === "down"
-                          ? "#fef2f2"
-                          : "#f3f4f6",
-                    px: 1,
-                    py: 0.5,
-                    borderRadius: 2,
-                  }}
-                >
+            <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: shadows.card, height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", transition: transitions.card.hover, "&:hover": { transform: `translateY(-${motion.distance.small}px)`, boxShadow: shadows.cardHover, borderColor: "#cbd5e0" } }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: "#64748b", mb: 2 }}>{kpi.label}</Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <Typography variant="h3" sx={{ fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>{kpi.value}</Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: kpi.trend === "up" ? "#f0fdf4" : kpi.trend === "down" ? "#fef2f2" : "#f3f4f6", px: 1, py: 0.5, borderRadius: 2 }}>
                   {trendIcon(kpi.trend)}
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: 700,
-                      color:
-                        kpi.trend === "up"
-                          ? "#16a34a"
-                          : kpi.trend === "down"
-                            ? "#dc2626"
-                            : "#6b7280",
-                    }}
-                  >
-                    {kpi.change}
-                  </Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: kpi.trend === "up" ? "#16a34a" : kpi.trend === "down" ? "#dc2626" : "#6b7280" }}>{kpi.change}</Typography>
                 </Box>
               </Box>
             </Paper>
@@ -367,228 +179,61 @@ export default function DashboardPage() {
 
       {/* Main Content Grid */}
       <Grid container spacing={3}>
-        {/* My Tasks Table */}
         <Grid size={{ xs: 12, lg: 8 }}>
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 4,
-              border: "1px solid #e2e8f0",
-              overflow: "hidden",
-              boxShadow: shadows.card,
-              animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 250ms both`,
-              ...keyframes.fadeInUp,
-            }}
-          >
-            <Box
-              sx={{
-                p: 3,
-                borderBottom: "1px solid #f1f5f9",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography
-                variant="h6"
-                sx={{ fontWeight: 800, color: "#0f172a" }}
-              >
-                My Tasks
-              </Typography>
-              <Button
-                size="small"
-                sx={{ textTransform: "none", fontWeight: 600 }}
-              >
-                View All
-              </Button>
+          <Paper elevation={0} sx={{ borderRadius: 4, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: shadows.card }}>
+            <Box sx={{ p: 3, borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a" }}>My Tasks</Typography>
+              <Button size="small" onClick={() => navigate('/tasks')} sx={{ textTransform: "none", fontWeight: 600 }}>View All</Button>
             </Box>
             <Table>
               <TableHead sx={{ bgcolor: "#f8fafc" }}>
                 <TableRow>
-                  <TableCell
-                    sx={{
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      color: "#64748b",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    TASK ID
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      color: "#64748b",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    DESCRIPTION
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      color: "#64748b",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    STATUS
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      color: "#64748b",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    PRIORITY
-                  </TableCell>
-                  <TableCell
-                    sx={{
-                      fontSize: "0.7rem",
-                      fontWeight: 700,
-                      color: "#64748b",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    DUE DATE
-                  </TableCell>
+                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>TASK ID</TableCell>
+                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>TYPE</TableCell>
+                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>DESCRIPTION</TableCell>
+                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>STATUS</TableCell>
+                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>PRIORITY</TableCell>
+                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>DUE DATE</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {tasks.map((t) => (
-                  <TableRow
-                    key={t.id}
-                    hover
-                    sx={{ 
-                      "&:last-child td, &:last-child th": { border: 0 },
-                      cursor: "pointer",
-                      transition: transitions.tableRow.hover,
-                      "&:hover": {
-                        backgroundColor: "#f8fafc",
-                      },
-                    }}
-                  >
-                    <TableCell
-                      sx={{
-                        fontWeight: 600,
-                        color: "#334155",
-                        fontSize: "0.85rem",
-                      }}
+                {recentTasks.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: '#64748b' }}>No pending tasks found</TableCell></TableRow>
+                ) : (
+                    recentTasks.map((t) => (
+                    <TableRow 
+                      key={t.id} 
+                      hover 
+                      onClick={() => handleTaskClick(t.id, t.type)} 
+                      sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer", transition: transitions.tableRow.hover }}
                     >
-                      {t.id}
-                    </TableCell>
-                    <TableCell sx={{ maxWidth: 250 }}>
-                      <Typography
-                        variant="body2"
-                        noWrap
-                        title={t.title}
-                        sx={{ color: "#475569", fontSize: "0.85rem" }}
-                      >
-                        {t.title}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={t.status}
-                        size="small"
-                        sx={{
-                          ...getStatusStyle(t.status),
-                          fontWeight: 600,
-                          borderRadius: 1.5,
-                          height: 24,
-                          fontSize: "0.75rem",
-                          transition: transitions.status.change,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell
-                      sx={{
-                        fontWeight: 700,
-                        color: getPriorityColor(t.priority),
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      {t.priority}
-                    </TableCell>
-                    <TableCell sx={{ color: "#64748b", fontSize: "0.85rem" }}>
-                      {t.due}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        <TableCell sx={{ fontWeight: 600, color: "#334155", fontSize: "0.85rem" }}>{t.id}</TableCell>
+                        <TableCell sx={{ fontSize: "0.75rem", color: "#64748b" }}><Chip label={t.type} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#f1f5f9' }} /></TableCell>
+                        <TableCell sx={{ maxWidth: 200 }}><Typography variant="body2" noWrap title={t.title} sx={{ color: "#475569", fontSize: "0.85rem" }}>{t.title}</Typography></TableCell>
+                        <TableCell><Chip label={t.status} size="small" sx={{ ...getStatusStyle(t.status), fontWeight: 600, borderRadius: 1.5, height: 24, fontSize: "0.75rem" }} /></TableCell>
+                        <TableCell sx={{ fontWeight: 700, color: getPriorityColor(t.priority), fontSize: "0.8rem" }}>{t.priority}</TableCell>
+                        <TableCell sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t.due_date}</TableCell>
+                    </TableRow>
+                    ))
+                )}
               </TableBody>
             </Table>
           </Paper>
         </Grid>
 
-        {/* RIGHT COL: Actions & Alerts */}
+        {/* Right Column - Actions */}
         <Grid size={{ xs: 12, lg: 4 }}>
           <Box sx={{ display: "grid", gap: 3 }}>
-            {/* ✅ QUICK ACTIONS (FILTERED) - Hidden for Viewer */}
             {role !== "Viewer" && (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 3,
-                  borderRadius: 4,
-                  border: "1px solid #e2e8f0",
-                  boxShadow: shadows.card,
-                  animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 300ms both`,
-                  ...keyframes.fadeInUp,
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 800, mb: 3, color: "#0f172a" }}
-                >
-                  Quick Actions
-                </Typography>
-
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: shadows.card }}>
+                <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, color: "#0f172a" }}>Quick Actions</Typography>
                 <Grid container spacing={2}>
                   {allActions.map((action) => {
-                    // ✅ FIX: Handle nullable role
                     const hasPermission = role ? permissionService.can(role, action.module, "create") : false;
-                    
                     return (
-                      <Grid size={6} key={action.label}>
-                        <Button
-                          variant="outlined"
-                          onClick={() => handleQuickActionClick(action)}
-                          sx={{
-                            width: "100%",
-                            aspectRatio: "1/1",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 1.5,
-                            borderRadius: 3,
-                            border: "1px solid #e2e8f0",
-                            color: hasPermission ? "#475569" : "#9ca3af",
-                            bgcolor: "#fff",
-                            textTransform: "none",
-                            boxShadow: shadows.subtle,
-                            transition: transitions.button.default,
-                            opacity: hasPermission ? 1 : 0.6,
-                            "&:hover": {
-                              bgcolor: "#f8fafc",
-                              borderColor: hasPermission ? "#94a3b8" : "#e2e8f0",
-                              color: hasPermission ? "#0f172a" : "#9ca3af",
-                              transform: `translateY(-${motion.distance.small}px)`,
-                              boxShadow: shadows.card,
-                            },
-                            "&:active": {
-                              transform: `translateY(-${motion.distance.micro}px)`,
-                              transition: transitions.button.press,
-                            },
-                          }}
-                        >
-                          {action.icon}
-                          <Typography variant="body2" fontWeight={600}>
-                            {action.label}
-                          </Typography>
+                      <Grid size={{ xs: 6 }} key={action.label}>
+                        <Button variant="outlined" onClick={() => handleQuickActionClick(action)} sx={{ width: "100%", aspectRatio: "1/1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, borderRadius: 3, border: "1px solid #e2e8f0", color: hasPermission ? "#475569" : "#9ca3af", bgcolor: "#fff", textTransform: "none", boxShadow: shadows.subtle, opacity: hasPermission ? 1 : 0.6, "&:hover": { bgcolor: "#f8fafc", borderColor: hasPermission ? "#94a3b8" : "#e2e8f0", color: hasPermission ? "#0f172a" : "#9ca3af" } }}>
+                          {action.icon}<Typography variant="body2" fontWeight={600}>{action.label}</Typography>
                         </Button>
                       </Grid>
                     );
@@ -843,13 +488,7 @@ export default function DashboardPage() {
           </Box>
         </Grid>
       </Grid>
-
-      {/* Permission Denied Dialog */}
-      <PermissionDeniedDialog
-        open={permissionDenied.open}
-        onClose={() => setPermissionDenied({ open: false, message: "" })}
-        message={permissionDenied.message}
-      />
+      <PermissionDeniedDialog open={permissionDenied.open} onClose={() => setPermissionDenied({ open: false, message: "" })} message={permissionDenied.message} />
     </Box>
   );
 }

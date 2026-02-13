@@ -1,32 +1,76 @@
 import { 
-  Box, Typography, Paper, Tabs, Tab, List, ListItem, ListItemText, Chip, Button, Divider 
+  Box, Typography, Paper, Tabs, Tab, List, ListItem, ListItemText, Chip, Button, Divider, CircularProgress
 } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
-export default function MyTasksPage() {
-  const [tab, setTab] = useState(0);
+import { fetchMyTasks } from "../../services/api";
 
-  const TASKS = {
-      approvals: [
-          // ✅ FIX: Added optional 'status' property to satisfy TS
-          { id: 1, title: "SOP-001: Hygiene Proc v2.0", type: "Document Approval", due: "Today", status: "Pending" },
-          { id: 2, title: "CAPA-009 Plan Review", type: "CAPA Approval", due: "Tomorrow", status: "Pending" },
-      ],
-      training: [
-          { id: 3, title: "Annual GMP Refresher", type: "Training", due: "Overdue", status: "Overdue" },
-          { id: 4, title: "New SOP-022 Read & Understand", type: "Training", due: "Jan 25", status: "Pending" },
-      ],
-      actions: [
-          // ✅ FIX: Added optional 'status' property
-          { id: 5, title: "Investigate DEV-042", type: "Deviation Action", due: "Feb 10", status: "Open" },
-          { id: 6, title: "Update Calibration Record", type: "Task", due: "Feb 12", status: "Open" },
-      ]
+export default function MyTasksPage() {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [allTasks, setAllTasks] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const data = await fetchMyTasks();
+        setAllTasks(data);
+      } catch (error) {
+        console.error("Failed to fetch my tasks", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadTasks();
+  }, []);
+
+  // ✅ FIXED: Using id and type directly
+  const handleTaskClick = (id: string, type: string) => {
+    switch (type) {
+      case 'CAPA': 
+        navigate(`/capa/${id}`);
+        break;
+      case 'Change Control': 
+        navigate(`/change-control/${id}`);
+        break;
+      case 'Training': 
+        navigate(`/training/${id.replace('TRN-', '')}`);
+        break;
+      case 'Deviation': 
+        navigate(`/deviations/${id}`);
+        break;
+      default: 
+        navigate(`/tasks/${id}`);
+        break;
+    }
   };
 
-  // Helper to safely get the current list
-  const currentList = tab === 0 ? TASKS.approvals : tab === 1 ? TASKS.training : TASKS.actions;
+  const filteredTasks = {
+      approvals: allTasks.filter(t => t.type === 'Change Control' || t.status === 'QA Review' || t.status === 'Review'),
+      training: allTasks.filter(t => t.type === 'Training'),
+      actions: allTasks.filter(t => t.type === 'CAPA' || t.type === 'Deviation Action'),
+  };
+
+  const currentList = tab === 0 ? filteredTasks.approvals : tab === 1 ? filteredTasks.training : filteredTasks.actions;
+
+  const getStatusColor = (status: string) => {
+      if (status === 'OVERDUE' || status === 'Overdue') return "error";
+      if (status === 'PENDING' || status === 'Pending') return "warning";
+      if (status === 'ACTIVE' || status === 'Active') return "primary";
+      return "default";
+  };
+
+  if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
+            <CircularProgress />
+        </Box>
+      );
+  }
 
   return (
     <Box>
@@ -34,23 +78,50 @@ export default function MyTasksPage() {
 
       <Paper sx={{ borderRadius: 2 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
-            <Tab label={`Approvals (${TASKS.approvals.length})`} />
-            <Tab label={`Training (${TASKS.training.length})`} />
-            <Tab label={`Assigned Actions (${TASKS.actions.length})`} />
+            <Tab label={`Approvals (${filteredTasks.approvals.length})`} />
+            <Tab label={`Training (${filteredTasks.training.length})`} />
+            <Tab label={`Assigned Actions (${filteredTasks.actions.length})`} />
         </Tabs>
 
         <List sx={{ p: 0 }}>
             {currentList.map((task) => (
                 <div key={task.id}>
-                    <ListItem sx={{ p: 2 }}>
+                    <ListItem 
+                        component="div"
+                        sx={{ 
+                            p: 2, 
+                            cursor: 'pointer',
+                            '&:hover': { bgcolor: '#f8fafc' },
+                            transition: 'background-color 0.2s'
+                        }}
+                        // ✅ FIXED: Passing id and type explicitly
+                        onClick={() => handleTaskClick(task.id, task.type)}
+                    >
                         <ListItemText 
                             primary={<Typography fontWeight={600}>{task.title}</Typography>}
-                            secondary={`${task.type} • Due: ${task.due}`}
+                            secondary={
+                                <Typography variant="body2" color="text.secondary">
+                                    <span style={{ fontWeight: 600 }}>{task.id}</span> • {task.type} • Due: {task.due_date || "N/A"}
+                                </Typography>
+                            }
                         />
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                            {/* Now TS knows 'status' exists on all task items */}
-                            {task.status === 'Overdue' && <Chip label="Overdue" color="error" size="small" icon={<WarningAmberIcon />} />}
-                            <Button variant="contained" size="small" disableElevation>
+                            <Chip 
+                                label={task.status} 
+                                color={getStatusColor(task.status) as any} 
+                                size="small" 
+                                variant={task.status === 'OVERDUE' ? "filled" : "outlined"}
+                                icon={task.status === 'OVERDUE' ? <WarningAmberIcon /> : undefined} 
+                            />
+                            <Button 
+                                variant="contained" 
+                                size="small" 
+                                disableElevation
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleTaskClick(task.id, task.type);
+                                }}
+                            >
                                 {tab === 0 ? "Review" : tab === 1 ? "Start" : "Open"}
                             </Button>
                         </Box>
