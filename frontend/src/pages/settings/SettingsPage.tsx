@@ -6,9 +6,9 @@ import { permissionService } from "../../services/permission.service";
 // Section Components
 import OrganizationSettings from "../../components/settings/OrganizationSettings";
 import UsersAndRoles from "../../components/settings/UsersAndRoles";
-import ComplianceSettings from "../../components/settings/ComplianceSettings";
-import SystemInfo from "../../components/settings/SystemInfo";
-// import ChangePassword from "../../components/settings/ChangePassword";
+import SystemDefaults from "../../components/settings/SystemDefaults";
+import PermissionMatrix from "../../components/settings/PermissionMatrix";
+import IntegrationsStatus from "../../components/settings/IntegrationsStatus";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -42,14 +42,14 @@ export default function SettingsPage() {
   const tabs = [
     { label: "Organization", component: <OrganizationSettings />, roles: ["Admin"] },
     { label: "Users & Roles", component: <UsersAndRoles />, roles: ["Admin", "QA"] },
-    { label: "Compliance", component: <ComplianceSettings />, roles: ["Admin", "QA", "QC"] },
-    // { label: "Password", component: <ChangePassword />, roles: ["Admin", "QA", "QC"] },
-    { label: "About", component: <SystemInfo />, roles: ["Admin", "QA", "QC"] },
+    { label: "System Defaults", component: <SystemDefaults />, roles: ["Admin"] },
+    { label: "Permissions", component: <PermissionMatrix />, roles: ["Admin"] },
+    { label: "Integrations", component: <IntegrationsStatus />, roles: ["Admin", "QA"] },
   ];
 
   // Filter tabs based on role access
   const availableTabs = tabs.filter(tab => tab.roles.includes(role));
-
+  
   if (!canView) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>

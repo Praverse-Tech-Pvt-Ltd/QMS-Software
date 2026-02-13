@@ -10,6 +10,9 @@ import {
   Box,
   Typography,
   Chip,
+  alpha,
+  Fade,
+  Zoom,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import SearchIcon from "@mui/icons-material/Search";
@@ -20,6 +23,7 @@ import SchoolIcon from "@mui/icons-material/School";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { motion, transitions } from "../../theme/motion";
 
 /**
@@ -35,11 +39,14 @@ interface CommandItem {
   action: () => void;
   category: "navigation" | "action" | "recent";
   keywords?: string[];
+  color?: string;
+  gradient?: string;
 }
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const navigate = useNavigate();
 
   // Command items
@@ -52,6 +59,8 @@ export default function CommandPalette() {
         description: "Go to dashboard",
         icon: <DashboardIcon />,
         category: "navigation",
+        color: "#667eea",
+        gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
         action: () => {
           navigate("/");
           setOpen(false);
@@ -64,6 +73,8 @@ export default function CommandPalette() {
         description: "Browse documents",
         icon: <DescriptionIcon />,
         category: "navigation",
+        color: "#4facfe",
+        gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
         action: () => {
           navigate("/dms");
           setOpen(false);
@@ -76,6 +87,8 @@ export default function CommandPalette() {
         description: "View deviations",
         icon: <BugReportIcon />,
         category: "navigation",
+        color: "#f5576c",
+        gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
         action: () => {
           navigate("/deviations");
           setOpen(false);
@@ -88,6 +101,8 @@ export default function CommandPalette() {
         description: "Corrective & Preventive Actions",
         icon: <AssessmentIcon />,
         category: "navigation",
+        color: "#fa709a",
+        gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
         action: () => {
           navigate("/capa");
           setOpen(false);
@@ -100,6 +115,8 @@ export default function CommandPalette() {
         description: "Manage change requests",
         icon: <ChangeCircleIcon />,
         category: "navigation",
+        color: "#a18cd1",
+        gradient: "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
         action: () => {
           navigate("/change-control");
           setOpen(false);
@@ -112,6 +129,8 @@ export default function CommandPalette() {
         description: "Training management",
         icon: <SchoolIcon />,
         category: "navigation",
+        color: "#30cfd0",
+        gradient: "linear-gradient(135deg, #30cfd0 0%, #330867 100%)",
         action: () => {
           navigate("/training");
           setOpen(false);
@@ -124,6 +143,8 @@ export default function CommandPalette() {
         description: "Application settings",
         icon: <SettingsIcon />,
         category: "navigation",
+        color: "#84fab0",
+        gradient: "linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)",
         action: () => {
           navigate("/settings");
           setOpen(false);
@@ -146,6 +167,11 @@ export default function CommandPalette() {
       return matchTitle || matchDesc || matchKeywords;
     });
   }, [query, commands]);
+
+  // Reset selected index when filtered commands change
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [filteredCommands]);
 
   // Keyboard shortcut (Cmd+K / Ctrl+K)
   useEffect(() => {
@@ -182,129 +208,184 @@ export default function CommandPalette() {
         setOpen(false);
         setQuery("");
       }}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
+      TransitionComponent={Zoom}
+      transitionDuration={300}
       PaperProps={{
         sx: {
-          borderRadius: 3,
+          borderRadius: 4,
           overflow: "hidden",
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          background: "#ffffff",
+        },
+      }}
+      BackdropProps={{
+        sx: {
+          backdropFilter: "blur(8px)",
+          backgroundColor: "rgba(0, 0, 0, 0.4)",
         },
       }}
     >
       <DialogContent sx={{ p: 0 }}>
+        
         {/* Search Input */}
         <Box
           sx={{
-            p: 2,
+            p: 3,
             borderBottom: "1px solid rgba(0,0,0,0.06)",
           }}
         >
-          <TextField
-            fullWidth
-            autoFocus
-            placeholder="Search or jump to..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
-              ),
-            }}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                "& fieldset": {
-                  border: "none",
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <SearchIcon sx={{ color: "#667eea", fontSize: 28 }} />
+            <TextField
+              fullWidth
+              autoFocus
+              placeholder="Type a command or search..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  fontSize: "1.125rem",
+                  fontWeight: 500,
+                  "& fieldset": {
+                    border: "none",
+                  },
+                  "& input::placeholder": {
+                    color: "#94a3b8",
+                    opacity: 1,
+                  },
                 },
-              },
-            }}
-          />
+              }}
+            />
+          </Box>
         </Box>
 
         {/* Results */}
-        <List sx={{ maxHeight: 400, overflow: "auto", p: 1 }}>
+        <List sx={{ maxHeight: 420, overflow: "auto", p: 2 }}>
           {filteredCommands.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: "center" }}>
-              <Typography variant="body2" color="text.secondary">
-                No results found for "{query}"
-              </Typography>
-            </Box>
-          ) : (
-            filteredCommands.map((cmd, index) => (
-              <ListItem
-                key={cmd.id}
-                onClick={cmd.action}
+            <Fade in timeout={300}>
+              <Box
                 sx={{
-                  borderRadius: 2,
-                  cursor: "pointer",
-                  mb: 0.5,
-                  transition: transitions.button.default,
-                  "&:hover": {
-                    bgcolor: "#F3F4F6",
-                    transform: `translateX(${motion.distance.micro}px)`,
-                  },
+                  p: 6,
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40, color: "primary.main" }}>
-                  {cmd.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography variant="body2" fontWeight={600}>
-                      {cmd.title}
-                    </Typography>
-                  }
-                  secondary={
-                    cmd.description && (
-                      <Typography variant="caption" color="text.secondary">
-                        {cmd.description}
-                      </Typography>
-                    )
-                  }
-                />
-                {index === 0 && (
-                  <Chip
-                    label="↵"
-                    size="small"
+                <Box
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: "50%",
+                    background: alpha("#667eea", 0.1),
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <SearchIcon sx={{ fontSize: 32, color: alpha("#667eea", 0.5) }} />
+                </Box>
+                <Box>
+                  <Typography variant="body1" fontWeight={600} color="#1e293b" gutterBottom>
+                    No results found
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Try searching for "{query}"
+                  </Typography>
+                </Box>
+              </Box>
+            </Fade>
+          ) : (
+            filteredCommands.map((cmd, index) => (
+              <Fade in timeout={200} key={cmd.id} style={{ transitionDelay: `${index * 30}ms` }}>
+                <ListItem
+                  onClick={cmd.action}
+                  sx={{
+                    borderRadius: 2.5,
+                    cursor: "pointer",
+                    mb: 1,
+                    p: 2,
+                    border: "2px solid transparent",
+                    background: index === selectedIndex ? alpha(cmd.color || "#667eea", 0.08) : "transparent",
+                    borderColor: index === selectedIndex ? alpha(cmd.color || "#667eea", 0.3) : "transparent",
+                    transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                    position: "relative",
+                    overflow: "hidden",
+                    "&::before": {
+                      content: '""',
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: "4px",
+                      background: cmd.gradient || "#667eea",
+                      opacity: index === selectedIndex ? 1 : 0,
+                      transition: "opacity 0.2s ease",
+                    },
+                    "&:hover": {
+                      background: alpha(cmd.color || "#667eea", 0.08),
+                      borderColor: alpha(cmd.color || "#667eea", 0.3),
+                      transform: "translateX(4px)",
+                      boxShadow: `0 4px 12px ${alpha(cmd.color || "#667eea", 0.15)}`,
+                      "&::before": {
+                        opacity: 1,
+                      },
+                      "& .command-icon": {
+                        background: cmd.gradient,
+                        transform: "scale(1.1) rotate(5deg)",
+                        "& svg": {
+                          color: "#ffffff",
+                        },
+                      },
+                      "& .command-arrow": {
+                        opacity: 1,
+                        transform: "translateX(0)",
+                      },
+                    },
+                  }}
+                >
+                  <Box
+                    className="command-icon"
                     sx={{
-                      height: 20,
-                      fontSize: "0.7rem",
-                      bgcolor: "rgba(0,0,0,0.05)",
+                      width: 40,
+                      height: 40,
+                      borderRadius: 2,
+                      background: alpha(cmd.color || "#667eea", 0.1),
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      mr: 2,
+                      transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                      "& svg": {
+                        color: cmd.color || "#667eea",
+                        transition: "color 0.3s ease",
+                      },
                     }}
+                  >
+                    {cmd.icon}
+                  </Box>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body1" fontWeight={600} color="#1e293b">
+                        {cmd.title}
+                      </Typography>
+                    }
+                    secondary={
+                      cmd.description && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                          {cmd.description}
+                        </Typography>
+                      )
+                    }
                   />
-                )}
-              </ListItem>
+                </ListItem>
+              </Fade>
             ))
           )}
         </List>
-
-        {/* Footer hint */}
-        <Box
-          sx={{
-            p: 1.5,
-            borderTop: "1px solid rgba(0,0,0,0.06)",
-            display: "flex",
-            gap: 2,
-            bgcolor: "#FAFBFC",
-          }}
-        >
-          <Typography variant="caption" color="text.secondary">
-            <Chip
-              label="↵"
-              size="small"
-              sx={{ height: 18, fontSize: "0.65rem", mr: 0.5 }}
-            />
-            to select
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            <Chip
-              label="ESC"
-              size="small"
-              sx={{ height: 18, fontSize: "0.65rem", mr: 0.5 }}
-            />
-            to close
-          </Typography>
-        </Box>
       </DialogContent>
     </Dialog>
   );

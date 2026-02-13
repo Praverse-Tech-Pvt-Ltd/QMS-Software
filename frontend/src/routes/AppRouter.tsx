@@ -40,6 +40,9 @@ import ChangeControlListPage from "../pages/change-control/ChangeControlListPage
 import ChangeControlCreatePage from "../pages/change-control/ChangeControlCreatePage";
 import ChangeControlDetailPage from "../pages/change-control/ChangeControlDetailPage";
 
+// Settings
+import SettingsPage from "../pages/settings/SettingsPage";
+
 export default function AppRouter() {
   return (
     <Routes>
@@ -224,6 +227,9 @@ export default function AppRouter() {
               }
             />
           </Route>
+
+          {/* Settings - All roles can access (for personal preferences) */}
+          <Route path="settings" element={<SettingsPage />} />
 
         </Route>
       </Route>

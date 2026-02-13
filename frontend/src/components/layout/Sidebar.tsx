@@ -510,8 +510,6 @@ export default function Sidebar() {
             </ListItemButton>
           )}
 
-          
-
         </List>
       </Box>
     </Box>

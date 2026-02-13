@@ -31,6 +31,7 @@ import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 import { transitions, shadows, motion } from "../../theme/motion";
 import CreateDocumentModal from "../common/CreateDocumentModal";
+import UserProfileCard from "../common/UserProfileCard";
 
 const ROLES = ["Admin", "QA", "QC", "Production", "Warehouse", "Viewer"] as const;
 
@@ -287,135 +288,22 @@ function HeaderActions() {
                 overflow: 'visible', 
                 mt: 2, 
                 borderRadius: 3, 
-                minWidth: 280, 
-                border: "1px solid #e2e8f0",
-                boxShadow: "0 20px 40px -12px rgba(0, 0, 0, 0.15)",
+                background: 'transparent',
+                boxShadow: 'none',
               } 
             }}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
-            {/* Profile Header */}
-            <Box sx={{ px: 3, py: 3, bgcolor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-                <Avatar
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                    fontSize: "18px",
-                    fontWeight: 700,
-                  }}
-                >
-                  AP
-                </Avatar>
-                <Box>
-                  <Typography variant="subtitle1" fontWeight={700} color="#0f172a" sx={{ lineHeight: 1.2, mb: 0.5 }}>
-                    Alexander Pierce
-                  </Typography>
-                  <Typography variant="caption" color="#64748b" sx={{ display: "block" }}>
-                    Chief Quality Officer
-                  </Typography>
-                </Box>
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: 1,
-                  pt: 2,
-                  borderTop: "1px solid #e2e8f0",
-                }}
-              >
-                <Box sx={{ flex: 1, textAlign: "center" }}>
-                  <Typography variant="h6" fontWeight={700} color="#0f172a">12</Typography>
-                  <Typography variant="caption" color="#64748b">Tasks</Typography>
-                </Box>
-                <Box sx={{ flex: 1, textAlign: "center", borderLeft: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0" }}>
-                  <Typography variant="h6" fontWeight={700} color="#0f172a">8</Typography>
-                  <Typography variant="caption" color="#64748b">Pending</Typography>
-                </Box>
-                <Box sx={{ flex: 1, textAlign: "center" }}>
-                  <Typography variant="h6" fontWeight={700} color="#0f172a">32</Typography>
-                  <Typography variant="caption" color="#64748b">Approved</Typography>
-                </Box>
-              </Box>
-            </Box>
-
-            {/* Menu Items */}
-            <Box sx={{ py: 1 }}>
-              <MenuItem 
-                onClick={() => navigate("/settings")} 
-                sx={{ 
-                  py: 1.5, 
-                  px: 3,
-                  gap: 2,
-                  transition: transitions.fast,
-                  "&:hover": { 
-                    bgcolor: "#f8fafc",
-                    "& .menu-icon": {
-                      color: "#6366F1",
-                      transform: "translateX(2px)",
-                    }
-                  }
-                }}
-              >
-                <AccountCircleOutlinedIcon className="menu-icon" fontSize="small" sx={{ color: "#64748b", transition: transitions.fast }} /> 
-                <Typography variant="body2" fontWeight={600} color="#475569">
-                  My Profile
-                </Typography>
-              </MenuItem>
-              <MenuItem 
-                onClick={() => navigate("/settings")} 
-                sx={{ 
-                  py: 1.5, 
-                  px: 3,
-                  gap: 2,
-                  transition: transitions.fast,
-                  "&:hover": { 
-                    bgcolor: "#f8fafc",
-                    "& .menu-icon": {
-                      color: "#6366F1",
-                      transform: "translateX(2px)",
-                    }
-                  }
-                }}
-              >
-                <AssignmentIndOutlinedIcon className="menu-icon" fontSize="small" sx={{ color: "#64748b", transition: transitions.fast }} /> 
-                <Typography variant="body2" fontWeight={600} color="#475569">
-                  My Tasks
-                </Typography>
-              </MenuItem>
-            </Box>
-
-            <Divider sx={{ borderColor: "#e2e8f0", my: 1 }} />
-
-            {/* Sign Out */}
-            <Box sx={{ pb: 1 }}>
-              <MenuItem 
-                onClick={handleLogout} 
-                sx={{ 
-                  py: 1.5, 
-                  px: 3,
-                  gap: 2,
-                  transition: transitions.fast,
-                  "&:hover": { 
-                    bgcolor: "#fef2f2",
-                    "& .menu-icon": {
-                      color: "#dc2626",
-                      transform: "translateX(2px)",
-                    },
-                    "& .menu-text": {
-                      color: "#dc2626",
-                    }
-                  }
-                }}
-              >
-                <LogoutOutlinedIcon className="menu-icon" fontSize="small" sx={{ color: "#64748b", transition: transitions.fast }} /> 
-                <Typography className="menu-text" variant="body2" fontWeight={600} color="#475569" sx={{ transition: transitions.fast }}>
-                  Sign Out
-                </Typography>
-              </MenuItem>
-            </Box>
+            <UserProfileCard
+              userName="Alexander Pierce"
+              userRole="Chief Quality Officer"
+              userInitials="AP"
+              tasksCount={12}
+              pendingCount={8}
+              approvedCount={32}
+              onClose={handleUserMenuClose}
+            />
           </Menu>
 
           {/* --- ✅ NOTIFICATION MENU --- */}

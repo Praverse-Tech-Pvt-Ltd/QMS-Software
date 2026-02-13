@@ -131,7 +131,7 @@ export default function DmsListPage() {
         <Box component="table" sx={{ width: "100%", borderCollapse: "collapse" }}>
           <Box component="thead" sx={{ bgcolor: "grey.50" }}>
             <Box component="tr">
-              {["ID", "Title", "Type", "Department", "Status", "Actions"].map((h) => (
+              {["ID", "Title", "Type", "Department", "Status", ...(role !== "Viewer" ? ["Actions"] : [])].map((h) => (
                 <Box key={h} component="th" sx={{ textAlign: "left", px: 3, py: 2, fontSize: 12, fontWeight: 700, color: "text.secondary" }}>
                   {h.toUpperCase()}
                 </Box>
@@ -141,7 +141,7 @@ export default function DmsListPage() {
           <Box component="tbody">
             {filteredDocs.length === 0 && (
                <Box component="tr">
-                 <Box component="td" colSpan={6} sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
+                 <Box component="td" colSpan={role !== "Viewer" ? 6 : 5} sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>
                    No documents found.
                  </Box>
                </Box>
@@ -157,11 +157,13 @@ export default function DmsListPage() {
                 <Box component="td" sx={{ px: 3, py: 2 }}>
                   <StatusChip status={doc.status} />
                 </Box>
-                <Box component="td" sx={{ px: 3, py: 2 }}>
-                  <IconButton size="small" onClick={() => navigate(`/dms/${doc.id}`)}>
-                    <VisibilityOutlinedIcon />
-                  </IconButton>
-                </Box>
+                {role !== "Viewer" && (
+                  <Box component="td" sx={{ px: 3, py: 2 }}>
+                    <IconButton size="small" onClick={() => navigate(`/dms/${doc.id}`)}>
+                      <VisibilityOutlinedIcon />
+                    </IconButton>
+                  </Box>
+                )}
               </Box>
             ))}
           </Box>
