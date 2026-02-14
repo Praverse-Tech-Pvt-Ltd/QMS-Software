@@ -1,13 +1,36 @@
-import type { AuditTrailEntry } from "../types/audit.types";
-import type { WorkflowModuleKey } from "../types/workflow.types";
 
-const getKey = (moduleKey: WorkflowModuleKey, recordId: string) =>
+// --- TYPES ---
+export type AuditActionType =
+  | "CREATE"
+  | "UPDATE"
+  | "STATUS_CHANGE"
+  | "APPROVAL"
+  | "REJECT"
+  | "ATTACHMENT_ADD"
+  | "FIELD_EDIT";
+
+export interface AuditTrailEntry {
+  id: string;
+  recordId: string;
+  moduleKey: string;
+  actionType: AuditActionType;
+  field?: string;
+  oldValue?: string;
+  newValue?: string;
+  user: string;
+  role: string;
+  timestamp: string;
+  reason?: string;
+}
+
+// --- SERVICE LOGIC ---
+const getKey = (moduleKey: string, recordId: string) =>
   `qms_audit_${moduleKey}_${recordId}`;
 
 const now = () => new Date().toISOString();
 
 export const auditService = {
-  seedIfEmpty(moduleKey: WorkflowModuleKey, recordId: string) {
+  seedIfEmpty(moduleKey: string, recordId: string): AuditTrailEntry[] {
     const key = getKey(moduleKey, recordId);
     const existing = localStorage.getItem(key);
 
@@ -31,12 +54,12 @@ export const auditService = {
     return JSON.parse(existing) as AuditTrailEntry[];
   },
 
-  list(moduleKey: WorkflowModuleKey, recordId: string): AuditTrailEntry[] {
+  list(moduleKey: string, recordId: string): AuditTrailEntry[] {
     return this.seedIfEmpty(moduleKey, recordId);
   },
 
   add(
-    moduleKey: WorkflowModuleKey,
+    moduleKey: string,
     recordId: string,
     entry: Omit<AuditTrailEntry, "id" | "timestamp" | "recordId" | "moduleKey">
   ) {

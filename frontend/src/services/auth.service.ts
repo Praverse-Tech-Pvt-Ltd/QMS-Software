@@ -30,7 +30,7 @@ export const authService = {
     try {
       // Django's 'TokenObtainPairView' expects 'username' and 'password'
       const response = await api.post("/auth/token/", {
-        username: email, // We map the email input to the username field
+        username: email,
         password: password,
       });
 
@@ -39,17 +39,16 @@ export const authService = {
       localStorage.setItem(REFRESH_KEY, response.data.refresh);
 
       // 2. Save User Info for the UI
-      // Note: Standard Django JWT doesn't return the Name/Role. 
-      // We store the email to keep the UI working. 
+      // Note: Standard Django JWT doesn't return the Name/Role.
+      // We store the email to keep the UI working.
       // (Later, we can add a '/api/auth/me/' endpoint to get real details)
       const userPayload = {
         email: email,
-        name: "Authenticated User", // Placeholder until we fetch real profile
-        role: "Admin", // Defaulting to Admin/QA so you can see all features
+        name: response.data.user_full_name || "QMS User",
+        role: response.data.role || "Viewer", // Fetch from backend instead of hardcoding Admin
       };
-      
       localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-
+      
       return true;
     } catch (error: any) {
       console.error("Login Failed:", error.response?.data || error.message);
@@ -60,10 +59,10 @@ export const authService = {
   /**
    * 2. SIGNUP (Optional - depends if you implemented registration in Backend)
    */
- async signup(payload: SignupPayload) {
+  async signup(payload: SignupPayload) {
     try {
       // ✅ FIX: Log the payload to silence the "value is never read" warning
-      console.log("Signup attempted for:", payload.email); 
+      console.log("Signup attempted for:", payload.email);
 
       /* // Future Backend Call:
       await api.post("/auth/register/", {
@@ -74,9 +73,10 @@ export const authService = {
       });
       */
 
-      alert("Registration endpoint not active yet. Please login with your Superuser account.");
-      return false; 
-
+      alert(
+        "Registration endpoint not active yet. Please login with your Superuser account.",
+      );
+      return false;
     } catch (error: any) {
       throw new Error("Registration failed.");
     }
@@ -88,7 +88,7 @@ export const authService = {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
-    
+
     // Optional: Reload page to clear state
     window.location.reload();
   },
@@ -108,11 +108,11 @@ export const authService = {
     const raw = localStorage.getItem(USER_KEY);
     return raw ? JSON.parse(raw) : null;
   },
-  
+
   /**
    * 6. GET TOKEN (Helper)
    */
   getToken() {
     return localStorage.getItem(TOKEN_KEY);
-  }
+  },
 };
