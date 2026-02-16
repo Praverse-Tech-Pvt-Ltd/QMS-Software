@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material"; // ✅ Combined imports
+import { Box, Button } from "@mui/material"; 
 import PageHeader from "../../components/common/PageHeader";
 import TrainingMatrixBuilder from "../../components/training/TrainingMatrixBuilder"; 
 import RetrainingImpactModal from "../../components/training/RetrainingImpactModal";
@@ -6,7 +6,6 @@ import { useState } from "react";
 import UpdateIcon from "@mui/icons-material/Update";
 
 export default function TrainingMatrixPage() {
-  // ✅ Hook moved INSIDE the component
   const [impactOpen, setImpactOpen] = useState(false);
 
   return (
@@ -18,7 +17,6 @@ export default function TrainingMatrixPage() {
             showBack
         />
         
-        {/* ✅ Button to Trigger Retraining Impact Analysis */}
         <Button 
             variant="outlined" 
             color="warning" 
@@ -30,12 +28,12 @@ export default function TrainingMatrixPage() {
         </Button>
       </Box>
 
-      {/* ✅ The Interactive Builder Component */}
+      {/* The Interactive Builder Component */}
       <Box sx={{ mt: 3 }}>
         <TrainingMatrixBuilder />
       </Box>
 
-      {/* ✅ The Retraining Modal */}
+      {/* The Retraining Modal */}
       <RetrainingImpactModal 
         open={impactOpen}
         onClose={() => setImpactOpen(false)}

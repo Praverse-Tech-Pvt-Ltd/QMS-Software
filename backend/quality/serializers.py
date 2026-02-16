@@ -1,8 +1,16 @@
 from rest_framework import serializers
+
+from core.models import AuditLog
 from .models import Deviation
 from accounts.serializers import UserSerializer
 from .models import Deviation, Capa, ChangeControl
 
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_details = UserSerializer(source='user', read_only=True)
+    class Meta:
+        model = AuditLog # Ensure you have this model
+        fields = ['id', 'action', 'details', 'timestamp', 'user_details']
+        
 class DeviationSerializer(serializers.ModelSerializer):
     raised_by_details = UserSerializer(source='raised_by', read_only=True)
 
@@ -22,10 +30,22 @@ class DeviationSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
     
 class CapaSerializer(serializers.ModelSerializer):
+    audit_trail = AuditLogSerializer(many=True, read_only=True)
+    signatures = serializers.SerializerMethodField()
+
     class Meta:
         model = Capa
-        fields = '__all__'
+        # Explicitly list fields to ensure RCA and Action Plan are included
+        fields = [
+            'id', 'capa_id', 'title', 'description', 'status', 
+            'action_type', 'due_date', 'root_cause', 'action_plan',
+            'audit_trail', 'signatures'
+        ]
         read_only_fields = ['capa_id', 'created_at', 'status']
+
+    def get_signatures(self, obj):
+        # Fetch linked e-signatures for this record
+        return [] # Placeholder until E-Sign model is ready
         
 class ChangeControlSerializer(serializers.ModelSerializer):
     class Meta:

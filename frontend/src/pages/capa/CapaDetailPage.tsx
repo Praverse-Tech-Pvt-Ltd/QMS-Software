@@ -9,9 +9,8 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Grid
+  Grid, // ✅ Standardized Grid Import
 } from "@mui/material";
-
 
 import SaveIcon from "@mui/icons-material/Save";
 
@@ -42,12 +41,18 @@ import ConfirmDialog from "../../components/common/ConfirmDialog";
 // ✅ HELPER: Map Backend Status to UI Workflow Status
 const mapStatusToWorkflow = (backendStatus: string): any => {
   switch (backendStatus) {
-    case "PLANNING": return "Draft";
-    case "PENDING": return "In Progress"; 
-    case "IMPLEMENTATION": return "In Progress"; 
-    case "VERIFICATION": return "Review";
-    case "CLOSED": return "Closed";
-    default: return "Draft";
+    case "PLANNING":
+      return "Draft";
+    case "PENDING":
+      return "In Progress";
+    case "IMPLEMENTATION":
+      return "In Progress";
+    case "VERIFICATION":
+      return "Review";
+    case "CLOSED":
+      return "Closed";
+    default:
+      return "Draft";
   }
 };
 
@@ -67,47 +72,50 @@ export default function CapaDetailPage() {
 
   // 3. LOAD DATA
   const loadData = async () => {
-      // ✅ FIX: Use fallback string to satisfy TypeScript
-      const safeId = id || ""; 
-      if (!safeId) return;
+    const safeId = id || "";
+    if (!safeId) return;
 
-      try {
-          setLoading(true);
-          const data = await capaService.getById(safeId);
-          setRecord(data);
-      } catch (err) {
-          console.error(err);
-          setError("Failed to load CAPA record.");
-      } finally {
-          setLoading(false);
-      }
+    try {
+      setLoading(true);
+      const data = await capaService.getById(safeId);
+      setRecord(data);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load CAPA record.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-      loadData();
+    loadData();
   }, [id]);
 
   // 4. PERMISSIONS
-  const canEdit = role && record 
-    ? record.status !== 'CLOSED' && record.status !== 'VERIFICATION'
-    : false;
+  const canEdit =
+    role && record
+      ? record.status !== "CLOSED" && record.status !== "VERIFICATION"
+      : false;
 
   // 5. HANDLERS
   const handleSaveClick = () => setSaveDialogOpen(true);
 
   const handleConfirmSave = async (reason?: string) => {
-    // ✅ FIX: Use fallback string here too
     const safeId = id || "";
     if (!record || !safeId) return;
 
     try {
-        console.log("Saving with reason:", reason); 
-        await capaService.update(safeId, { ...record });
-        setSaveDialogOpen(false);
-        loadData(); 
+      console.log("Saving with reason:", reason);
+      await capaService.update(safeId, { ...record });
+      setSaveDialogOpen(false);
+      loadData();
     } catch (err) {
-        alert("Failed to save changes.");
+      alert("Failed to save changes.");
     }
+  };
+
+  const handleFieldChange = (field: keyof CapaRecord, value: any) => {
+    if (record) setRecord({ ...record, [field]: value });
   };
 
   const handleAddReviewer = (user: any) => {
@@ -116,11 +124,21 @@ export default function CapaDetailPage() {
   };
 
   const handleValidate = () => {
-     return true;
+    return true;
   };
 
-  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /> <Typography>Loading CAPA Record...</Typography></Box>;
-  if (error || !record) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
+  if (loading)
+    return (
+      <Box sx={{ p: 5, textAlign: "center" }}>
+        <CircularProgress /> <Typography>Loading CAPA Record...</Typography>
+      </Box>
+    );
+  if (error || !record)
+    return (
+      <Box sx={{ p: 5 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
 
   return (
     <>
@@ -128,10 +146,9 @@ export default function CapaDetailPage() {
         title={`${record.capa_id || record.id}: ${record.title}`}
         subtitle={`Record ID: ${id}`}
         backTo="/capa"
-        
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {(record.status === "CLOSED") && (
+            {record.status === "CLOSED" && (
               <SignatureStamp
                 isSigned={true}
                 signedBy="QA Manager"
@@ -141,7 +158,6 @@ export default function CapaDetailPage() {
             <StatusChip status={record.status} />
           </Box>
         }
-
         rightPanel={
           <Box sx={{ display: "grid", gap: 3 }}>
             <WorkflowTimeline
@@ -149,18 +165,17 @@ export default function CapaDetailPage() {
               steps={WORKFLOWS.capa.steps}
             />
 
-            {/* ✅ FIXED: Use fallback ID and convert ID number->string */}
             <WorkflowActionsPanel
               recordId={id || ""}
               moduleKey="capa"
               meta={{
                 ...record,
-                id: record.id.toString(), // Fix Type Mismatch (number -> string)
-                moduleKey: "capa", // Explicitly set required moduleKey
-                status: mapStatusToWorkflow(record.status), // Map backend status to workflow status
-                approvalRequests: [], 
-                approvalsLog: [],   
-                signatureLog: []    
+                id: record.id.toString(),
+                moduleKey: "capa",
+                status: mapStatusToWorkflow(record.status),
+                approvalRequests: [],
+                approvalsLog: [],
+                signatureLog: [],
               }}
               onUpdated={loadData}
               onValidate={handleValidate}
@@ -174,21 +189,32 @@ export default function CapaDetailPage() {
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Source</Typography>
-                  <Typography variant="body2">{record.deviation ? `Deviation #${record.deviation}` : "Manual"}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Source
+                  </Typography>
+                  <Typography variant="body2">
+                    {record.deviation
+                      ? `Deviation #${record.deviation}`
+                      : "Manual"}
+                  </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Priority</Typography>
-                  <Typography variant="body2">{record.action_type || "Standard"}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Priority
+                  </Typography>
+                  <Typography variant="body2">
+                    {record.action_type || "Standard"}
+                  </Typography>
                 </Grid>
               </Grid>
             </Box>
           </Box>
         }
-
         overview={
           <Box sx={{ p: 1 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
                 Problem & Investigation
               </Typography>
@@ -209,7 +235,7 @@ export default function CapaDetailPage() {
                 <TextField
                   select
                   label="CAPA Type"
-                  value={record.action_type} 
+                  value={record.action_type}
                   fullWidth
                   disabled={!canEdit}
                 >
@@ -225,13 +251,13 @@ export default function CapaDetailPage() {
                   value={record.due_date}
                   fullWidth
                   disabled={!canEdit}
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   label="Owner"
-                  defaultValue="QA Lead" 
+                  defaultValue="QA Lead"
                   fullWidth
                   disabled={!canEdit}
                 />
@@ -251,7 +277,10 @@ export default function CapaDetailPage() {
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Root Cause Analysis (RCA)"
-                  defaultValue="" 
+                  value={record.root_cause || ""}
+                  onChange={(e) =>
+                    handleFieldChange("root_cause", e.target.value)
+                  }
                   fullWidth
                   multiline
                   rows={3}
@@ -263,7 +292,7 @@ export default function CapaDetailPage() {
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Proposed Action Plan"
-                  defaultValue="" 
+                  defaultValue=""
                   fullWidth
                   multiline
                   rows={3}
@@ -273,11 +302,10 @@ export default function CapaDetailPage() {
             </Grid>
           </Box>
         }
-
         plan={
           <Box sx={{ p: 1 }}>
-            <CapaActionPanel readOnly={!canEdit} /> 
-            
+            <CapaActionPanel readOnly={!canEdit} />
+
             {record.status === "VERIFICATION" && (
               <Box sx={{ mt: 3 }}>
                 <ClosureChecklist />
@@ -285,28 +313,27 @@ export default function CapaDetailPage() {
             )}
           </Box>
         }
-
         attachments={<AttachmentsUploader readOnly={!canEdit} />}
-
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel
-              requests={[]} 
+              requests={[]}
               canAddReviewer={canEdit}
               onAddReviewer={() => setAssignModalOpen(true)}
             />
             <SignatureLogTable rows={[]} />
           </Box>
         }
-
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ActivityLog />
             <Divider />
+
+            {/* ✅ FIXED: Separate Title from AuditTrailTable */}
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Audit Log
             </Typography>
-            <AuditTrailTable rows={[]} /> 
+            <AuditTrailTable rows={record.audit_trail || []} />
           </Box>
         }
       />
@@ -322,19 +349,19 @@ export default function CapaDetailPage() {
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         onConfirm={(reason) => {
-             setReasonModalOpen(false);
-             handleConfirmSave(reason);
+          setReasonModalOpen(false);
+          handleConfirmSave(reason);
         }}
       />
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={saveDialogOpen}
         title="Save CAPA Record?"
         message="This will update the investigation details."
         confirmText="Save"
         onClose={() => setSaveDialogOpen(false)}
         onConfirm={() => {
-             handleConfirmSave();
+          handleConfirmSave();
         }}
       />
     </>

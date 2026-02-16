@@ -23,7 +23,7 @@ import { useNavigate } from "react-router-dom";
 // Architecture Imports
 import api from "../../services/api";
 import { useRole } from "../../app/providers/RoleProvider";
-import {type  UserRole } from "../../types/permissions.types";
+import {type  UserRole } from "../../services/permission.service";
 
 export default function LoginPage() {
   const navigate = useNavigate();

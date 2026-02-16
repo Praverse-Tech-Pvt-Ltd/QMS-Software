@@ -1,8 +1,9 @@
 from rest_framework import viewsets, permissions, status
-from rest_framework.decorators import action, api_view, permission_classes # ✅ Added api_view decorators
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated # ✅ Added IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from django.shortcuts import get_object_or_404
 from .models import TrainingPlan, TrainingAssignment
 from .serializers import TrainingPlanSerializer, TrainingAssignmentSerializer
 from django.contrib.auth import get_user_model
@@ -11,6 +12,27 @@ class TrainingPlanViewSet(viewsets.ModelViewSet):
     queryset = TrainingPlan.objects.all()
     serializer_class = TrainingPlanSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    # ✅ CUSTOM LOOKUP: Allows URL to use "TRN-5" or "5"
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        lookup_value = self.kwargs[lookup_url_kwarg]
+
+        # If ID starts with "TRN-", strip it to get the number
+        if isinstance(lookup_value, str) and lookup_value.startswith('TRN-'):
+            try:
+                clean_id = int(lookup_value.replace('TRN-', ''))
+                obj = get_object_or_404(queryset, pk=clean_id)
+            except ValueError:
+                # If conversion fails, try looking up as is (if you add a string field later)
+                obj = get_object_or_404(queryset, **{self.lookup_field: lookup_value})
+        else:
+            # Standard numeric lookup
+            obj = get_object_or_404(queryset, **{self.lookup_field: lookup_value})
+
+        self.check_object_permissions(self.request, obj)
+        return obj
 
     @action(detail=True, methods=['post'])
     def assign(self, request, pk=None):
@@ -26,15 +48,14 @@ class TrainingPlanViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 2. Check if User Exists (Need to import User model at top)
+        # 2. Check if User Exists
         try:
-            
             User = get_user_model()
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # 3. Check for DUPLICATES (Prevent assigning same training twice if pending)
+        # 3. Check for DUPLICATES
         if TrainingAssignment.objects.filter(plan=plan, user=user, status__in=['PENDING', 'OVERDUE']).exists():
             return Response(
                 {"error": f"Training '{plan.title}' is already assigned to {user.first_name}."}, 
@@ -60,7 +81,6 @@ class TrainingAssignmentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Users only see their own training, Admins see all
         user = self.request.user
         if user.role in ['Admin', 'QA']:
             return TrainingAssignment.objects.all()
@@ -79,31 +99,33 @@ class TrainingAssignmentViewSet(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 def my_training_history(request):
     """
-    Returns training assignments.
-    - Admins/QA see ALL assignments (Everyone's history).
-    - Regular users see ONLY their own assignments.
+    Returns training assignments for the logged-in user.
     """
     user = request.user
     
-    # ✅ LOGIC CHANGE: Check Role
     if user.role in ['Admin', 'QA', 'Manager']:
-        # Fetch ALL assignments (with user details)
         assignments = TrainingAssignment.objects.all().select_related('plan', 'user').order_by('-due_date')
     else:
-        # Fetch ONLY my assignments
         assignments = TrainingAssignment.objects.filter(user=user).select_related('plan').order_by('-due_date')
     
     data = []
     for t in assignments:
         data.append({
-            "id": t.id,
+            # ✅ Display ID (e.g., TRN-5)
+            "id": f"TRN-{t.plan.id}", 
+            
+            # ✅ Numeric ID for Navigation (Critical for Frontend)
+            "record_id": t.plan.id,   
+            
+            # ✅ Assignment ID (Useful for specific completion logic)
+            "assignment_id": t.id,    
+
             "title": t.plan.title,
             "department": t.plan.department,
             "status": t.status, 
             "due_date": t.due_date,
             "completion_date": t.completion_date,
             "score": t.score,
-            # ✅ Add User Name so Admin knows who this belongs to
             "assigned_to": f"{t.user.first_name} {t.user.last_name}" 
         })
     

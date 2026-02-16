@@ -9,17 +9,18 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Grid
+   Grid, // ✅ Standardized Grid Import
 } from "@mui/material";
-
-// ✅ Grid v2 Import
 
 import SaveIcon from "@mui/icons-material/Save";
 
 // --- IMPORTS ---
-import { changeService, type ChangeRecord } from "../../services/change.service";
+import {
+  changeService,
+  type ChangeRecord,
+} from "../../services/change.service";
 import { useRole } from "../../app/providers/RoleProvider";
-import { permissionService } from "../../services/permission.service"; 
+import { permissionService } from "../../services/permission.service";
 
 // --- COMPONENTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
@@ -32,23 +33,30 @@ import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
 import { WORKFLOWS } from "../../config/workflows";
 
 // Module Specific Components
-import ImpactAssessmentPanel from "../../components/change/ImpactAssessmentPanel"; 
+import ImpactAssessmentPanel from "../../components/change/ImpactAssessmentPanel";
 import ClosureChecklist from "../../components/qms/ClosureChecklist";
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
+import ActivityLog from "../../components/qms/ActivityLog";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 
 // ✅ HELPER: Map Backend Status to UI Workflow Status
 const mapStatusToWorkflow = (backendStatus: string): any => {
   switch (backendStatus) {
-    case "DRAFT": return "Draft";
-    case "EVALUATION": return "Review"; // Map Evaluation to Review
-    case "APPROVAL": return "Review";   // Map Approval to Review
-    case "IMPLEMENTATION": return "In Progress"; 
-    case "CLOSED": return "Closed";
-    default: return "Draft";
+    case "DRAFT":
+      return "Draft";
+    case "EVALUATION":
+      return "Review"; // Map Evaluation to Review
+    case "APPROVAL":
+      return "Review"; // Map Approval to Review
+    case "IMPLEMENTATION":
+      return "In Progress";
+    case "CLOSED":
+      return "Closed";
+    default:
+      return "Draft";
   }
 };
 
@@ -68,29 +76,31 @@ export default function ChangeControlDetailPage() {
 
   // 3. LOAD DATA
   const loadData = async () => {
-      const safeId = id || ""; 
-      if (!safeId) return;
+    const safeId = id || "";
+    if (!safeId) return;
 
-      try {
-          setLoading(true);
-          const data = await changeService.getById(safeId);
-          setRecord(data);
-      } catch (err) {
-          console.error(err);
-          setError("Failed to load Change Request.");
-      } finally {
-          setLoading(false);
-      }
+    try {
+      setLoading(true);
+      const data = await changeService.getById(safeId);
+      setRecord(data);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load Change Request.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-      loadData();
+    loadData();
   }, [id]);
 
   // 4. PERMISSIONS
-  const canEdit = role && record
-    ? permissionService.can(role, 'change', 'edit') && (record.status !== 'CLOSED')
-    : false;
+  const canEdit =
+    role && record
+      ? permissionService.can(role, "change", "edit") &&
+        record.status !== "CLOSED"
+      : false;
 
   // 5. HANDLERS
   const handleSaveClick = () => setSaveDialogOpen(true);
@@ -100,12 +110,12 @@ export default function ChangeControlDetailPage() {
     if (!record || !safeId) return;
 
     try {
-        console.log("Saving with reason:", reason);
-        await changeService.update(safeId, { ...record });
-        setSaveDialogOpen(false);
-        loadData(); 
+      console.log("Saving with reason:", reason);
+      await changeService.update(safeId, { ...record });
+      setSaveDialogOpen(false);
+      loadData();
     } catch (err) {
-        alert("Failed to save changes.");
+      alert("Failed to save changes.");
     }
   };
 
@@ -115,11 +125,21 @@ export default function ChangeControlDetailPage() {
   };
 
   const handleValidate = () => {
-     return true;
+    return true;
   };
 
-  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /> <Typography>Loading Change Request...</Typography></Box>;
-  if (error || !record) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
+  if (loading)
+    return (
+      <Box sx={{ p: 5, textAlign: "center" }}>
+        <CircularProgress /> <Typography>Loading Change Request...</Typography>
+      </Box>
+    );
+  if (error || !record)
+    return (
+      <Box sx={{ p: 5 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
 
   return (
     <>
@@ -129,10 +149,9 @@ export default function ChangeControlDetailPage() {
         subtitle={`Change Request ID: ${id}`}
         backTo="/change-control"
         
-        // Header Status Chip & Signature
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {(record.status === "CLOSED") && (
+            {record.status === "CLOSED" && (
               <SignatureStamp
                 isSigned={true}
                 signedBy="QA Manager"
@@ -142,56 +161,61 @@ export default function ChangeControlDetailPage() {
             <StatusChip status={mapStatusToWorkflow(record.status)} />
           </Box>
         }
-
-        // RIGHT PANEL: Workflow Timeline & Actions
+        
         rightPanel={
-            <Box sx={{ display: "grid", gap: 3 }}>
-                <WorkflowTimeline
-                    currentStatus={mapStatusToWorkflow(record.status)}
-                    steps={WORKFLOWS.change.steps}
-                />
-                
-                <WorkflowActionsPanel
-                    recordId={id || ""}
-                    moduleKey="change"
-                    meta={{
-                        ...record,
-                        id: record.id.toString(),
-                        moduleKey: "change",
-                        status: mapStatusToWorkflow(record.status), 
-                        approvalRequests: [],
-                        approvalsLog: [],
-                        signatureLog: []
-                    }}
-                    onUpdated={loadData}
-                    onValidate={handleValidate}
-                />
+          <Box sx={{ display: "grid", gap: 3 }}>
+            <WorkflowTimeline
+              currentStatus={mapStatusToWorkflow(record.status)}
+              steps={WORKFLOWS.change.steps}
+            />
 
-                <Divider />
+            <WorkflowActionsPanel
+              recordId={id || ""}
+              moduleKey="change"
+              meta={{
+                ...record,
+                id: record.id.toString(),
+                moduleKey: "change",
+                status: mapStatusToWorkflow(record.status),
+                approvalRequests: [],
+                approvalsLog: [],
+                signatureLog: [],
+              }}
+              onUpdated={loadData}
+              onValidate={handleValidate}
+            />
 
-                <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                        Change Stats
-                    </Typography>
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                            <Typography variant="caption" color="text.secondary">Priority</Typography>
-                            {/* ✅ Fixed: Cast to any to bypass 'priority' missing error */}
-                            <Typography variant="body2">{(record as any).priority || "Standard"}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                            <Typography variant="caption" color="text.secondary">Department</Typography>
-                            <Typography variant="body2">{record.department}</Typography>
-                        </Grid>
-                    </Grid>
-                </Box>
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                Change Stats
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Priority
+                  </Typography>
+                  <Typography variant="body2">
+                    {(record as any).priority || "Standard"}
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 6 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Department
+                  </Typography>
+                  <Typography variant="body2">{record.department}</Typography>
+                </Grid>
+              </Grid>
             </Box>
+          </Box>
         }
-
-        // TAB 1: OVERVIEW
+        
         overview={
           <Box sx={{ p: 1 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
                 Change Request Details
               </Typography>
@@ -220,8 +244,11 @@ export default function ChangeControlDetailPage() {
                 <TextField
                   select
                   label="Change Type"
-                  // ✅ Fixed: Cast to any to bypass 'type' missing error
-                  defaultValue={(record as any).change_type || (record as any).type || "Minor"}
+                  defaultValue={
+                    (record as any).change_type ||
+                    (record as any).type ||
+                    "Minor"
+                  }
                   fullWidth
                   disabled={!canEdit}
                 >
@@ -241,36 +268,33 @@ export default function ChangeControlDetailPage() {
                   disabled={!canEdit}
                 />
               </Grid>
-              
-               <Grid size={{ xs: 12, md: 6 }}>
+
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   label="Owner"
-                  // ✅ Fixed: Cast to any to bypass 'owner' missing error
                   defaultValue={(record as any).owner || "Current User"}
                   fullWidth
                   disabled={!canEdit}
                 />
               </Grid>
-               <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   label="Target Implementation Date"
                   type="date"
-                  // ✅ Fixed: Cast to any to bypass 'target_date' missing error
                   defaultValue={(record as any).target_date || ""}
                   fullWidth
                   disabled={!canEdit}
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
                 />
               </Grid>
             </Grid>
           </Box>
         }
-
-        // TAB 2: IMPACT ASSESSMENT
+        
         impact={
           <Box sx={{ p: 1 }}>
-            <ImpactAssessmentPanel readOnly={!canEdit} /> 
-            
+            <ImpactAssessmentPanel readOnly={!canEdit} />
+
             {record.status === "CLOSED" && (
               <Box sx={{ mt: 3 }}>
                 <ClosureChecklist />
@@ -278,48 +302,47 @@ export default function ChangeControlDetailPage() {
             )}
           </Box>
         }
-
-        // TAB 3: IMPLEMENTATION PLAN
+        
         plan={
           <Box sx={{ p: 5, textAlign: "center", color: "text.secondary" }}>
             <Typography gutterBottom>
-              The Implementation Plan is now managed within the <b>Impact Assessment</b> tab.
+              The Implementation Plan is now managed within the{" "}
+              <b>Impact Assessment</b> tab.
             </Typography>
             <Button variant="outlined" disabled>
               See Impact Tab
             </Button>
           </Box>
         }
-
-        // TAB 4: ATTACHMENTS
+        
         attachments={
           <AttachmentsUploader readOnly={!canEdit} title="Drawings & Specs" />
         }
-
-        // TAB 5: APPROVALS
+        
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel
-              requests={[]} 
+              requests={[]}
               canAddReviewer={canEdit}
               onAddReviewer={() => setAssignModalOpen(true)}
             />
             <SignatureLogTable rows={[]} />
           </Box>
         }
-
-        // TAB 6: AUDIT TRAIL
+        
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
+            <ActivityLog />
+            <Divider />
+            {/* ✅ FIXED: Use separate Typography for title */}
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Audit Log
             </Typography>
-            <AuditTrailTable rows={[]} /> 
+            <AuditTrailTable rows={[]} />
           </Box>
         }
       />
 
-      {/* --- MODALS --- */}
       <UserSelectionModal
         open={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
@@ -331,19 +354,19 @@ export default function ChangeControlDetailPage() {
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         onConfirm={(reason) => {
-             setReasonModalOpen(false);
-             handleConfirmSave(reason);
+          setReasonModalOpen(false);
+          handleConfirmSave(reason);
         }}
       />
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={saveDialogOpen}
         title="Save Change Request?"
         message="This will update the change details. Ensure impact assessment is reviewed if scope has changed."
         confirmText="Save"
         onClose={() => setSaveDialogOpen(false)}
         onConfirm={() => {
-             handleConfirmSave();
+          handleConfirmSave();
         }}
       />
     </>

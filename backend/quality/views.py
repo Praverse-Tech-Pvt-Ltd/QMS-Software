@@ -10,6 +10,8 @@ from .serializers import DeviationSerializer, CapaSerializer, ChangeControlSeria
 class DeviationViewSet(viewsets.ModelViewSet):
     queryset = Deviation.objects.all().order_by('-created_at')
     serializer_class = DeviationSerializer
+    lookup_field = 'deviation_id'
+    
     # permission_classes = [permissions.IsAuthenticated] # Ensure this is set
 
     def perform_create(self, serializer):
@@ -84,7 +86,8 @@ class DeviationViewSet(viewsets.ModelViewSet):
 class CapaViewSet(viewsets.ModelViewSet):
     queryset = Capa.objects.all().order_by('-created_at')
     serializer_class = CapaSerializer
-
+    lookup_field = 'capa_id'
+    
     def perform_create(self, serializer):
         serializer.save()
 
@@ -111,7 +114,17 @@ class CapaViewSet(viewsets.ModelViewSet):
         capa.status = 'COMPLETED'
         capa.save()
         return Response({"message": f"CAPA {capa.capa_id} marked as Completed. Ready for verification."})
-
+    
+    @action(detail=True, methods=['post'])
+    def transition(self, request, pk=None):
+        record = self.get_object()
+        target_status = request.data.get('target_status')
+        
+        # Log the audit trail here!
+        # record.status = target_status
+        # record.save()
+        return Response({'status': 'transition successful'})
+    
     # --- ACTION 3: QA Verification (Completed -> Verified) ---
     @action(detail=True, methods=['post'], url_path='verify')
     def verify_capa(self, request, pk=None):
@@ -145,7 +158,8 @@ class CapaViewSet(viewsets.ModelViewSet):
 class ChangeControlViewSet(viewsets.ModelViewSet):
     queryset = ChangeControl.objects.all().order_by('-created_at')
     serializer_class = ChangeControlSerializer
-
+    lookup_field = 'cc_id'
+    
     def perform_create(self, serializer):
         # Automatically set the 'initiator' to the logged-in user
         serializer.save(initiator=self.request.user)

@@ -4,9 +4,8 @@ import {
   TextField,
   MenuItem,
   Typography,
-  Grid,
+   Grid, // ✅ Standardized Grid Import
   Stack,
-  Chip,
   alpha,
 } from "@mui/material";
 
@@ -19,12 +18,9 @@ import { useNavigate } from "react-router-dom";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
-// ✅ Use the Service, not direct API calls
 import { dmsService } from "../../services/dms.service";
-import FormActions from "../../components/common/FormActions";
 import { keyframes, transitions } from "../../theme/motion";
 
-// Validation Schema
 const schema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters"),
   document_id: z.string().min(3, "Document ID is required (e.g., SOP-QA-001)"),
@@ -42,7 +38,7 @@ export default function DmsCreatePage() {
     register,
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -55,7 +51,6 @@ export default function DmsCreatePage() {
 
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      // ✅ Construct payload matching the Service Interface
       const payload: any = {
         title: data.title,
         document_id: data.document_id,
@@ -64,7 +59,6 @@ export default function DmsCreatePage() {
         status: action === "Draft" ? "DRAFT" : "REVIEW",
       };
 
-      // ✅ Use Service
       await dmsService.create(payload);
 
       enqueueSnackbar(`Document ${data.document_id} created successfully!`, {
@@ -81,7 +75,6 @@ export default function DmsCreatePage() {
     }
   };
 
-  const onSaveDraft = (data: FormValues) => handleCreate(data, "Draft");
   const onSubmitReview = (data: FormValues) => handleCreate(data, "Submit");
 
   return (
@@ -309,43 +302,6 @@ export default function DmsCreatePage() {
               />
             </Grid>
           </Grid>
-
-          {/* Note Section */}
-          <Box
-            sx={{
-              mt: 2,
-              p: 2.5,
-              borderRadius: 2,
-              bgcolor: "#f8fafc",
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <Chip
-                label="NOTE"
-                size="small"
-                sx={{
-                  height: 22,
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  bgcolor: "#3b82f6",
-                  color: "white",
-                }}
-              />
-              <Typography variant="body2" sx={{ color: "#475569", lineHeight: 1.6, pt: 0.25 }}>
-                You are creating this record as the <strong>Owner</strong>. Files can be uploaded after saving the document.
-              </Typography>
-            </Stack>
-          </Box>
-
-          <FormActions
-            onSaveDraft={handleSubmit(onSaveDraft)}
-            isSubmitting={isSubmitting}
-            labels={{
-              submit: "Create & Submit for Review",
-              draft: "Save as Draft",
-            }}
-          />
         </Box>
       </Paper>
     </Box>

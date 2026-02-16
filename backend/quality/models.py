@@ -37,7 +37,8 @@ class Deviation(TimeStampedModel):
 # --- 2. CAPA Model ---
 class Capa(TimeStampedModel):
     deviation = models.ForeignKey(Deviation, on_delete=models.SET_NULL, null=True, blank=True, related_name='capas')
-
+    root_cause = models.TextField(blank=True, null=True)
+    action_plan = models.TextField(blank=True, null=True)
     class ActionType(models.TextChoices):
         CORRECTIVE = "CORRECTIVE", "Corrective Action"
         PREVENTIVE = "PREVENTIVE", "Preventive Action"

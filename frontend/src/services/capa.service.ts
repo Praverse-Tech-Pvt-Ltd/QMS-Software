@@ -1,31 +1,40 @@
 import api from "./api";
-import type { WorkflowMeta } from "./workflow.service"; // ✅ Assumes types are now in workflow.service
+import type { WorkflowMeta } from "./workflow.service";
 
+export interface AuditLog {
+  id: number;
+  action: string;
+  timestamp: string;
+  user_name: string; // Matches the serializer source='user.get_full_name'
+  reason?: string;
+  changes?: any;
+}
 
-export interface CapaRecord extends Omit<Partial<WorkflowMeta>, 'id'> {
-  id: number;           // Django Database Primary Key
-  capa_id: string;      // QMS Formatted ID (e.g., CAPA-2026-001)
-  deviation?: number;   // Linked Deviation Database ID
+export interface CapaRecord extends Omit<Partial<WorkflowMeta>, "id"> {
+  id: number; // Django Database Primary Key
+  capa_id: string; // QMS Formatted ID (e.g., CAPA-2026-001)
+  deviation?: number; // Linked Deviation Database ID
   title: string;
   description: string;
   department: string;
-  
+
   // ✅ ENUM ALIGNMENT: Standardized to Django Choices
   action_type: "CORRECTIVE" | "PREVENTIVE";
   status: "PLANNING" | "PENDING" | "IMPLEMENTATION" | "VERIFICATION" | "CLOSED";
-  
+
   // ✅ UI & LIST HELPER FIELDS
   initiator?: string;
   owner?: string;
   priority?: "Low" | "Medium" | "High" | "Critical";
-  due_date: string;     // Matches Django model
+  due_date: string; // Matches Django model
   target_date?: string; // Matches Django target_date
-  
+
   // Detail investigation fields
-  source?: string;      // e.g., "Deviation DEV-042"
+  source?: string; // e.g., "Deviation DEV-042"
   root_cause?: string;
   proposed_plan?: string;
-  
+  audit_trail?: AuditLog[]; 
+  signatures?: any[];
   moduleKey?: "capa";
 }
 

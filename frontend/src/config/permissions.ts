@@ -1,4 +1,4 @@
-import { type PermissionMatrix } from "../types/permissions.types";
+import { type PermissionMatrix } from "../services/permission.service";
 
 export const ROLE_PERMISSIONS: PermissionMatrix = {
   Admin: {

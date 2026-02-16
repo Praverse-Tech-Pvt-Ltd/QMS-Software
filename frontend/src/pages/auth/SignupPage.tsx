@@ -25,7 +25,7 @@ import { useNavigate } from "react-router-dom";
 // Architecture Imports
 import api from "../../services/api";
 import { useRole } from "../../app/providers/RoleProvider";
-import { type UserRole } from "../../types/permissions.types"; // Assuming you have this type defined
+import { type UserRole } from "../../services/permission.service"; // Assuming you have this type defined
 
 export default function SignupPage() {
   const navigate = useNavigate();

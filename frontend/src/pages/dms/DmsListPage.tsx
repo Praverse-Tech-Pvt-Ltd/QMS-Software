@@ -8,7 +8,8 @@ import {
   Stack,
   IconButton,
   CircularProgress,
-  Alert
+  Alert,
+  
 } from "@mui/material";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
@@ -21,7 +22,6 @@ import PermissionDeniedDialog from "../../components/common/PermissionDeniedDial
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
-// Import the Service and Type
 import { dmsService, type DmsDocument } from "../../services/dms.service";
 
 const STATUS_FILTERS = ["All", "Draft", "Review", "Approved", "Effective", "Obsolete"];
@@ -30,7 +30,6 @@ export default function DmsListPage() {
   const navigate = useNavigate();
   const { role } = useRole();
   
-  // Data State
   const [documents, setDocuments] = useState<DmsDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,15 +48,13 @@ export default function DmsListPage() {
       setDocuments(data);
     } catch (err) {
       console.error("Failed to load documents", err);
-      // In development without backend, you might want to suppress this or show empty state
-      setError("Failed to connect to the server. Is Django running?");
+      setError("Failed to connect to the server.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleCreateNew = () => {
-    // ✅ FIX: Check if role exists before checking permissions
     const canCreate = role ? permissionService.can(role, "dms", "create") : false;
 
     if (!canCreate) {
@@ -70,10 +67,23 @@ export default function DmsListPage() {
     navigate("/dms/new");
   };
 
+  const handleView = (doc: DmsDocument) => {
+      // ✅ NAVIGATION FIX: Use String ID (document_id) with fallback to numeric ID
+      const targetId = doc.document_id || doc.id;
+      navigate(`/dms/${targetId}`);
+  };
+
   // Client-side filtering
-  const filteredDocs = statusFilter === "All"
-    ? documents
-    : documents.filter((d) => d.status === statusFilter.toUpperCase());
+  const filteredDocs = documents.filter((doc) => {
+      // Status Filter (Case Insensitive Safety)
+      if (statusFilter !== "All") {
+          const docStatus = String(doc.status).toUpperCase();
+          if (docStatus !== statusFilter.toUpperCase()) {
+              return false;
+          }
+      }
+      return true;
+  });
 
   if (loading) return <Box sx={{ p: 4, textAlign: "center" }}><CircularProgress /></Box>;
   if (error) return <Box sx={{ p: 4 }}><Alert severity="error">{error}</Alert></Box>;
@@ -148,7 +158,17 @@ export default function DmsListPage() {
             )}
             {filteredDocs.map((doc) => (
               <Box component="tr" key={doc.id} sx={{ borderTop: "1px solid rgba(0,0,0,0.06)", "&:hover": { bgcolor: "grey.50" } }}>
-                <Box component="td" sx={{ px: 3, py: 2, fontWeight: 600, color: "primary.main" }}>
+                <Box 
+                    component="td" 
+                    onClick={() => handleView(doc)}
+                    sx={{ 
+                        px: 3, py: 2, 
+                        fontWeight: 600, 
+                        color: "primary.main", 
+                        cursor: "pointer",
+                        "&:hover": { textDecoration: "underline" }
+                    }}
+                >
                   {doc.document_id}
                 </Box>
                 <Box component="td" sx={{ px: 3, py: 2 }}>{doc.title}</Box>
@@ -159,7 +179,7 @@ export default function DmsListPage() {
                 </Box>
                 {role !== "Viewer" && (
                   <Box component="td" sx={{ px: 3, py: 2 }}>
-                    <IconButton size="small" onClick={() => navigate(`/dms/${doc.id}`)}>
+                    <IconButton size="small" onClick={() => handleView(doc)}>
                       <VisibilityOutlinedIcon />
                     </IconButton>
                   </Box>

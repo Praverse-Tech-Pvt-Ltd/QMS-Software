@@ -209,7 +209,7 @@ export default function DeviationsDetailPage() {
                         label="Severity" 
                         defaultValue={(record as any).severity || "Minor"} 
                         fullWidth 
-                        disabled={!canEdit}
+                        disabled={!canEdit} 
                     >
                         <MenuItem value="Minor">Minor</MenuItem>
                         <MenuItem value="Major">Major</MenuItem>
@@ -274,6 +274,7 @@ export default function DeviationsDetailPage() {
         // TAB 4: AUDIT TRAIL
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
+            {/* ✅ FIXED: Separate Title from AuditTrailTable */}
             <Typography variant="h6" fontWeight={800}>
               Audit Log
             </Typography>

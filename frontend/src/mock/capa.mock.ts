@@ -1,4 +1,4 @@
-import type { CapaRecord } from "../types/capa.types";
+import type { CapaRecord } from "../services/capa.service";
 
 export const capaMock: CapaRecord[] = [
   {
@@ -7,7 +7,7 @@ export const capaMock: CapaRecord[] = [
     initiator: "Sarah Johnson",
     department: "Quality Control",
     priority: "High",
-    status: "Implementation", // Maps to "In Progress"
+    status: "IMPL", // Maps to "In Progress"
     dueDate: "2026-02-15",
     relatedTo: "DEV-2024-098",
     moduleKey: "capa",

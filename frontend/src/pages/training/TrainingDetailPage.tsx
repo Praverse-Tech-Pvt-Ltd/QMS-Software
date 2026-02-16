@@ -9,19 +9,19 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Grid
+  Grid, // ✅ Standardized Grid
 } from "@mui/material";
-
 
 import SaveIcon from "@mui/icons-material/Save";
 import PrintIcon from "@mui/icons-material/Print";
 
-// --- IMPORTS ---
-import { trainingService, type TrainingPlan } from "../../services/training.service"; 
+import {
+  trainingService,
+  type TrainingPlan,
+} from "../../services/training.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
-// --- COMPONENTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
 import SignatureStamp from "../../components/qms/SignatureStamp";
@@ -31,7 +31,6 @@ import WorkflowTimeline from "../../components/qms/WorkflowTimeline";
 import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
 import { WORKFLOWS } from "../../config/workflows";
 
-// Module Specific Components
 import VersionHistoryPanel from "../../components/dms/VersionHistoryPanel";
 import VersionCompareModal from "../../components/dms/VersionCompareModal";
 import ControlledCopyPrintModal from "../../components/dms/ControlledCopyPrintModal";
@@ -42,16 +41,19 @@ import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 
-// ✅ HELPER: Map Backend Status to UI Workflow Status
 const mapStatusToWorkflow = (backendStatus: string): any => {
-  // Cast to string to avoid "no overlap" TS errors if interface is too strict
   const status = backendStatus as string;
   switch (status) {
-    case "DRAFT": return "Draft";
-    case "ACTIVE": return "Effective"; // Map 'Active' to 'Effective'
-    case "EFFECTIVE": return "Effective"; 
-    case "OBSOLETE": return "Obsolete";
-    default: return "Draft";
+    case "DRAFT":
+      return "Draft";
+    case "ACTIVE":
+      return "Effective";
+    case "EFFECTIVE":
+      return "Effective";
+    case "OBSOLETE":
+      return "Obsolete";
+    default:
+      return "Draft";
   }
 };
 
@@ -59,48 +61,44 @@ export default function TrainingDetailPage() {
   const { id } = useParams();
   const { role } = useRole();
 
-  // 1. DATA FETCHING
   const [record, setRecord] = useState<TrainingPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. LOCAL STATE
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // DMS/Training Specific State
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
-  // 3. LOAD DATA
   const loadData = async () => {
-      const safeId = id || ""; 
-      if (!safeId) return;
+    const safeId = id || "";
+    if (!safeId) return;
 
-      try {
-          setLoading(true);
-          const data = await trainingService.getById(safeId);
-          setRecord(data);
-      } catch (err) {
-          console.error(err);
-          setError("Failed to load Training Plan.");
-      } finally {
-          setLoading(false);
-      }
+    try {
+      setLoading(true);
+      const data = await trainingService.getById(safeId);
+      setRecord(data);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load Training Plan.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-      loadData();
+    loadData();
   }, [id]);
 
-  // 4. PERMISSIONS
-  const canEdit = role && record
-    ? permissionService.can(role, 'training', 'edit') && (record.status === 'DRAFT')
-    : false;
+  const canEdit =
+    role && record
+      ? permissionService.can(role, "training", "edit") &&
+        record.status === "DRAFT"
+      : false;
 
-  // 5. HANDLERS
   const handleSaveClick = () => setSaveDialogOpen(true);
 
   const handleConfirmSave = async (reason?: string) => {
@@ -108,12 +106,12 @@ export default function TrainingDetailPage() {
     if (!record || !safeId) return;
 
     try {
-        console.log("Saving with reason:", reason);
-        await trainingService.update(safeId, { ...record });
-        setSaveDialogOpen(false);
-        loadData();
+      console.log("Saving with reason:", reason);
+      await trainingService.update(safeId, { ...record });
+      setSaveDialogOpen(false);
+      loadData();
     } catch (err) {
-        alert("Failed to save changes.");
+      alert("Failed to save changes.");
     }
   };
 
@@ -129,13 +127,23 @@ export default function TrainingDetailPage() {
 
   const handleValidate = () => {
     if (record?.status === "DRAFT" && !record.title) {
-       return "Title is required.";
+      return "Title is required.";
     }
     return true;
   };
 
-  if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /> <Typography>Loading Training Plan...</Typography></Box>;
-  if (error || !record) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
+  if (loading)
+    return (
+      <Box sx={{ p: 5, textAlign: "center" }}>
+        <CircularProgress /> <Typography>Loading Training Plan...</Typography>
+      </Box>
+    );
+  if (error || !record)
+    return (
+      <Box sx={{ p: 5 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
 
   return (
     <>
@@ -143,11 +151,10 @@ export default function TrainingDetailPage() {
         title={`${record.id}: ${record.title}`}
         subtitle={`Plan ID: ${id}`}
         backTo="/training"
-        
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {/* ✅ FIXED: Cast to string to bypass strict type checking for statuses that might be missing in type definition */}
-            {((record.status as string) === "ACTIVE" || (record.status as string) === "EFFECTIVE") && (
+            {((record.status as string) === "ACTIVE" ||
+              (record.status as string) === "EFFECTIVE") && (
               <SignatureStamp
                 isSigned={true}
                 signedBy="QA Manager"
@@ -157,8 +164,6 @@ export default function TrainingDetailPage() {
             <StatusChip status={mapStatusToWorkflow(record.status)} />
           </Box>
         }
-
-        // RIGHT PANEL: Workflow & Stats
         rightPanel={
           <Box sx={{ display: "grid", gap: 3 }}>
             <WorkflowTimeline
@@ -171,12 +176,12 @@ export default function TrainingDetailPage() {
               moduleKey="training"
               meta={{
                 ...record,
-                id: record.id.toString(), 
+                id: record.id.toString(),
                 moduleKey: "training",
-                status: mapStatusToWorkflow(record.status), 
+                status: mapStatusToWorkflow(record.status),
                 approvalRequests: [],
                 approvalsLog: [],
-                signatureLog: []
+                signatureLog: [],
               }}
               onUpdated={loadData}
               onValidate={handleValidate}
@@ -190,43 +195,51 @@ export default function TrainingDetailPage() {
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Total Trainees</Typography>
-                  <Typography variant="body2">{(record as any).totalTrainees || 0}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Trainees
+                  </Typography>
+                  <Typography variant="body2">
+                    {(record as any).totalTrainees || 0}
+                  </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Completion</Typography>
-                  <Typography variant="body2">{(record as any).completionRate || 0}%</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Completion
+                  </Typography>
+                  <Typography variant="body2">
+                    {(record as any).completionRate || 0}%
+                  </Typography>
                 </Grid>
               </Grid>
             </Box>
           </Box>
         }
-
-        // TAB 1: OVERVIEW (Configuration)
         overview={
           <Box sx={{ p: 1 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
                 Training Configuration
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: "flex", gap: 1 }}>
                 <Button
-                    variant="outlined"
-                    startIcon={<PrintIcon />}
-                    size="small"
-                    onClick={() => setPrintModalOpen(true)}
+                  variant="outlined"
+                  startIcon={<PrintIcon />}
+                  size="small"
+                  onClick={() => setPrintModalOpen(true)}
                 >
-                    Print Plan
+                  Print Plan
                 </Button>
                 {canEdit && (
-                    <Button
+                  <Button
                     variant="contained"
                     startIcon={<SaveIcon />}
                     onClick={handleSaveClick}
                     size="small"
-                    >
+                  >
                     Save Changes
-                    </Button>
+                  </Button>
                 )}
               </Box>
             </Box>
@@ -289,54 +302,49 @@ export default function TrainingDetailPage() {
             <Divider sx={{ my: 4 }} />
 
             <Box sx={{ display: "grid", gap: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                    Plan Lifecycle
-                </Typography>
-                <VersionHistoryPanel
-                    currentVersion={(record as any).version || "v1.0"}
-                    rows={[]} 
-                    onView={(v) => console.log("View:", v)}
-                    onCompare={handleCompare}
-                />
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Plan Lifecycle
+              </Typography>
+              <VersionHistoryPanel
+                currentVersion={(record as any).version || "v1.0"}
+                rows={[]}
+                onView={(v) => console.log("View:", v)}
+                onCompare={handleCompare}
+              />
             </Box>
           </Box>
         }
-
-        // TAB 2: MATERIALS
         attachments={
-            <AttachmentsUploader
-                readOnly={!canEdit}
-                title="Training Materials"
-                acceptedFormats=".pdf,.ppt,.pptx"
-            />
+          <AttachmentsUploader
+            readOnly={!canEdit}
+            title="Training Materials"
+            acceptedFormats=".pdf,.ppt,.pptx"
+          />
         }
-
-        // TAB 3: APPROVALS
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel
-              requests={[]} 
+              requests={[]}
               canAddReviewer={canEdit}
               onAddReviewer={() => setAssignModalOpen(true)}
             />
             <SignatureLogTable rows={[]} />
           </Box>
         }
-
-        // TAB 4: AUDIT TRAIL
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ActivityLog />
             <Divider />
+
+            {/* ✅ FIXED: Use separate Typography for title */}
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
               Audit Log
             </Typography>
-            <AuditTrailTable rows={[]} /> 
+            <AuditTrailTable rows={[]} />
           </Box>
         }
       />
 
-      {/* --- MODALS --- */}
       <UserSelectionModal
         open={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
@@ -348,19 +356,19 @@ export default function TrainingDetailPage() {
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         onConfirm={(reason) => {
-             setReasonModalOpen(false);
-             handleConfirmSave(reason);
+          setReasonModalOpen(false);
+          handleConfirmSave(reason);
         }}
       />
 
-      <ConfirmDialog 
+      <ConfirmDialog
         open={saveDialogOpen}
         title="Save Training Plan?"
         message="This will update the training configuration."
         confirmText="Save"
         onClose={() => setSaveDialogOpen(false)}
         onConfirm={() => {
-             handleConfirmSave();
+          handleConfirmSave();
         }}
       />
 

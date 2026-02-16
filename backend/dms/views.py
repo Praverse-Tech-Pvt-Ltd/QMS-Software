@@ -9,7 +9,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all().order_by('-updated_at')
     serializer_class = DocumentSerializer
     permission_classes = [permissions.IsAuthenticated]
-
+    lookup_field = 'document_id'
+    
     # Custom Action: Upload a new version for a document
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload_version(self, request, pk=None):

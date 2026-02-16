@@ -6,12 +6,8 @@ import {
   Typography,
   Divider,
   Stack,
-  Alert,
-  AlertTitle,
-  Grid,
+   Grid, // ✅ Standardized Grid Import
 } from "@mui/material";
-
-// ✅ Grid v2 Import
 
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
@@ -28,14 +24,11 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
 import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
 
-// Schema Definition
 const schema = z.object({
-  // Basic
   title: z.string().min(5, "Title must describe the event clearly"),
   department: z.string().min(1, "Department is required"),
   reportedBy: z.string().min(2, "Reporter name is required"),
@@ -43,14 +36,10 @@ const schema = z.object({
   severity: z.string().min(1, "Severity is required"),
   classification: z.string().min(1, "Classification is required"),
   description: z.string().min(10, "Description must be detailed"),
-
-  // Containment
   immediateAction: z.string().min(5, "Immediate action taken is required"),
   batchNo: z.string().optional(),
   productName: z.string().optional(),
   impactedArea: z.string().min(2, "Impacted area is required"),
-
-  // CAPA Linkage
   capaRequired: z.string().min(1, "CAPA requirement must be selected"),
 });
 
@@ -84,32 +73,25 @@ export default function DeviationsCreatePage() {
     },
   });
 
-  // Reusable Create Logic
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      // 1. Generate ID (Mock)
       const newId = `DEV-2024-${Math.floor(Math.random() * 1000)}`;
       
-      // ✅ FIX: Use variables to resolve unused warnings
       const initialStatus = action === "Draft" ? "Draft" : "Investigation"; 
       console.log(`Creating Deviation (${initialStatus}):`, data);
 
-      // 2. Persist Data
       workflowService.getOrCreate(newId, "deviations");
 
-      // 3. Log Audit
       auditService.add("deviations", newId, {
         actionType: "CREATE",
         field: "Record",
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        // ✅ FIX: Handle nullable role
         role: role || "Unknown",
         reason: `Initial Deviation Report (${action})`,
       });
 
-      // 4. Redirect
       enqueueSnackbar(`Deviation ${newId} raised successfully`, {
         variant: "success",
       });
@@ -216,10 +198,12 @@ export default function DeviationsCreatePage() {
                 {...register("title")}
                 error={!!errors.title}
                 helperText={errors.title?.message || "Provide a clear, concise description"}
-                InputProps={{
-                  startAdornment: (
-                    <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                    ),
+                  }
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -244,10 +228,12 @@ export default function DeviationsCreatePage() {
                     label="Department *"
                     fullWidth
                     error={!!errors.department}
-                    InputProps={{
-                      startAdornment: (
-                        <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                      ),
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+                                <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                            ),
+                        }
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -274,15 +260,17 @@ export default function DeviationsCreatePage() {
                 label="Date of Incident *"
                 type="date"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ 
+                    inputLabel: { shrink: true },
+                    input: {
+                        startAdornment: (
+                            <CalendarTodayOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 18 }} />
+                        ),
+                    }
+                }}
                 {...register("incidentDate")}
                 error={!!errors.incidentDate}
                 helperText={errors.incidentDate?.message}
-                InputProps={{
-                  startAdornment: (
-                    <CalendarTodayOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 18 }} />
-                  ),
-                }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     bgcolor: "#FFFFFF",

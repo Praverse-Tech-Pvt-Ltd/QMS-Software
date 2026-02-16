@@ -5,10 +5,8 @@ import {
   MenuItem,
   Typography,
   Divider,
-  Grid,
+  Grid, // ✅ Standardized Grid Import
 } from "@mui/material";
-
-// ✅ Grid v2 Import
 
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
@@ -19,12 +17,10 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
 import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
 
-// Schema Definition
 const schema = z.object({
   title: z.string().min(5, "Title is required"),
   changeType: z.string().min(1, "Change Type is required"),
@@ -64,33 +60,25 @@ export default function ChangeControlCreatePage() {
     },
   });
 
-  // Reusable Create Logic
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      // 1. Generate ID (Mock)
       const newId = `CC-2024-${Math.floor(Math.random() * 1000)}`;
-      
-      // ✅ FIX: Use 'initialStatus' and 'data' to resolve unused warnings
+
       const initialStatus = action === "Draft" ? "Draft" : "QA Review";
       console.log(`Creating Change Control (${initialStatus}):`, data);
 
-      // 2. Persist Data (Mock)
-      // In a real app, pass data and status here
       workflowService.getOrCreate(newId, "change");
 
-      // 3. Log Audit
       auditService.add("change", newId, {
         actionType: "CREATE",
         field: "Record",
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        // ✅ FIX: Handle nullable role ('string | null' is not 'string')
         role: role || "Unknown",
         reason: `Initiated Change Request (${action}) - Status: ${initialStatus}`,
       });
 
-      // 4. Redirect
       enqueueSnackbar(`Change Control ${newId} initiated successfully`, {
         variant: "success",
       });
@@ -214,7 +202,7 @@ export default function ChangeControlCreatePage() {
                 label="Target Implementation Date"
                 type="date"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 {...register("implementationDate")}
                 error={!!errors.implementationDate}
                 helperText={errors.implementationDate?.message}

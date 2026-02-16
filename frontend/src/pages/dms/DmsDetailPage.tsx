@@ -8,35 +8,29 @@ import {
   TextField,
   CircularProgress,
   Alert,
-  Grid
+  Grid, // ✅ Standardized Grid Import
 } from "@mui/material";
-
-// ✅ CRITICAL: Import Grid2 to use the 'size' prop
 
 import SaveIcon from "@mui/icons-material/Save";
 import PrintIcon from "@mui/icons-material/Print";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 
-// --- SERVICES & PROVIDERS ---
-import { dmsService,type  DmsDocument } from "../../services/dms.service";
+import { dmsService, type DmsDocument } from "../../services/dms.service";
 import { permissionService } from "../../services/permission.service";
 import { useRole } from "../../app/providers/RoleProvider";
 
-// --- COMPONENTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
 import SignatureStamp from "../../components/qms/SignatureStamp";
 import ReasonForChangeModal from "../../components/common/ReasonForChangeModal";
 import UserSelectionModal from "../../components/common/UserSelectionModal";
 
-// DMS Specific Components
 import VersionHistoryPanel from "../../components/dms/VersionHistoryPanel";
 import PeriodicReviewCard from "../../components/dms/PeriodicReviewCard";
 import VersionCompareModal from "../../components/dms/VersionCompareModal";
 import ControlledCopyPrintModal from "../../components/dms/ControlledCopyPrintModal";
 import { FileUploadModal } from "../../components/dms/FileUploadModal"; 
 
-// Generic QMS Components
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
@@ -45,12 +39,10 @@ export default function DmsDetailPage() {
   const { id } = useParams();
   const { role } = useRole();
   
-  // 1. DATA STATE
   const [record, setRecord] = useState<DmsDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. UI STATE
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false); 
@@ -58,7 +50,6 @@ export default function DmsDetailPage() {
   const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
-  // 3. FETCH DATA
   const loadData = async () => {
     if (!id) return;
     try {
@@ -77,20 +68,16 @@ export default function DmsDetailPage() {
     loadData();
   }, [id]);
 
-  // 4. PERMISSIONS
   const canEdit = role 
     ? permissionService.can(role, 'dms', 'edit') && (record?.status === 'DRAFT' || record?.status === 'REVIEW')
     : false;
 
-  // 5. HANDLERS
   const handleSaveClick = () => setReasonModalOpen(true);
 
   const handleConfirmSave = async (reason: string) => {
     if (!record || !id) return;
     try {
-      // ✅ Log the reason (or send it to backend in the future)
       console.log("Saving with reason:", reason);
-
       await dmsService.update(id, { ...record });
       setReasonModalOpen(false);
       loadData(); 
@@ -109,7 +96,6 @@ export default function DmsDetailPage() {
     setAssignModalOpen(false);
   };
 
-  // 6. RENDER
   if (loading) return <Box sx={{ p: 5, textAlign: "center" }}><CircularProgress /> <Typography>Loading Document...</Typography></Box>;
   if (error || !record) return <Box sx={{ p: 5 }}><Alert severity="error">{error || "Document not found"}</Alert></Box>;
 
@@ -176,13 +162,11 @@ export default function DmsDetailPage() {
                 )}
              </Box>
 
-             {/* ✅ UPDATED: Using Grid v2 with 'size' prop */}
              <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 8 }}>
                   <TextField
                     label="Document Title"
                     value={record.title}
-                    // onChange={(e) => setRecord({...record, title: e.target.value})} 
                     fullWidth
                     disabled={!canEdit}
                   />
@@ -242,6 +226,7 @@ export default function DmsDetailPage() {
 
         activity={
            <Box sx={{ display: "grid", gap: 3 }}>
+              {/* ✅ FIXED: Use separate Typography for title */}
               <Typography variant="h6" fontWeight={800}>Audit Log</Typography>
               <AuditTrailTable rows={[]} /> 
            </Box>
@@ -260,7 +245,6 @@ export default function DmsDetailPage() {
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         onConfirm={(reason) => {
-             // ✅ Pass the reason to your handler
              handleConfirmSave(reason);
         }}
       />

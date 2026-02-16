@@ -11,8 +11,8 @@ import {
 } from "@mui/material";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
-import type { Department, QmsStatus } from "../../types/qms";
-import { departments, qmsStatuses } from "../../types/qms";
+import type { Department, QmsStatus } from "../../services/permission.service";
+import { departments, qmsStatuses } from "../../services/permission.service";
 
 export type FiltersState = {
   search: string;

@@ -9,7 +9,15 @@ import {
   List,
   ListItem,
   ListItemText,
-  Grid,
+  Grid, // ✅ Standardized Grid
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
 } from "@mui/material";
 
 import { useParams, useNavigate } from "react-router-dom";
@@ -22,18 +30,6 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import HistoryIcon from "@mui/icons-material/History";
 import QuizIcon from "@mui/icons-material/Quiz";
-
-// Components
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControl,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-} from "@mui/material";
 
 // --- MOCK DATA ---
 const employees: Record<
@@ -74,7 +70,6 @@ const initialTrainings = [
 
 // --- SUB-COMPONENT: QUIZ MODAL ---
 function QuizModal({ open, onClose, title, onPass }: any) {
-  // ✅ Removed unused 'step' state
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -341,12 +336,14 @@ export default function EmployeeTrainingProfilePage() {
             </List>
           </Paper>
         </Grid>
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h6" fontWeight={800} gutterBottom>
-            On-The-Job (OJT) Tasks
-          </Typography>
-          <OjtChecklist />
-        </Box>
+        <Grid size={{ xs: 12 }}>
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" fontWeight={800} gutterBottom>
+              On-The-Job (OJT) Tasks
+            </Typography>
+            <OjtChecklist />
+          </Box>
+        </Grid>
       </Grid>
 
       {/* QUIZ MODAL */}

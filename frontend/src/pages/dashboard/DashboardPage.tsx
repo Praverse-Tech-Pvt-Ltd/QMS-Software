@@ -31,7 +31,7 @@ import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
-import type { ModuleKey } from "../../types/permissions.types";
+import type { ModuleKey } from "../../services/permission.service";
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 import { fetchDashboardStats, fetchMyTasks } from "../../services/api";
 

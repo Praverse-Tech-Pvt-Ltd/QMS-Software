@@ -5,11 +5,9 @@ import {
   TextField,
   List,
   ListItem,
-  ListItemIcon,
   ListItemText,
   Box,
   Typography,
-  Chip,
   alpha,
   Fade,
   Zoom,
@@ -23,8 +21,7 @@ import SchoolIcon from "@mui/icons-material/School";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import SettingsIcon from "@mui/icons-material/Settings";
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import { motion, transitions } from "../../theme/motion";
+
 
 /**
  * Command Palette (Cmd+K / Ctrl+K)

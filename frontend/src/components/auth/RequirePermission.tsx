@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useRole } from '../../app/providers/RoleProvider';
 import { permissionService } from '../../services/permission.service';
 // ✅ FIX 1: Import 'ModuleKey' instead of 'Resource'
-import type { ModuleKey } from '../../types/permissions.types';
+import type { ModuleKey } from '../../services/permission.service';
 
 interface RequirePermissionProps {
   resource: ModuleKey; // ✅ FIX 1: Update type usage

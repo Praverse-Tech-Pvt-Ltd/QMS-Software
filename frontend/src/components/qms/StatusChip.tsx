@@ -1,6 +1,6 @@
 import { Chip } from "@mui/material";
 // ✅ FIXED: Import from types, not config
-import {type WorkflowStatus } from "../../types/workflow.types"; 
+import {type WorkflowStatus } from "../../services/workflow.service"; 
 
 export default function StatusChip({ status }: { status: WorkflowStatus | string }) {
   const getColor = () => {
