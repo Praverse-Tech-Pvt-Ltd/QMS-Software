@@ -5,13 +5,23 @@ import AddLinkIcon from '@mui/icons-material/AddLink';
 import LaunchIcon from '@mui/icons-material/Launch';
 import { useNavigate } from "react-router-dom";
 
-export default function LinkedCapasPanel({ readOnly = false }: { readOnly?: boolean }) {
-  const navigate = useNavigate();
+// Define the shape based on your JSON
+interface LinkedCapa {
+  id: number;
+  capa_id: string;
+  title: string;
+  status: string;
+  action_type: string;
+}
 
-  // Mock Data
-  const links = [
-    { id: "CAPA-2024-009", title: "Autoclave Sensor Calibration", status: "In Progress", type: "Corrective" }
-  ];
+export default function LinkedCapasPanel({ 
+  capas = [], 
+  readOnly = false 
+}: { 
+  capas?: LinkedCapa[], 
+  readOnly?: boolean 
+}) {
+  const navigate = useNavigate();
 
   return (
     <Paper sx={{ p: 3, mt: 3, borderRadius: 3, border: "1px solid rgba(0,0,0,0.06)" }}>
@@ -24,7 +34,7 @@ export default function LinkedCapasPanel({ readOnly = false }: { readOnly?: bool
           )}
        </Box>
 
-       {links.length > 0 ? (
+       {capas.length > 0 ? (
          <Table size="small">
             <TableHead>
                 <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
@@ -36,19 +46,29 @@ export default function LinkedCapasPanel({ readOnly = false }: { readOnly?: bool
                 </TableRow>
             </TableHead>
             <TableBody>
-                {links.map(row => (
+                {capas.map(row => (
                     <TableRow key={row.id}>
-                        <TableCell>{row.id}</TableCell>
+                        {/* ✅ Use capa_id from your JSON */}
+                        <TableCell sx={{ fontWeight: 600 }}>{row.capa_id}</TableCell>
                         <TableCell>{row.title}</TableCell>
-                        <TableCell>{row.type}</TableCell>
+                        <TableCell sx={{ textTransform: 'capitalize' }}>
+                          {row.action_type.toLowerCase()}
+                        </TableCell>
                         <TableCell>
-                            <Chip label={row.status} size="small" color="warning" variant="outlined" />
+                            <Chip 
+                              label={row.status} 
+                              size="small" 
+                              color={row.status === 'VERIFIED' ? 'success' : 'warning'} 
+                              variant="outlined" 
+                              sx={{ fontWeight: 700, fontSize: '0.7rem' }}
+                            />
                         </TableCell>
                         <TableCell align="right">
                              <Button 
                                 size="small" 
                                 endIcon={<LaunchIcon />} 
-                                onClick={() => navigate(`/capa/${row.id}`)}
+                                // ✅ Navigate using the business ID
+                                onClick={() => navigate(`/capa/${row.capa_id}`)}
                              >
                                 Open
                              </Button>

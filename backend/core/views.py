@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.db.models import Q
+from django.db.models import Count, Q  # ✅ Required for complex counts
 from datetime import date
 
 # Import your models
@@ -13,31 +13,48 @@ from dms.models import Document
 @permission_classes([IsAuthenticated])
 def dashboard_stats(request):
     """
-    Returns counts for the main dashboard cards.
+    Returns nested counts for dashboard cards, including Overdue vs. Open logic.
     """
-    user = request.user
+    today = date.today()
+    dept_hotspots = Deviation.objects.exclude(status='CLOSED')\
+    .values('department')\
+    .annotate(count=Count('id'))\
+    .order_by('-count')[:5]
+    # 1. Deviation Aggregation
+    deviations = Deviation.objects.aggregate(
+        open=Count('id', filter=~Q(status='CLOSED')),
+        overdue=Count('id', filter=Q(occurrence_date__lt=today) & ~Q(status='CLOSED'))
+    )
     
-    # 1. Quality Stats
-    open_deviations = Deviation.objects.exclude(status='CLOSED').count()
-    open_capas = Capa.objects.exclude(status__in=['COMPLETED', 'VERIFIED']).count()
-    open_ccs = ChangeControl.objects.exclude(status='CLOSED').count()
+    # 2. CAPA Aggregation
+    capas = Capa.objects.aggregate(
+        open=Count('id', filter=~Q(status__in=['COMPLETED', 'VERIFIED'])),
+        overdue=Count('id', filter=Q(due_date__lt=today) & ~Q(status__in=['COMPLETED', 'VERIFIED']))
+    )
     
-    # 2. My Tasks Stats (Specific to logged-in user)
+    # 3. Change Control Aggregation
+    changes = ChangeControl.objects.aggregate(
+        open=Count('id', filter=~Q(status='CLOSED')),
+        overdue=Count('id', filter=Q(target_date__lt=today) & ~Q(status='CLOSED'))
+    )
+
+    # 4. User Specific Stats
     my_training_pending = TrainingAssignment.objects.filter(
-        user=user, 
+        user=request.user, 
         status__in=['PENDING', 'OVERDUE']
     ).count()
     
     my_capas = Capa.objects.filter(
-        assigned_to=user,
+        assigned_to=request.user,
         status__in=['PLANNING', 'PENDING']
     ).count()
 
     return Response({
         "quality": {
-            "deviations": open_deviations,
-            "capas": open_capas,
-            "change_controls": open_ccs,
+            "deviations": deviations,
+            "capas": capas,
+            "change_controls": changes,
+            "department_hotspots": list(dept_hotspots)
         },
         "user": {
             "pending_training": my_training_pending,
@@ -50,7 +67,7 @@ def dashboard_stats(request):
 @permission_classes([IsAuthenticated])
 def my_tasks(request):
     """
-    Returns a unified list of tasks for the 'My Tasks' page.
+    Returns a unified, sorted list of tasks for the logged-in user.
     """
     user = request.user
     tasks = []
@@ -84,10 +101,10 @@ def my_tasks(request):
             "title": c.title,
             "status": c.status,
             "due_date": c.due_date,
-            "priority": "High" # CAPAs are usually high priority
+            "priority": "High"
         })
 
-    # 3. Get Assigned Change Controls (as Initiator)
+    # 3. Get Assigned Change Controls
     ccs = ChangeControl.objects.filter(
         initiator=user,
         status__in=['DRAFT', 'EVALUATION', 'IMPLEMENTATION']

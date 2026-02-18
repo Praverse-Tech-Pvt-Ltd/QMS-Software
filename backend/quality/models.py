@@ -12,33 +12,38 @@ class Deviation(TimeStampedModel):
 
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Draft"
-        QA_REVIEW = "QA_REVIEW", "QA Review"
         INVESTIGATION = "INVESTIGATION", "Investigation"
+        QA_REVIEW = "QA_REVIEW", "QA Review"
+        UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
         CAPA_REQUIRED = "CAPA_REQUIRED", "CAPA Required"
+        APPROVED = "APPROVED", "Approved"
         CLOSED = "CLOSED", "Closed"
-        
+
+    deviation_id = models.CharField(max_length=50, unique=True, editable=False)
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    
+    # New fields for investigation
+    immediate_actions = models.TextField(blank=True, null=True)
+    root_cause = models.TextField(blank=True, null=True)
+    
+    risk_level = models.CharField(max_length=10, choices=RiskLevel.choices, default=RiskLevel.MINOR)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    
+    raised_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="raised_deviations")
+    department = models.CharField(max_length=100)
+    occurrence_date = models.DateField()
+
     def save(self, *args, **kwargs):
         if not self.deviation_id:
             self.deviation_id = generate_qms_id(Deviation, 'deviation_id', 'DEV')
         super().save(*args, **kwargs)
-    
-    deviation_id = models.CharField(max_length=50, unique=True)
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    risk_level = models.CharField(max_length=10, choices=RiskLevel.choices, default=RiskLevel.MINOR)
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
-    raised_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="raised_deviations")
-    department = models.CharField(max_length=100)
-    occurrence_date = models.DateField()
-    
+
     def __str__(self):
         return f"{self.deviation_id}: {self.title}"
 
 # --- 2. CAPA Model ---
 class Capa(TimeStampedModel):
-    deviation = models.ForeignKey(Deviation, on_delete=models.SET_NULL, null=True, blank=True, related_name='capas')
-    root_cause = models.TextField(blank=True, null=True)
-    action_plan = models.TextField(blank=True, null=True)
     class ActionType(models.TextChoices):
         CORRECTIVE = "CORRECTIVE", "Corrective Action"
         PREVENTIVE = "PREVENTIVE", "Preventive Action"
@@ -46,13 +51,19 @@ class Capa(TimeStampedModel):
     class Status(models.TextChoices):
         PLANNING = "PLANNING", "Planning"
         PENDING = "PENDING", "Pending Implementation"
+        IMPLEMENTATION = "IMPLEMENTATION", "Implementation"
         COMPLETED = "COMPLETED", "Completed"
         VERIFIED = "VERIFIED", "Verified (Closed)"
 
+    deviation = models.ForeignKey(Deviation, on_delete=models.SET_NULL, null=True, blank=True, related_name='capas')
     capa_id = models.CharField(max_length=20, unique=True, editable=False)
     title = models.CharField(max_length=200)
     description = models.TextField()
-    department = models.CharField(max_length=100) # ✅ Added Department
+    department = models.CharField(max_length=100)
+    
+    root_cause = models.TextField(blank=True, null=True)
+    action_plan = models.TextField(blank=True, null=True)
+    
     action_type = models.CharField(max_length=20, choices=ActionType.choices)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNING)
     
@@ -66,8 +77,24 @@ class Capa(TimeStampedModel):
 
     def __str__(self):
         return f"{self.capa_id}: {self.title}"
-    
-# --- 3. Change Control Model ---
+
+# --- 3. CAPA Action Model ---
+class CapaAction(TimeStampedModel):
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        IN_PROGRESS = "IN_PROGRESS", "In Progress"
+        DONE = "DONE", "Done"
+
+    capa = models.ForeignKey(Capa, on_delete=models.CASCADE, related_name='actions')
+    description = models.CharField(max_length=255)
+    owner = models.CharField(max_length=100)
+    due_date = models.DateField()
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
+    def __str__(self):
+        return f"{self.capa.capa_id} - {self.description}"
+
+# --- 4. Change Control Model ---
 class ChangeControl(TimeStampedModel):
     class ChangeType(models.TextChoices):
         STANDARD = "STANDARD", "Standard"
@@ -81,9 +108,10 @@ class ChangeControl(TimeStampedModel):
         APPROVAL = "APPROVAL", "Pending Approval"
         IMPLEMENTATION = "IMPLEMENTATION", "Implementation"
         CLOSED = "CLOSED", "Closed"
-    
-    capa = models.ForeignKey(Capa, on_delete=models.SET_NULL, null=True, blank=True, related_name='change_controls')
 
+    impact_data = models.JSONField(default=dict, blank=True)
+    risk_level = models.CharField(max_length=20, default="Medium")
+    capa = models.ForeignKey(Capa, on_delete=models.SET_NULL, null=True, blank=True, related_name='change_controls')
     cc_id = models.CharField(max_length=20, unique=True, editable=False)
     title = models.CharField(max_length=200)
     description = models.TextField()
@@ -92,9 +120,7 @@ class ChangeControl(TimeStampedModel):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     
     department = models.CharField(max_length=100)
-    target_date = models.DateField(null=True, blank=True) # ✅ Added Target Date
-    
-    # ✅ Initiator (Already existed, ensured it stays)
+    target_date = models.DateField(null=True, blank=True)
     initiator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="initiated_changes")
 
     def save(self, *args, **kwargs):

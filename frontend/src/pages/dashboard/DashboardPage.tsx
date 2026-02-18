@@ -11,11 +11,14 @@ import {
   Chip,
   TextField,
   Grid,
-  CircularProgress
+  CircularProgress,
+  Stack,
+  LinearProgress,
 } from "@mui/material";
 
 import { useNavigate } from "react-router-dom";
-import { motion, transitions, shadows, keyframes } from "../../theme/motion";
+import { keyframes } from "@mui/system";
+import { shadows, transitions } from "../../theme/motion";
 import { useState, useEffect } from "react";
 
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -35,15 +38,34 @@ import type { ModuleKey } from "../../services/permission.service";
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
 import { fetchDashboardStats, fetchMyTasks } from "../../services/api";
 
+const pulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+`;
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { role } = useRole();
-  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
+  const [permissionDenied, setPermissionDenied] = useState<{
+    open: boolean;
+    message: string;
+  }>({ open: false, message: "" });
   const [loading, setLoading] = useState(true);
+
   const [stats, setStats] = useState({
-    quality: { deviations: 0, capas: 0, change_controls: 0 },
-    user: { pending_training: 0, assigned_capas: 0, total_tasks: 0 }
+    quality: {
+      deviations: { open: 0, overdue: 0 },
+      capas: { open: 0, overdue: 0 },
+      change_controls: { open: 0, overdue: 0 },
+      department_hotspots: [] as { department: string; count: number }[],
+    },
+    user: {
+      pending_training: 0,
+      assigned_capas: 0,
+      total_tasks: 0,
+    },
   });
+
   const [recentTasks, setRecentTasks] = useState<any[]>([]);
 
   useEffect(() => {
@@ -51,7 +73,7 @@ export default function DashboardPage() {
       try {
         const [statsData, tasksData] = await Promise.all([
           fetchDashboardStats(),
-          fetchMyTasks()
+          fetchMyTasks(),
         ]);
         setStats(statsData);
         setRecentTasks(tasksData.slice(0, 5));
@@ -64,431 +86,509 @@ export default function DashboardPage() {
     loadDashboardData();
   }, []);
 
-  // ✅ FIXED: Using id and type directly
   const handleTaskClick = (id: string, type: string) => {
-    switch (type) {
-      case 'CAPA': 
-        navigate(`/capa/${id}`);
-        break;
-      case 'Change Control': 
-        navigate(`/change-control/${id}`);
-        break;
-      case 'Training': 
-        navigate(`/training/${id.replace('TRN-', '')}`);
-        break;
-      case 'Deviation': 
-        navigate(`/deviations/${id}`);
-        break;
-      default: 
-        navigate(`/tasks/${id}`);
-        break;
+    const pathMap: Record<string, string> = {
+      CAPA: "capa",
+      "Change Control": "change-control",
+      Training: "training",
+      Document: "dms",
+      Deviation: "deviations",
+    };
+    navigate(`/${pathMap[type] || "tasks"}/${id}`);
+  };
+
+  const handleQuickAction = (
+    path: string,
+    module: ModuleKey,
+    label: string,
+  ) => {
+    if (!role || !permissionService.can(role, module, "create")) {
+      setPermissionDenied({
+        open: true,
+        message: `Your role (${role || "Guest"}) does not have permission to create a new ${label}.`,
+      });
+      return;
     }
+    navigate(path);
   };
 
   const kpis = [
-    { label: "My Pending Tasks", value: stats.user.total_tasks.toString().padStart(2, '0'), change: "Active", trend: "neutral" },
-    { label: "Open Deviations", value: stats.quality.deviations.toString().padStart(2, '0'), change: "-5.4%", trend: "down" },
-    { label: "Overdue Trainings", value: stats.user.pending_training.toString().padStart(2, '0'), change: stats.user.pending_training > 0 ? "ACTION REQ" : "Good", trend: stats.user.pending_training > 0 ? "down" : "up" },
-    { label: "Active CAPAs", value: stats.quality.capas.toString().padStart(2, '0'), change: "-3.2%", trend: "down" },
+    {
+      label: "My Pending Tasks",
+      value: stats.user.total_tasks.toString().padStart(2, "0"),
+      change: "Active",
+      trend: "neutral",
+    },
+    {
+      label: "Open Deviations",
+      value: stats.quality.deviations.open.toString().padStart(2, "0"),
+      change:
+        stats.quality.deviations.overdue > 0
+          ? `${stats.quality.deviations.overdue} OVERDUE`
+          : "On Track",
+      trend: stats.quality.deviations.overdue > 0 ? "down" : "up",
+    },
+    {
+      label: "Pending Training",
+      value: stats.user.pending_training.toString().padStart(2, "0"),
+      change: stats.user.pending_training > 0 ? "Action Required" : "Compliant",
+      trend: stats.user.pending_training > 0 ? "down" : "up",
+    },
+    {
+      label: "Active CAPAs",
+      value: stats.quality.capas.open.toString().padStart(2, "0"),
+      change:
+        stats.quality.capas.overdue > 0
+          ? `${stats.quality.capas.overdue} OVERDUE`
+          : "Clean",
+      trend: stats.quality.capas.overdue > 0 ? "down" : "neutral",
+    },
   ];
 
   const trendIcon = (trend: string) => {
-    if (trend === "up") return <TrendingUpIcon fontSize="small" sx={{ color: "#16a34a" }} />;
-    if (trend === "down") return <TrendingDownIcon fontSize="small" sx={{ color: "#dc2626" }} />;
+    if (trend === "up")
+      return <TrendingUpIcon fontSize="small" sx={{ color: "#16a34a" }} />;
+    if (trend === "down")
+      return <TrendingDownIcon fontSize="small" sx={{ color: "#dc2626" }} />;
     return <RemoveIcon fontSize="small" sx={{ color: "#9ca3af" }} />;
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "Critical": return "#dc2626";
-      case "High": return "#ea580c";
-      case "Medium": return "#6366F1";
-      default: return "#4b5563";
-    }
-  };
-
-  const getStatusStyle = (status: string) => {
-    const s = status.toUpperCase();
-    if (s.includes("REVIEW")) return { bgcolor: "#eff6ff", color: "#1d4ed8", border: "1px solid #C7D2FE" };
-    if (s.includes("PROGRESS") || s.includes("ACTIVE")) return { bgcolor: "#f0fdf4", color: "#15803d", border: "1px solid #bbf7d0" };
-    if (s.includes("OPEN") || s.includes("PENDING")) return { bgcolor: "#f3f4f6", color: "#374151", border: "1px solid #e5e7eb" };
-    if (s.includes("DRAFT")) return { bgcolor: "#fff7ed", color: "#c2410c", border: "1px solid #fed7aa" };
-    if (s.includes("OVERDUE")) return { bgcolor: "#fef2f2", color: "#dc2626", border: "1px solid #fecaca" };
-    return { bgcolor: "#f3f4f6", color: "#374151" };
-  };
-
   const allActions = [
-    { label: "New Doc", icon: <DescriptionOutlinedIcon fontSize="large" />, path: "/dms/new", module: "dms" as ModuleKey },
-    { label: "Deviation", icon: <ReportProblemOutlinedIcon fontSize="large" />, path: "/deviations/new", module: "deviations" as ModuleKey },
-    { label: "Log Training", icon: <SchoolOutlinedIcon fontSize="large" />, path: "/training/new", module: "training" as ModuleKey },
-    { label: "CAPA", icon: <FactCheckOutlinedIcon fontSize="large" />, path: "/capa/new", module: "capa" as ModuleKey },
+    {
+      label: "New Doc",
+      icon: <DescriptionOutlinedIcon />,
+      path: "/dms/new",
+      module: "dms" as ModuleKey,
+    },
+    {
+      label: "Deviation",
+      icon: <ReportProblemOutlinedIcon />,
+      path: "/deviations/new",
+      module: "deviations" as ModuleKey,
+    },
+    {
+      label: "Training",
+      icon: <SchoolOutlinedIcon />,
+      path: "/training/new",
+      module: "training" as ModuleKey,
+    },
+    {
+      label: "CAPA",
+      icon: <FactCheckOutlinedIcon />,
+      path: "/capa/new",
+      module: "capa" as ModuleKey,
+    },
   ];
 
-  const handleQuickActionClick = (action: typeof allActions[0]) => {
-    if (!role) {
-        setPermissionDenied({ open: true, message: "You must be logged in to perform this action." });
-        return;
-    }
-    const hasPermission = permissionService.can(role, action.module, "create");
-    if (!hasPermission) {
-      setPermissionDenied({ open: true, message: `You don't have permission to create ${action.label}.` });
-      return;
-    }
-    navigate(action.path);
-  };
-
-  if (loading) {
+  if (loading)
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+      <Box sx={{ display: "flex", justifyContent: "center", p: 10 }}>
         <CircularProgress />
       </Box>
     );
-  }
+
+  // Calculate max hotspot count for the bar scale
+  const maxHotspot = Math.max(
+    ...stats.quality.department_hotspots.map((h) => h.count),
+    1,
+  );
 
   return (
-    <Box sx={{ maxWidth: 1600, mx: "auto", animation: "fadeInUp 400ms cubic-bezier(0.2, 0.8, 0.2, 1)", ...keyframes.fadeInUp }}>
-      {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mb: 4 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: "#0f172a", mb: 0.5, letterSpacing: "-0.5px" }}>Quality Dashboard Overview</Typography>
-          <Typography variant="body1" color="text.secondary">Monitoring real-time compliance metrics for current cycle.</Typography>
-        </Box>
-        <Box sx={{ display: "flex", gap: 1.5 }}>
-          <Button variant="outlined" sx={{ bgcolor: "white", borderColor: "#e2e8f0", color: "#475569", textTransform: "none", fontWeight: 600, borderRadius: 2 }}>This Month</Button>
-          <Button variant="outlined" disabled={!role || !permissionService.can(role, 'dashboard', 'export')} sx={{ bgcolor: "white", borderColor: "#e2e8f0", color: "#475569", textTransform: "none", fontWeight: 600, borderRadius: 2 }}>Export PDF</Button>
-        </Box>
-      </Box>
+    <Box sx={{ maxWidth: 1600, mx: "auto", p: 2 }}>
+      <Typography
+        variant="h4"
+        fontWeight={900}
+        mb={4}
+        color="text.primary"
+        letterSpacing="-0.5px"
+      >
+        Quality Dashboard Overview
+      </Typography>
 
       {/* KPI Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        {kpis.map((kpi) => (
-          <Grid key={kpi.label} size={{ xs: 12, sm: 6, md: 3 }}>
-            <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: shadows.card, height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", transition: transitions.card.hover, "&:hover": { transform: `translateY(-${motion.distance.small}px)`, boxShadow: shadows.cardHover, borderColor: "#cbd5e0" } }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: "#64748b", mb: 2 }}>{kpi.label}</Typography>
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                <Typography variant="h3" sx={{ fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>{kpi.value}</Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: kpi.trend === "up" ? "#f0fdf4" : kpi.trend === "down" ? "#fef2f2" : "#f3f4f6", px: 1, py: 0.5, borderRadius: 2 }}>
-                  {trendIcon(kpi.trend)}
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: kpi.trend === "up" ? "#16a34a" : kpi.trend === "down" ? "#dc2626" : "#6b7280" }}>{kpi.change}</Typography>
+        {kpis.map((kpi) => {
+          const isAlert =
+            kpi.change.includes("OVERDUE") || kpi.change.includes("Action");
+          return (
+            <Grid key={kpi.label} size={{ xs: 12, sm: 6, md: 3 }}>
+              <Paper
+                sx={{
+                  p: 3,
+                  borderRadius: 4,
+                  border: "1px solid #e2e8f0",
+                  boxShadow: shadows.card,
+                  height: "100%",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  fontWeight={700}
+                  sx={{
+                    textTransform: "uppercase",
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {kpi.label}
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-end",
+                    mt: 1.5,
+                  }}
+                >
+                  <Typography
+                    variant="h3"
+                    fontWeight={900}
+                    color={isAlert ? "error.main" : "text.primary"}
+                  >
+                    {kpi.value}
+                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      bgcolor: isAlert ? "#fef2f2" : "#f1f5f9",
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: 2,
+                    }}
+                  >
+                    {!isAlert && trendIcon(kpi.trend)}
+                    <Typography
+                      variant="caption"
+                      fontWeight={800}
+                      color={isAlert ? "error.main" : "text.secondary"}
+                      sx={{ fontSize: "0.65rem" }}
+                    >
+                      {kpi.change}
+                    </Typography>
+                  </Box>
                 </Box>
-              </Box>
-            </Paper>
-          </Grid>
-        ))}
+              </Paper>
+            </Grid>
+          );
+        })}
       </Grid>
 
-      {/* Main Content Grid */}
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, lg: 8 }}>
-          <Paper elevation={0} sx={{ borderRadius: 4, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: shadows.card }}>
-            <Box sx={{ p: 3, borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a" }}>My Tasks</Typography>
-              <Button size="small" onClick={() => navigate('/tasks')} sx={{ textTransform: "none", fontWeight: 600 }}>View All</Button>
-            </Box>
-            <Table>
-              <TableHead sx={{ bgcolor: "#f8fafc" }}>
-                <TableRow>
-                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>TASK ID</TableCell>
-                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>TYPE</TableCell>
-                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>DESCRIPTION</TableCell>
-                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>STATUS</TableCell>
-                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>PRIORITY</TableCell>
-                  <TableCell sx={{ fontSize: "0.7rem", fontWeight: 700, color: "#64748b" }}>DUE DATE</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {recentTasks.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} align="center" sx={{ py: 4, color: '#64748b' }}>No pending tasks found</TableCell></TableRow>
-                ) : (
-                    recentTasks.map((t) => (
-                    <TableRow 
-                      key={t.id} 
-                      hover 
-                      onClick={() => handleTaskClick(t.id, t.type)} 
-                      sx={{ "&:last-child td, &:last-child th": { border: 0 }, cursor: "pointer", transition: transitions.tableRow.hover }}
+          <Stack spacing={3}>
+            {/* Task Table */}
+            <Paper
+              sx={{
+                borderRadius: 4,
+                border: "1px solid #e2e8f0",
+                overflow: "hidden",
+                boxShadow: shadows.card,
+              }}
+            >
+              <Box
+                sx={{
+                  p: 3,
+                  borderBottom: "1px solid #f1f5f9",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography variant="h6" fontWeight={800}>
+                  My Active Tasks
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={() => navigate("/tasks")}
+                  sx={{ textTransform: "none", fontWeight: 700 }}
+                >
+                  View All
+                </Button>
+              </Box>
+              <Table size="small">
+                <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
+                      ID
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
+                      TYPE
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
+                      TITLE
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
+                      STATUS
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {recentTasks.map((t) => (
+                    <TableRow
+                      key={t.id}
+                      hover
+                      onClick={() => handleTaskClick(t.id, t.type)}
+                      sx={{
+                        cursor: "pointer",
+                        transition: transitions.tableRow.hover,
+                      }}
                     >
-                        <TableCell sx={{ fontWeight: 600, color: "#334155", fontSize: "0.85rem" }}>{t.id}</TableCell>
-                        <TableCell sx={{ fontSize: "0.75rem", color: "#64748b" }}><Chip label={t.type} size="small" sx={{ height: 20, fontSize: '0.65rem', bgcolor: '#f1f5f9' }} /></TableCell>
-                        <TableCell sx={{ maxWidth: 200 }}><Typography variant="body2" noWrap title={t.title} sx={{ color: "#475569", fontSize: "0.85rem" }}>{t.title}</Typography></TableCell>
-                        <TableCell><Chip label={t.status} size="small" sx={{ ...getStatusStyle(t.status), fontWeight: 600, borderRadius: 1.5, height: 24, fontSize: "0.75rem" }} /></TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: getPriorityColor(t.priority), fontSize: "0.8rem" }}>{t.priority}</TableCell>
-                        <TableCell sx={{ color: "#64748b", fontSize: "0.85rem" }}>{t.due_date}</TableCell>
+                      <TableCell
+                        sx={{ fontWeight: 700, color: "primary.main" }}
+                      >
+                        {t.id}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t.type}
+                          size="small"
+                          sx={{ fontWeight: 600, fontSize: "0.65rem" }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 300 }}>
+                        <Typography variant="body2" noWrap fontWeight={500}>
+                          {t.title}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t.status}
+                          size="small"
+                          variant="outlined"
+                          color={t.status === "OVERDUE" ? "error" : "default"}
+                          sx={{ fontWeight: 700, fontSize: "0.65rem" }}
+                        />
+                      </TableCell>
                     </TableRow>
-                    ))
+                  ))}
+                </TableBody>
+              </Table>
+            </Paper>
+
+            {/* Departmental Hotspots - Horizontal Bar Chart */}
+            <Paper
+              sx={{
+                p: 3,
+                borderRadius: 4,
+                border: "1px solid #e2e8f0",
+                boxShadow: shadows.card,
+              }}
+            >
+              <Typography variant="h6" fontWeight={800} mb={3}>
+                Departmental Hotspots (Open Issues)
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+                {stats.quality.department_hotspots.map((item) => (
+                  <Box key={item.department}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 1,
+                      }}
+                    >
+                      <Typography variant="body2" fontWeight={700}>
+                        {item.department}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        fontWeight={800}
+                        color="primary.main"
+                      >
+                        {item.count} Records
+                      </Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={(item.count / maxHotspot) * 100}
+                      sx={{
+                        height: 10,
+                        borderRadius: 5,
+                        bgcolor: "#f1f5f9",
+                        "& .MuiLinearProgress-bar": {
+                          borderRadius: 5,
+                          bgcolor: "#6366F1",
+                        },
+                      }}
+                    />
+                  </Box>
+                ))}
+                {stats.quality.department_hotspots.length === 0 && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    textAlign="center"
+                  >
+                    No departmental hotspots detected.
+                  </Typography>
                 )}
-              </TableBody>
-            </Table>
-          </Paper>
+              </Box>
+            </Paper>
+          </Stack>
         </Grid>
 
-        {/* Right Column - Actions */}
         <Grid size={{ xs: 12, lg: 4 }}>
-          <Box sx={{ display: "grid", gap: 3 }}>
-            {role !== "Viewer" && (
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: shadows.card }}>
-                <Typography variant="h6" sx={{ fontWeight: 800, mb: 3, color: "#0f172a" }}>Quick Actions</Typography>
-                <Grid container spacing={2}>
-                  {allActions.map((action) => {
-                    const hasPermission = role ? permissionService.can(role, action.module, "create") : false;
-                    return (
-                      <Grid size={{ xs: 6 }} key={action.label}>
-                        <Button variant="outlined" onClick={() => handleQuickActionClick(action)} sx={{ width: "100%", aspectRatio: "1/1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1.5, borderRadius: 3, border: "1px solid #e2e8f0", color: hasPermission ? "#475569" : "#9ca3af", bgcolor: "#fff", textTransform: "none", boxShadow: shadows.subtle, opacity: hasPermission ? 1 : 0.6, "&:hover": { bgcolor: "#f8fafc", borderColor: hasPermission ? "#94a3b8" : "#e2e8f0", color: hasPermission ? "#0f172a" : "#9ca3af" } }}>
-                          {action.icon}<Typography variant="body2" fontWeight={600}>{action.label}</Typography>
-                        </Button>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              </Paper>
-            )}
-
-            {/* System Alert & AI Assistant */}
+          <Stack spacing={3}>
+            {/* Quick Actions */}
             <Paper
-              elevation={0}
+              sx={{
+                p: 3,
+                borderRadius: 4,
+                border: "1px solid #e2e8f0",
+                boxShadow: shadows.card,
+              }}
+            >
+              <Typography variant="h6" fontWeight={800} mb={3}>
+                Quick Actions
+              </Typography>
+              <Grid container spacing={2}>
+                {allActions.map((action) => (
+                  <Grid size={{ xs: 6 }} key={action.label}>
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      onClick={() =>
+                        handleQuickAction(
+                          action.path,
+                          action.module,
+                          action.label,
+                        )
+                      }
+                      sx={{
+                        height: 110,
+                        flexDirection: "column",
+                        gap: 1.5,
+                        borderRadius: 3,
+                        textTransform: "none",
+                        border: "1px solid #e2e8f0",
+                        "&:hover": {
+                          bgcolor: "#f8fafc",
+                          borderColor: "primary.main",
+                        },
+                      }}
+                    >
+                      <Box sx={{ color: "primary.main" }}>{action.icon}</Box>
+                      <Typography
+                        variant="caption"
+                        fontWeight={800}
+                        color="text.primary"
+                      >
+                        {action.label}
+                      </Typography>
+                    </Button>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+
+            {/* System Alert Panel */}
+            <Paper
               sx={{
                 p: 3,
                 borderRadius: 4,
                 bgcolor: "#fffbeb",
                 border: "1px solid #fcd34d",
-                animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 350ms both`,
-                ...keyframes.fadeInUp,
               }}
             >
-              <Box sx={{ display: "flex", gap: 1.5, mb: 2 }}>
-                <WarningAmberRoundedIcon
-                  sx={{ color: "#d97706", fontSize: 28 }}
-                />
-                <Box>
-                  <Typography
-                    fontWeight={800}
-                    color="#92400e"
-                    variant="subtitle1"
-                  >
-                    System Alert
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ color: "#b45309", mt: 0.5, lineHeight: 1.5 }}
-                  >
-                    Quarterly audit scheduled for Feb 15, 2026. Ensure all
-                    documents are current.
-                  </Typography>
-                </Box>
+              <Box
+                sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}
+              >
+                <WarningAmberRoundedIcon sx={{ color: "#d97706" }} />
+                <Typography
+                  fontWeight={900}
+                  color="#92400e"
+                  variant="subtitle2"
+                >
+                  SYSTEM COMPLIANCE ALERT
+                </Typography>
               </Box>
+              <Typography
+                variant="body2"
+                color="#b45309"
+                mb={3}
+                lineHeight={1.6}
+              >
+                External Audit scheduled for **Feb 28, 2026**. Please ensure all
+                pending training and effective documents are reviewed.
+              </Typography>
               <Button
                 fullWidth
                 variant="contained"
-                endIcon={<ArrowForwardIcon fontSize="small" />}
-                onClick={() => navigate("/capa")}
+                endIcon={<ArrowForwardIcon />}
+                onClick={() => navigate("/dms")}
                 sx={{
                   bgcolor: "#d97706",
-                  color: "white",
-                  fontWeight: 700,
-                  textTransform: "none",
-                  borderRadius: 2,
+                  fontWeight: 800,
                   boxShadow: "none",
-                  transition: transitions.button.default,
-                  "&:hover": { 
-                    bgcolor: "#b45309", 
-                    boxShadow: shadows.subtle,
-                    transform: "translateY(-1px)",
-                  },
-                  "&:active": {
-                    transform: "translateY(0)",
-                    transition: transitions.button.press,
-                  },
+                  "&:hover": { bgcolor: "#b45309", boxShadow: shadows.card },
                 }}
               >
-                Review Audit Readiness
+                Go to Document Center
               </Button>
             </Paper>
 
+            {/* AI Assistant Panel */}
             <Paper
-              elevation={0}
               sx={{
                 p: 3,
                 borderRadius: 4,
-                bgcolor: "#F5F7FF",
-                border: "1px solid #C7D2FE",
-                position: "relative",
-                overflow: "hidden",
-                transition: transitions.card.hover,
-                animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth} 400ms both`,
-                ...keyframes.fadeInUp,
-                "&:hover": {
-                  borderColor: "#818CF8",
-                  boxShadow: shadows.card,
-                },
-                "&::before": {
-                  content: '""',
-                  position: "absolute",
-                  top: -2,
-                  left: -2,
-                  right: -2,
-                  height: 3,
-                  background: "linear-gradient(90deg, #6366F1 0%, #818CF8 100%)",
-                  borderRadius: "4px 4px 0 0",
-                },
+                bgcolor: "#f5f3ff",
+                border: "1px solid #ddd6fe",
+                boxShadow: shadows.card,
               }}
             >
               <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  mb: 2,
-                }}
+                sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}
               >
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 2,
-                      bgcolor: "#EEF2FF",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      border: "1px solid #C7D2FE",
-                    }}
-                  >
-                    <AutoAwesomeOutlinedIcon
-                      sx={{ color: "#6366F1", fontSize: 22 }}
-                    />
-                  </Box>
-                  <Box>
-                    <Typography
-                      fontWeight={800}
-                      sx={{
-                        color: "#4F46E5",
-                        fontSize: "1rem",
-                        letterSpacing: "-0.3px",
-                      }}
-                    >
-                      AI Assistant
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: "#64748b",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.5,
-                      }}
-                    >
-                      <Box
-                        component="span"
-                        sx={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: "50%",
-                          bgcolor: "#10b981",
-                          display: "inline-block",
-                          animation: "pulse 2s ease-in-out infinite",
-                          "@keyframes pulse": {
-                            "0%, 100%": { opacity: 1 },
-                            "50%": { opacity: 0.5 },
-                          },
-                        }}
-                      />
-                      Ready to help
-                    </Typography>
-                  </Box>
-                </Box>
-                <Chip
-                  label="AI"
-                  size="small"
+                <AutoAwesomeOutlinedIcon sx={{ color: "#7c3aed" }} />
+                <Typography
+                  fontWeight={900}
+                  color="#5b21b6"
+                  variant="subtitle2"
+                >
+                  AI QUALITY ASSISTANT
+                </Typography>
+                <Box
                   sx={{
-                    bgcolor: "#6366F1",
-                    color: "white",
-                    fontWeight: 700,
-                    fontSize: "0.7rem",
-                    height: 22,
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    bgcolor: "#10b981",
+                    animation: `${pulse} 2s infinite`,
                   }}
                 />
               </Box>
-
               <Typography
                 variant="body2"
-                sx={{
-                  color: "#475569",
-                  mb: 2,
-                  lineHeight: 1.6,
-                }}
+                color="#6d28d9"
+                mb={2}
+                sx={{ fontSize: "0.8rem" }}
               >
-                Ask about processes, documents, compliance, or get instant
-                workflow assistance.
+                "How many Major deviations are currently open in the Engineering
+                department?"
               </Typography>
-
               <TextField
                 fullWidth
                 size="small"
-                placeholder="Ask me anything about QMS..."
+                placeholder="Ask AI about quality data..."
                 sx={{
                   bgcolor: "white",
-                  borderRadius: 2,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                    bgcolor: "white",
-                    transition: "all 0.2s ease",
-                    "& fieldset": {
-                      borderColor: "#e2e8f0",
-                    },
-                    "&:hover fieldset": {
-                      borderColor: "#818CF8",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#6366F1",
-                      borderWidth: 2,
-                    },
-                  },
-                  "& .MuiInputBase-input": {
-                    py: 1.5,
-                    fontSize: "0.9rem",
-                  },
+                  "& .MuiOutlinedInput-root": { borderRadius: 2 },
                 }}
               />
-
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: 1,
-                  mt: 2,
-                  flexWrap: "wrap",
-                }}
-              >
-                {[
-                  { icon: "📋", text: "My tasks" },
-                  { icon: "📄", text: "Documents" },
-                  { icon: "⚡", text: "Quick help" },
-                ].map((suggestion, idx) => (
-                  <Chip
-                    key={idx}
-                    label={`${suggestion.icon} ${suggestion.text}`}
-                    size="small"
-                    onClick={() => {}}
-                    sx={{
-                      bgcolor: "white",
-                      color: "#475569",
-                      border: "1px solid #e2e8f0",
-                      fontWeight: 600,
-                      fontSize: "0.75rem",
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        bgcolor: "#EEF2FF",
-                        borderColor: "#818CF8",
-                        color: "#4F46E5",
-                        transform: "translateY(-1px)",
-                      },
-                    }}
-                  />
-                ))}
-              </Box>
             </Paper>
-          </Box>
+          </Stack>
         </Grid>
       </Grid>
-      <PermissionDeniedDialog open={permissionDenied.open} onClose={() => setPermissionDenied({ open: false, message: "" })} message={permissionDenied.message} />
+
+      <PermissionDeniedDialog
+        open={permissionDenied.open}
+        onClose={() => setPermissionDenied({ open: false, message: "" })}
+        message={permissionDenied.message}
+      />
     </Box>
   );
 }

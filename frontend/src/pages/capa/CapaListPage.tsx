@@ -103,8 +103,8 @@ export default function CapaListPage() {
             r.status === "PENDING" || r.status === "IMPLEMENTATION";
         } else if (statusFilter === "Verification") {
           matchesStatus = r.status === "VERIFICATION";
-        } else if (statusFilter === "Closed") {
-          matchesStatus = r.status === "CLOSED";
+        } else if (statusFilter === "verified") {
+          matchesStatus = r.status === "VERIFIED";
         } else {
           // Fallback for exact matches if you add more filters later
           matchesStatus = r.status === (statusFilter as any);

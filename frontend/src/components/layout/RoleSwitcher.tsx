@@ -1,6 +1,6 @@
 import { FormControl, MenuItem, Select, Typography, Box } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
-import { roles } from "../../types/role";
+import { roles } from "../../services/permission.service";
 import { useRole } from "../../app/providers/RoleProvider";
 
 export default function RoleSwitcher() {

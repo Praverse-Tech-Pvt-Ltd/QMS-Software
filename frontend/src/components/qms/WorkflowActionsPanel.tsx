@@ -5,8 +5,9 @@ import {
   Paper,
   TextField,
   Typography,
-  Alert,
-  CircularProgress
+  Chip,
+  CircularProgress,
+  Stack
 } from "@mui/material";
 import { useMemo, useState } from "react";
 import { useSnackbar } from "notistack";
@@ -18,12 +19,12 @@ import type {
   WorkflowMeta,
   WorkflowModuleKey,
   WorkflowTransition
-} from "../../types/workflow.types";
+} from "../../services/workflow.service";
 import { WORKFLOWS } from "../../config/workflows"; 
 import { workflowService } from "../../services/workflow.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
-import type { ModuleKey } from "../../types/permissions.types";
+import type { ModuleKey } from "../../services/permission.service";
 import { auditService } from "../../services/audit.service";
 import ESignModal from "./ESignModal";
 
@@ -43,36 +44,22 @@ export default function WorkflowActionsPanel({
   const { enqueueSnackbar } = useSnackbar();
   const { role } = useRole();
 
-  // State
   const [comment, setComment] = useState("");
   const [esignOpen, setEsignOpen] = useState(false);
   const [loading, setLoading] = useState(false); 
-  
-  // Stores the full configuration object of the action being attempted
   const [pendingTransition, setPendingTransition] = useState<WorkflowTransition | null>(null);
 
-  // ---------------------------------------------------------------------------
-  // 1. COMPUTE ALLOWED ACTIONS
-  // ---------------------------------------------------------------------------
   const availableTransitions = useMemo(() => {
-    // ✅ FIX: If no role (not logged in), no actions allowed.
     if (!role) return [];
-
     const moduleConfig = WORKFLOWS[moduleKey];
     if (!moduleConfig) return [];
 
-    // Get all possible transitions from the current status
-    // Safe check: Ensure status exists in config, default to empty array
     const potentialTransitions = moduleConfig.transitions[meta.status] || [];
 
-    // Filter by User Role (RBAC) AND Permission Check
-    return potentialTransitions.filter((t) => {
-      // Check if role is allowed by workflow config
+    return potentialTransitions.filter((t: WorkflowTransition) => {
       const roleAllowed = t.requiredRole.includes(role) || t.requiredRole.includes('Admin');
       
-      // Check if role has the required permission for the action type
       let permissionAllowed = true;
-      // We assume standard CRUD permissions map to workflow actions
       if (t.action === 'APPROVE' || t.action === 'REJECT') {
         permissionAllowed = permissionService.can(role, moduleKey as ModuleKey, 'approve');
       } else if (t.action === 'SUBMIT') {
@@ -83,44 +70,29 @@ export default function WorkflowActionsPanel({
     });
   }, [moduleKey, meta.status, role]);
 
-  // ---------------------------------------------------------------------------
-  // 2. HANDLERS
-  // ---------------------------------------------------------------------------
   const handleActionClick = (transition: WorkflowTransition) => {
-    
-    // ✅ 1. Check Transition Rules (Validation)
     if (transition.action === 'SUBMIT' || transition.action === 'APPROVE') {
         if (onValidate) {
             const validationResult = onValidate();
-            
             if (typeof validationResult === 'string') {
                 enqueueSnackbar(validationResult, { variant: "error" });
                 return;
             }
-            
             if (validationResult === false) {
-                enqueueSnackbar("Please complete all mandatory fields before proceeding.", { variant: "error" });
+                enqueueSnackbar("Please complete mandatory fields.", { variant: "error" });
                 return;
             }
         }
     }
 
     setPendingTransition(transition);
-    
-    // If it requires E-Sig, open modal immediately
     if (transition.requiresEsig) {
       setEsignOpen(true);
-      return;
+    } else if (transition.requiresComment && !comment.trim()) {
+       enqueueSnackbar("A comment is required for this action.", { variant: "warning" });
+    } else {
+      executeTransition(transition, comment, null);
     }
-
-    // If it's a simple state change (no sig), check comment requirement
-    if (transition.requiresComment && !comment.trim()) {
-       enqueueSnackbar("A comment/reason is required for this action.", { variant: "warning" });
-       return;
-    }
-    
-    // Execute direct transition
-    executeTransition(transition, comment, null);
   };
 
   const executeTransition = async (
@@ -128,204 +100,111 @@ export default function WorkflowActionsPanel({
     finalComment: string, 
     signatureData: any | null
   ) => {
-    if (!role) {
-        enqueueSnackbar("You must be logged in to perform this action.", { variant: "error" });
-        return;
-    }
-
     setLoading(true);
     try {
-      // 1. Call Workflow Service
-      const updated = await workflowService.transition(
+      const result = await workflowService.transition(
         recordId,
         moduleKey,
         transition.action,
-        { user: signatureData?.username || "Current User", role }, 
-        finalComment,
-        transition.action === 'REJECT' ? finalComment : undefined 
+        { user: signatureData?.username || "Current User", role: role || "Viewer" }, 
+        finalComment
       );
 
-      // 2. Record Signature (if applicable)
-      if (signatureData) {
-        // Only attempt to add signature if the service supports it (safe check)
-        if (workflowService.addSignature) {
-            await workflowService.addSignature(recordId, moduleKey, {
-            meaning: signatureData.meaning,
-            statusBefore: meta.status,
-            statusAfter: updated.status,
-            signedBy: signatureData.username || "Current User",
-            role,
-            comment: finalComment,
-            });
-        }
+      if ('error' in result) {
+        enqueueSnackbar(result.error, { variant: "error" });
+        return;
       }
 
-      // 3. Audit Log
-      auditService.add(moduleKey, recordId, {
-        actionType: transition.action === 'REJECT' ? "REJECT" : "STATUS_CHANGE",
+      await auditService.add(moduleKey, recordId, {
+        actionType: signatureData ? "E_SIGNATURE" : (transition.action === 'REJECT' ? "REJECT" : "STATUS_CHANGE"),
         field: "status",
         oldValue: meta.status,
-        newValue: updated.status,
-        user: signatureData?.username || "Current User",
-        role,
+        newValue: result.status,
+        user: signatureData?.username || "System",
+        role: role || "Viewer",
         reason: finalComment || transition.label,
       });
 
-      // 4. Update UI
-      onUpdated(updated);
-      resetForm();
-      
-      const variant = transition.variant === 'error' ? 'info' : 'success';
-      enqueueSnackbar(`Success: ${transition.label}`, { variant });
+      onUpdated(result);
+      setComment("");
+      setEsignOpen(false);
+      setPendingTransition(null);
+      enqueueSnackbar(`Status updated to ${result.status}`, { variant: "success" });
 
     } catch (err: any) {
-      console.error(err);
-      enqueueSnackbar(err.message || "Workflow transition failed", { variant: "error" });
+      enqueueSnackbar(err.message || "Transition failed", { variant: "error" });
     } finally {
         setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setComment("");
-    setEsignOpen(false);
-    setPendingTransition(null);
-  };
-
-  // ---------------------------------------------------------------------------
-  // 3. RENDER
-  // ---------------------------------------------------------------------------
   return (
-    <Paper
-      sx={{
-        p: 2.5,
-        borderRadius: 3,
-        border: "1px solid rgba(0,0,0,0.06)",
-        background: '#fcfcfc'
-      }}
-    >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 800 }}>
-          Workflow Actions
-        </Typography>
-        <Typography variant="caption" sx={{ bgcolor: 'action.selected', px: 1, py: 0.5, borderRadius: 1 }}>
-          Current: <b>{meta.status}</b>
-        </Typography>
+    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 3, border: "1px solid #e2e8f0" }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6" fontWeight={800}>Workflow Actions</Typography>
+        <Chip label={meta.status} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9' }} />
       </Box>
 
       <Divider sx={{ mb: 2 }} />
 
-      {/* --- Action Buttons --- */}
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, mb: 2 }}>
         {loading ? (
-             <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', py: 2 }}>
-                 <CircularProgress size={24} />
-             </Box>
-        ) : availableTransitions.length > 0 ? (
-          availableTransitions.map((t, index) => {
-             let Icon = PlayArrowIcon;
-             if (t.action === 'APPROVE') Icon = CheckCircleIcon;
-             if (t.action === 'REJECT') Icon = CancelIcon;
-
-             // Disable if comment required but missing
-             const isCommentMissing = t.requiresComment && !comment.trim();
-             
-             return (
-              <Button
-                key={index}
-                variant={t.variant === 'secondary' ? "outlined" : "contained"}
-                color={t.variant === 'error' ? "error" : t.variant === 'success' ? "success" : "primary"}
-                startIcon={<Icon />}
-                onClick={() => handleActionClick(t)}
-                disabled={isCommentMissing && t.variant === 'error'} // Only strictly disable Reject buttons
-              >
-                {t.label}
-              </Button>
-             );
-          })
+          <CircularProgress size={24} />
         ) : (
-          <Alert severity="info" sx={{ width: '100%' }}>
-            No actions available for your role ({role || "Viewer"}) in this state.
-          </Alert>
+          availableTransitions.map((t: WorkflowTransition, i: number) => (
+            <Button
+              key={i}
+              variant={t.variant === 'default' ? "outlined" : "contained"}
+              color={t.variant === 'error' ? "error" : t.variant === 'success' ? "success" : "primary"}
+              startIcon={t.action === 'APPROVE' ? <CheckCircleIcon /> : t.action === 'REJECT' ? <CancelIcon /> : <PlayArrowIcon />}
+              onClick={() => handleActionClick(t)}
+              sx={{ textTransform: 'none', fontWeight: 700 }}
+            >
+              {t.label}
+            </Button>
+          ))
         )}
       </Box>
 
-      {/* --- Comment Field --- */}
-      {availableTransitions.some(t => t.requiresComment) && !loading && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary' }}>
+      {/* ✅ FIX: Added WorkflowTransition type to 't' in the .some() callback */}
+      {availableTransitions.some((t: WorkflowTransition) => t.requiresComment) && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="caption" sx={{ mb: 1, display: 'block', color: 'text.secondary', fontWeight: 600 }}>
             Comments / Justification (Required for Rejections)
           </Typography>
           <TextField
             placeholder="Enter reason or comments here..."
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            fullWidth
-            multiline
-            rows={2}
-            size="small"
+            fullWidth multiline rows={2} size="small"
           />
         </Box>
       )}
 
       <Divider sx={{ my: 3 }} />
-
-      {/* --- History Log --- */}
-      <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1.5, color: 'text.secondary' }}>
-        Workflow History
-      </Typography>
-
-      <Box sx={{ display: "grid", gap: 1 }}>
-        {/* Safe check for approvalsLog array */}
-        {(meta.approvalsLog || []).length === 0 && (
-            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                No history yet.
+      <Typography variant="subtitle2" fontWeight={800} color="text.secondary" mb={1}>History</Typography>
+      <Stack spacing={1}>
+        {meta.approvalsLog?.slice(0, 3).map((log: any, i: number) => (
+          <Box key={i} sx={{ p: 1.5, borderRadius: 2, bgcolor: "#f8fafc", border: '1px solid #e2e8f0' }}>
+            <Typography variant="body2" fontWeight={700}>{log.action}</Typography>
+            <Typography variant="caption" display="block">
+              {log.user} ({log.role}) • {new Date(log.timestamp).toLocaleDateString()}
             </Typography>
-        )}
-        
-        {(meta.approvalsLog || []).slice(0, 3).map((log, i) => (
-          <Box
-            key={log.id || i} // Fallback key
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              bgcolor: "white",
-              border: '1px solid #eee'
-            }}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                {log.action}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    {log.timestamp ? new Date(log.timestamp).toLocaleDateString() : 'N/A'}
-                </Typography>
-            </Box>
-            <Typography variant="caption" sx={{ color: "text.secondary", display: 'block' }}>
-              {log.user} ({log.role})
-            </Typography>
-            {log.comment && (
-              <Typography variant="body2" sx={{ mt: 0.5, fontStyle: 'italic', color: 'text.secondary' }}>
-                "{log.comment}"
-              </Typography>
-            )}
+            {log.comment && <Typography variant="caption" sx={{ fontStyle: 'italic' }}>"{log.comment}"</Typography>}
           </Box>
         ))}
-      </Box>
+      </Stack>
 
-      {/* --- E-Signature Modal --- */}
       {pendingTransition && (
         <ESignModal
-            open={esignOpen}
-            onClose={() => {
-                setEsignOpen(false);
-                setPendingTransition(null);
-            }}
-            actionLabel={pendingTransition.label}
-            forcedMeaning={pendingTransition.action === 'APPROVE' ? 'Approval' : undefined}
-            onSign={(payload) => {
-                executeTransition(pendingTransition, payload.comment || comment, payload);
-            }}
+          open={esignOpen}
+          onClose={() => {
+            setEsignOpen(false);
+            setPendingTransition(null);
+          }}
+          actionLabel={pendingTransition.label}
+          forcedMeaning={pendingTransition.action === 'APPROVE' ? 'Approval' : undefined}
+          onSign={(data) => executeTransition(pendingTransition, data.comment || comment, data)}
         />
       )}
     </Paper>

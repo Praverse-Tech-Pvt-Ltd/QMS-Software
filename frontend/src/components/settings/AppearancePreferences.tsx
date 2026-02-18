@@ -1,8 +1,6 @@
 import {
   Box,
   Typography,
-  FormGroup,
-  FormControlLabel,
   Switch,
   Divider,
   Alert,

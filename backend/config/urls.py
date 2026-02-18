@@ -26,8 +26,8 @@ urlpatterns = [
     path('api/dms/', include('dms.urls')),
     path('api/quality/', include('quality.urls')),
     path('api/training/', include('training.urls')),
-    path('api/dashboard/stats/', dashboard_stats),
-    path('api/dashboard/tasks/', my_tasks),
+    path('api/dashboard/stats/', dashboard_stats, name='dashboard-stats'),
+    path('api/dashboard/tasks/', my_tasks, name='my-tasks'),
 ]
 
 if settings.DEBUG:

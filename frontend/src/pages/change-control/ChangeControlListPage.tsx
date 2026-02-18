@@ -74,37 +74,28 @@ export default function ChangeControlListPage() {
     }
     navigate("/change-control/new");
   };
-const filteredRows = useMemo(() => {
+
+  const filteredRows = useMemo(() => {
     return rows.filter((r) => {
-      // ✅ 1. Standardize ID search to string
-      const changeId = String((r as any).change_id || (r as any).cc_id || "");
+      const changeId = String(r.cc_id || r.id || "");
       const searchString = searchTerm.toLowerCase();
-      
+
       const matchesSearch =
         r.title.toLowerCase().includes(searchString) ||
         changeId.toLowerCase().includes(searchString);
 
       let matchesStatus = true;
       if (statusFilter !== "All") {
-        // ✅ 2. Standardize current status to uppercase string
-        const currentStatus = String((r as any).status).toUpperCase();
-        const targetStatus = statusFilter.toUpperCase();
+        const currentStatus = String(r.status).toUpperCase();
+        const targetFilter = statusFilter.toUpperCase();
 
-        if (targetStatus === "REVIEW") {
-          // ✅ 3. Compare string to string
-          matchesStatus = currentStatus === "EVALUATION" || currentStatus === "APPROVAL" || currentStatus === "QA REVIEW";
-        } else if (targetStatus === "APPROVED") {
-          matchesStatus = currentStatus === "APPROVAL" || currentStatus === "APPROVED";
-        } else if (targetStatus === "CLOSED") {
-          matchesStatus = currentStatus === "CLOSED";
-        } else if (targetStatus === "DRAFT") {
-          matchesStatus = currentStatus === "DRAFT";
+        if (targetFilter === "REVIEW") {
+          matchesStatus =
+            currentStatus === "EVALUATION" || currentStatus === "APPROVAL";
         } else {
-          // Generic fallback
-          matchesStatus = currentStatus === targetStatus;
+          matchesStatus = currentStatus === targetFilter;
         }
       }
-
       return matchesSearch && matchesStatus;
     });
   }, [rows, searchTerm, statusFilter]);

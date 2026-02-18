@@ -1,5 +1,5 @@
 import { Chip } from "@mui/material";
-import type { QmsStatus } from "../../types/qms";
+import type { QmsStatus } from "../../services/permission.service";
 import { transitions } from "../../theme/motion";
 
 const getStatusStyle = (status: QmsStatus) => {

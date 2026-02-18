@@ -1,5 +1,5 @@
 // ==========================================
-// 🎯 CONSOLIDATED WORKFLOW ENGINE V2.2 (FIXED)
+// 🎯 CONSOLIDATED WORKFLOW ENGINE V2.3 (SYNCED)
 // ==========================================
 
 export type WorkflowModuleKey =
@@ -30,6 +30,14 @@ export type WorkflowStatus =
   | "IMPLEMENTATION"
   | "PLANNING";
 
+export type SignatureMeaning =
+  | "Review"
+  | "Approval"
+  | "Execution"
+  | "Authorship"
+  | "Verification"
+  | "Technical Review";
+
 export interface WorkflowStep {
   id: string;
   label: string;
@@ -37,20 +45,40 @@ export interface WorkflowStep {
   order: number;
 }
 
+export interface WorkflowDefinition {
+  // ✅ Added 'export'
+  label: string;
+  steps: WorkflowStep[];
+  transitions: Record<string, WorkflowTransition[]>;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  user_id: number | string;
+  username: string;
+  role: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  requested_at: string;
+}
+
+export interface SignatureEntry {
+  id: string;
+  user: string;
+  role: string;
+  action: string;
+  timestamp: string;
+  meaning: SignatureMeaning;
+  comment?: string;
+}
+
 export interface WorkflowTransition {
   to: WorkflowStatus;
   label: string;
-  action: WorkflowAction; // Changed string to type for better safety
+  action: WorkflowAction;
   requiredRole: string[];
   variant: "primary" | "success" | "error" | "warning" | "default";
   requiresEsig?: boolean;
   requiresComment?: boolean;
-}
-
-export interface WorkflowDefinition {
-  label: string;
-  steps: WorkflowStep[];
-  transitions: Record<string, WorkflowTransition[]>;
 }
 
 export type WorkflowAction =
@@ -68,18 +96,39 @@ export interface WorkflowMeta {
   id: string;
   moduleKey: WorkflowModuleKey;
   status: WorkflowStatus;
-  approvalRequests: any[];
+  approvalRequests: ApprovalRequest[]; // ✅ Fixed types
   approvalsLog: any[];
-  signatureLog: any[];
+  signatureLog: SignatureEntry[]; // ✅ Fixed types
 }
 
-// ✅ STATE MACHINE: Now used by the transition logic
+// ✅ SYNCED STATE MACHINE: Standardized for all modules
 const STATE_MACHINE: {
   from: WorkflowStatus[];
   to: WorkflowStatus;
   action: WorkflowAction;
   allowedRoles: string[];
 }[] = [
+  // --- DMS / Documents ---
+  {
+    from: ["DRAFT"],
+    to: "REVIEW",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA", "Production"],
+  },
+  {
+    from: ["REVIEW"],
+    to: "APPROVED",
+    action: "APPROVE",
+    allowedRoles: ["Admin", "QA"],
+  },
+  {
+    from: ["APPROVED"],
+    to: "EFFECTIVE",
+    action: "PUBLISH",
+    allowedRoles: ["Admin", "QA"],
+  },
+
+  // --- Deviations ---
   {
     from: ["DRAFT"],
     to: "INVESTIGATION",
@@ -98,34 +147,58 @@ const STATE_MACHINE: {
     action: "CLOSE",
     allowedRoles: ["Admin", "QA"],
   },
+
+  // --- CAPA Flow ---
   {
-    from: ["DRAFT"],
-    to: "REVIEW",
+    from: ["PLANNING"],
+    to: "PENDING",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA", "Production"],
+  },
+  {
+    from: ["PENDING"],
+    to: "VERIFICATION",
     action: "SUBMIT",
     allowedRoles: ["Admin", "QA"],
   },
   {
-    from: ["REVIEW"],
-    to: "APPROVED",
+    from: ["VERIFICATION"],
+    to: "CLOSED",
+    action: "CLOSE",
+    allowedRoles: ["Admin", "QA"],
+  },
+
+  // --- Change Control Flow ---
+  {
+    from: ["EVALUATION"],
+    to: "APPROVAL",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA"],
+  },
+  {
+    from: ["APPROVAL"],
+    to: "IMPLEMENTATION",
     action: "APPROVE",
     allowedRoles: ["Admin", "QA"],
   },
   {
-    from: ["APPROVED"],
-    to: "EFFECTIVE",
-    action: "PUBLISH",
-    allowedRoles: ["Admin", "QA"],
+    from: ["IMPLEMENTATION"],
+    to: "QA_REVIEW",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA", "Production"],
   },
   {
-    from: ["DRAFT"],
-    to: "ACTIVE",
-    action: "PUBLISH",
+    from: ["QA_REVIEW"],
+    to: "CLOSED",
+    action: "CLOSE",
     allowedRoles: ["Admin", "QA"],
   },
+
+  // --- Global Rejections ---
   {
-    from: ["ACTIVE"],
-    to: "OBSOLETE",
-    action: "RETIRE",
+    from: ["REVIEW", "QA_REVIEW", "APPROVAL", "VERIFICATION", "INVESTIGATION"],
+    to: "REJECTED",
+    action: "REJECT",
     allowedRoles: ["Admin", "QA"],
   },
 ];
@@ -151,7 +224,7 @@ export class WorkflowEngine {
     return map[id];
   }
 
-  // ✅ TRANSITION LOGIC: Now uses id, moduleKey, action, and actor
+  // ✅ TRANSITION: Now returns specific data for UI updates
   transition(
     id: string,
     moduleKey: WorkflowModuleKey,
@@ -161,28 +234,23 @@ export class WorkflowEngine {
   ): WorkflowMeta | { error: string } {
     const meta = this.getOrCreate(id, moduleKey);
 
-    // 1. Find valid transition
     const transition = STATE_MACHINE.find(
       (t) => t.action === action && t.from.includes(meta.status),
     );
 
     if (!transition) {
       return {
-        error: `Action "${action}" is not allowed for current status ${meta.status}`,
+        error: `Action "${action}" is not allowed for status ${meta.status}`,
       };
     }
 
-    // 2. Permission check
     if (
       !transition.allowedRoles.includes(actor.role) &&
       actor.role !== "Admin"
     ) {
-      return {
-        error: `Role ${actor.role} does not have permission to perform ${action}`,
-      };
+      return { error: `Role ${actor.role} is not authorized for this action.` };
     }
 
-    // 3. Perform transition
     const updated: WorkflowMeta = {
       ...meta,
       status: transition.to,
@@ -200,13 +268,38 @@ export class WorkflowEngine {
       ],
     };
 
+    this.save(id, moduleKey, updated);
+    return updated;
+  }
+
+  // ✅ ADD SIGNATURE: Specifically for 21 CFR Part 11 compliance
+  addSignature(
+    id: string,
+    moduleKey: WorkflowModuleKey,
+    entry: Omit<SignatureEntry, "id" | "timestamp">,
+  ): WorkflowMeta {
+    const meta = this.getOrCreate(id, moduleKey);
+    const newSignature: SignatureEntry = {
+      ...entry,
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+    };
+
+    const updated = {
+      ...meta,
+      signatureLog: [newSignature, ...meta.signatureLog],
+    };
+
+    this.save(id, moduleKey, updated);
+    return updated;
+  }
+
+  private save(id: string, moduleKey: WorkflowModuleKey, meta: WorkflowMeta) {
     const map = JSON.parse(
       localStorage.getItem(this.getKey(moduleKey)) || "{}",
     );
-    map[id] = updated;
+    map[id] = meta;
     localStorage.setItem(this.getKey(moduleKey), JSON.stringify(map));
-
-    return updated;
   }
 }
 

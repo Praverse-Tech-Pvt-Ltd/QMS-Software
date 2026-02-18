@@ -1,6 +1,6 @@
 import api from "./api";
 import type { WorkflowMeta } from "./workflow.service";
-
+import { type AuditTrailEntry } from "./audit.service";
 export interface AuditLog {
   id: number;
   action: string;
@@ -10,7 +10,18 @@ export interface AuditLog {
   changes?: any;
 }
 
-export interface CapaRecord extends Omit<Partial<WorkflowMeta>, "id"> {
+export interface CapaAction {
+  id: number;
+  description: string;
+  owner: string;
+  due_date: string;
+  status: "PENDING" | "IN_PROGRESS" | "DONE";
+}
+
+export interface CapaRecord extends Omit<
+  Partial<WorkflowMeta>,
+  "id" | "status"
+> {
   id: number; // Django Database Primary Key
   capa_id: string; // QMS Formatted ID (e.g., CAPA-2026-001)
   deviation?: number; // Linked Deviation Database ID
@@ -20,20 +31,23 @@ export interface CapaRecord extends Omit<Partial<WorkflowMeta>, "id"> {
 
   // ✅ ENUM ALIGNMENT: Standardized to Django Choices
   action_type: "CORRECTIVE" | "PREVENTIVE";
-  status: "PLANNING" | "PENDING" | "IMPLEMENTATION" | "VERIFICATION" | "CLOSED";
-
-  // ✅ UI & LIST HELPER FIELDS
+  status:
+    | "PLANNING"
+    | "PENDING"
+    | "IMPLEMENTATION"
+    | "VERIFICATION"
+    | "VERIFIED"; // ✅ UI & LIST HELPER FIELDS
   initiator?: string;
   owner?: string;
   priority?: "Low" | "Medium" | "High" | "Critical";
   due_date: string; // Matches Django model
   target_date?: string; // Matches Django target_date
-
+  actions?: CapaAction[];
   // Detail investigation fields
   source?: string; // e.g., "Deviation DEV-042"
   root_cause?: string;
   proposed_plan?: string;
-  audit_trail?: AuditLog[]; 
+  audit_trail?: AuditTrailEntry[];
   signatures?: any[];
   moduleKey?: "capa";
 }
@@ -58,7 +72,13 @@ export const capaService = {
     const response = await api.post("/quality/capa/", data);
     return response.data;
   },
-
+  async addAction(id: string | number, actionData: any) {
+    const response = await api.post(
+      `/quality/capa/${id}/add-action/`,
+      actionData,
+    );
+    return response.data;
+  },
   // Update record with Audit Reason
   async update(id: string | number, data: Partial<CapaRecord>) {
     const payload = {

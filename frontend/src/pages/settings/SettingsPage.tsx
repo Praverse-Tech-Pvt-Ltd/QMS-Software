@@ -32,13 +32,15 @@ function TabPanel(props: TabPanelProps) {
 }
 
 export default function SettingsPage() {
-  const { role } = useRole();
+  const { role: rawRole } = useRole();
   const [activeTab, setActiveTab] = useState(0);
+
+  // ✅ FIX: Provide a default string to satisfy TypeScript
+  const role = rawRole || "Viewer"; 
 
   const canEdit = permissionService.can(role, 'settings', 'edit');
   const canView = permissionService.can(role, 'settings', 'view');
 
-  // Define available tabs based on role
   const tabs = [
     { label: "Organization", component: <OrganizationSettings />, roles: ["Admin"] },
     { label: "Users & Roles", component: <UsersAndRoles />, roles: ["Admin", "QA"] },
@@ -47,17 +49,17 @@ export default function SettingsPage() {
     { label: "Integrations", component: <IntegrationsStatus />, roles: ["Admin", "QA"] },
   ];
 
-  // Filter tabs based on role access
+  // ✅ Filter tabs with the guaranteed string role
   const availableTabs = tabs.filter(tab => tab.roles.includes(role));
   
-  if (!canView) {
+  if (!canView || !rawRole) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
-        <Typography variant="h5" color="error">
+        <Typography variant="h5" color="error" fontWeight={800}>
           Access Denied
         </Typography>
-        <Typography variant="body1" sx={{ mt: 2 }}>
-          You do not have permission to view Settings.
+        <Typography variant="body1" sx={{ mt: 2, color: 'text.secondary' }}>
+          You do not have the required permissions to access system configurations.
         </Typography>
       </Box>
     );
@@ -65,45 +67,43 @@ export default function SettingsPage() {
 
   return (
     <Box>
-      {/* Page Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a" }}>
             System Settings
           </Typography>
           <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5 }}>
-            Configure system parameters, user access, and compliance settings
+            Manage organization parameters and regulatory compliance
           </Typography>
         </Box>
         <Chip
-          label={canEdit ? "Editor Access" : "Read-Only"}
+          label={canEdit ? "Full Access" : "Read-Only"}
           color={canEdit ? "primary" : "default"}
-          sx={{ fontWeight: 600 }}
+          variant={canEdit ? "filled" : "outlined"}
+          sx={{ fontWeight: 700, borderRadius: 2 }}
         />
       </Box>
 
-      {/* Settings Container */}
       <Paper
+        elevation={0}
         sx={{
           borderRadius: 4,
           border: "1px solid #e2e8f0",
           overflow: "hidden",
         }}
       >
-        {/* Tabs Navigation */}
         <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "#f8fafc" }}>
           <Tabs
             value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
             variant="scrollable"
-            scrollButtons="auto"
             sx={{
               px: 2,
               "& .MuiTab-root": {
                 textTransform: "none",
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: "0.875rem",
-                minHeight: 56,
+                minHeight: 60,
               },
             }}
           >
@@ -113,8 +113,7 @@ export default function SettingsPage() {
           </Tabs>
         </Box>
 
-        {/* Tab Content */}
-        <Box sx={{ p: 4 }}>
+        <Box sx={{ p: 4, minHeight: 400 }}>
           {availableTabs.map((tab, index) => (
             <TabPanel key={index} value={activeTab} index={index}>
               {tab.component}

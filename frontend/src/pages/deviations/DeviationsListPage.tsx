@@ -10,7 +10,6 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +25,7 @@ import {
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
-// Filter Options
+// Filter Options matched to Django TextChoices
 const STATUS_FILTERS = ["All", "Draft", "Investigation", "QA Review", "Closed"];
 
 export default function DeviationsListPage() {
@@ -73,7 +72,7 @@ export default function DeviationsListPage() {
     if (!canCreate) {
       setPermissionDenied({
         open: true,
-        message: `You don't have permission to report deviations. Role: ${role || "Unknown"}`,
+        message: `Permission Denied. Role: ${role || "Unknown"}`,
       });
       return;
     }
@@ -83,29 +82,28 @@ export default function DeviationsListPage() {
   // Filter Logic
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
-      const devId = String((r as any).deviation_id || "");
+      const devId = String(r.deviation_id || r.id || "");
       const searchString = searchTerm.toLowerCase();
 
       const matchesSearch =
         r.title.toLowerCase().includes(searchString) ||
-        devId.toLowerCase().includes(searchString);
+        devId.toLowerCase().includes(searchString) ||
+        r.department.toLowerCase().includes(searchString);
 
       let matchesStatus = true;
       if (statusFilter !== "All") {
-        const currentStatus = String((r as any).status)
-          .toUpperCase()
-          .replace("_", " ");
-        matchesStatus = currentStatus.includes(statusFilter.toUpperCase());
+        const backendStatus = String(r.status).toUpperCase();
+        // UI Friendly Mapping
         if (statusFilter === "QA Review") {
-          matchesStatus = r.status === "QA_REVIEW";
+          matchesStatus =
+            backendStatus === "QA_REVIEW" || backendStatus === "UNDER_REVIEW";
         } else if (statusFilter === "Draft") {
-          matchesStatus = r.status === "DRAFT";
+          matchesStatus = backendStatus === "DRAFT";
         } else if (statusFilter === "Investigation") {
-          matchesStatus = r.status === "INVESTIGATION";
+          matchesStatus = backendStatus === "INVESTIGATION";
         } else if (statusFilter === "Closed") {
-          matchesStatus = r.status === "CLOSED";
-        } else {
-          matchesStatus = r.status === (statusFilter.toUpperCase() as any);
+          matchesStatus =
+            backendStatus === "CLOSED" || backendStatus === "APPROVED";
         }
       }
 
@@ -115,8 +113,8 @@ export default function DeviationsListPage() {
 
   // Helper for Severity Colors
   const getSeverityColor = (severity?: string) => {
-    if (!severity) return { bg: "#f3f4f6", color: "#374151" };
-    switch (severity.toUpperCase()) {
+    const s = String(severity || "MINOR").toUpperCase();
+    switch (s) {
       case "CRITICAL":
         return { bg: "#fee2e2", color: "#991b1b" };
       case "MAJOR":
@@ -131,7 +129,7 @@ export default function DeviationsListPage() {
   // Column Definitions
   const columns: ColumnDef<DeviationRecord>[] = [
     {
-      field: "id",
+      field: "deviation_id",
       headerName: "DEVIATION ID",
       width: 140,
       renderCell: (row) => (
@@ -143,22 +141,19 @@ export default function DeviationsListPage() {
             cursor: "pointer",
             fontSize: "0.875rem",
           }}
-          // ✅ FIX: Navigate using String ID
-          onClick={() =>
-            navigate(`/deviations/${(row as any).deviation_id || row.id}`)
-          }
+          onClick={() => navigate(`/deviations/${row.deviation_id}`)}
         >
-          {(row as any).deviation_id || row.id}
+          {row.deviation_id}
         </Typography>
       ),
     },
     { field: "title", headerName: "TITLE", width: "25%" },
     { field: "department", headerName: "DEPARTMENT" },
     {
-      field: "severity" as any,
+      field: "risk_level" as any, // Mapped to risk_level from backend
       headerName: "SEVERITY",
       renderCell: (row) => {
-        const severity = (row as any).severity || "Minor";
+        const severity = row.risk_level || "MINOR";
         const style = getSeverityColor(severity);
         return (
           <Chip
@@ -175,7 +170,18 @@ export default function DeviationsListPage() {
         );
       },
     },
-    { field: "status", headerName: "STATUS" },
+    {
+      field: "status",
+      headerName: "STATUS",
+      renderCell: (row) => (
+        <Chip
+          label={row.status.replace("_", " ")}
+          size="small"
+          variant="outlined"
+          sx={{ fontWeight: 600, fontSize: "0.7rem" }}
+        />
+      ),
+    },
     {
       field: "created_at",
       headerName: "REPORTED DATE",
@@ -212,8 +218,7 @@ export default function DeviationsListPage() {
             Deviation / Incident Management
           </Typography>
           <Typography variant="body2" sx={{ mt: 0.5, color: "#64748b" }}>
-            Track and investigate quality deviations and incidents with complete
-            audit trail
+            Regulatory compliant tracking with immutable audit logs.
           </Typography>
         </Box>
         <Button
@@ -225,27 +230,25 @@ export default function DeviationsListPage() {
             textTransform: "none",
             fontWeight: 600,
             borderRadius: 2,
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
           }}
         >
           Create New
         </Button>
       </Box>
 
-      {/* Filters */}
+      {/* Filters Area */}
       <Box
         sx={{
           bgcolor: "#fff",
           p: 2,
           borderRadius: 3,
-          boxShadow: "0px 1px 3px rgba(0,0,0,0.05)",
           mb: 3,
           border: "1px solid #e2e8f0",
         }}
       >
         <TextField
           fullWidth
-          placeholder="Search deviations and incidents..."
+          placeholder="Search by ID, Title, or Department..."
           size="small"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -256,28 +259,9 @@ export default function DeviationsListPage() {
                   <SearchIcon sx={{ color: "#94a3b8" }} />
                 </InputAdornment>
               ),
-              endAdornment: (
-                <Button
-                  startIcon={<FilterListIcon />}
-                  sx={{
-                    textTransform: "none",
-                    color: "#475569",
-                    fontWeight: 600,
-                  }}
-                >
-                  Filters
-                </Button>
-              ),
             },
           }}
-          sx={{
-            mb: 2,
-            "& .MuiOutlinedInput-root": {
-              bgcolor: "#f8fafc",
-              borderRadius: 2,
-              "& fieldset": { borderColor: "#e2e8f0" },
-            },
-          }}
+          sx={{ mb: 2 }}
         />
 
         <Box
@@ -290,14 +274,9 @@ export default function DeviationsListPage() {
         >
           <Typography
             variant="body2"
-            sx={{
-              fontWeight: 600,
-              color: "#475569",
-              mr: 1,
-              fontSize: "0.85rem",
-            }}
+            sx={{ fontWeight: 600, color: "#475569", mr: 1 }}
           >
-            Status:
+            Status Filter:
           </Typography>
           {STATUS_FILTERS.map((status) => (
             <Chip
@@ -310,36 +289,24 @@ export default function DeviationsListPage() {
                 bgcolor: statusFilter === status ? "#0f172a" : "#f1f5f9",
                 color: statusFilter === status ? "#fff" : "#64748b",
                 fontWeight: 600,
-                fontSize: "0.8rem",
                 cursor: "pointer",
-                border: "1px solid",
-                borderColor:
-                  statusFilter === status ? "#0f172a" : "transparent",
-                "&:hover": {
-                  bgcolor: statusFilter === status ? "#1e293b" : "#e2e8f0",
-                },
               }}
             />
           ))}
         </Box>
       </Box>
 
-      {/* Table */}
+      {/* Main Table */}
       <ModuleTable
         columns={columns}
         rows={filteredRows}
-        onView={
-          role !== "Viewer"
-            ? (id) => {
-                // ✅ FIX: Find record and navigate using String ID
-                const record = rows.find((r) => String(r.id) === String(id));
-                const navigateId = record
-                  ? (record as any).deviation_id || record.id
-                  : id;
-                navigate(`/deviations/${navigateId}`);
-              }
-            : undefined
-        }
+        onView={(id) => {
+          const record = rows.find(
+            (r) => String(r.id) === String(id) || r.deviation_id === id,
+          );
+          const navigateId = record?.deviation_id || id;
+          navigate(`/deviations/${navigateId}`);
+        }}
       />
 
       <PermissionDeniedDialog

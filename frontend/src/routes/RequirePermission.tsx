@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from "react-router-dom";
 import { useRole } from "../app/providers/RoleProvider"; 
 import { ROLE_PERMISSIONS } from "../config/permissions"; 
-import type { ModuleKey } from "../types/permissions.types";
+import type { ModuleKey } from "../services/permission.service";
 
 export default function RequirePermission({
   moduleKey,

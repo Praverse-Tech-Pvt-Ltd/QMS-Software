@@ -11,13 +11,12 @@ import {
   Alert,
   Paper,
 } from "@mui/material";
-import { useRole } from "../../app/providers/RoleProvider";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import { WORKFLOWS } from "../../config/workflows";
+// ✅ Import types to satisfy the compiler
+import type { WorkflowTransition, WorkflowStep } from "../../services/workflow.service";
 
 export default function WorkflowConfiguration() {
-  const { role } = useRole();
-
   const modules = ["dms", "deviations", "capa", "change"];
 
   return (
@@ -29,13 +28,13 @@ export default function WorkflowConfiguration() {
             Workflow Configuration
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            View configured workflows for quality modules (Read-Only)
+            View configured lifecycles and transition rules (Read-Only)
           </Typography>
         </Box>
       </Box>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        <strong>Configuration Locked:</strong> Workflow definitions are managed through system configuration files and cannot be modified via UI.
+      <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+        <strong>System Integrity:</strong> Workflow definitions are managed via secure configuration files to prevent unauthorized changes to quality processes.
       </Alert>
 
       {modules.map((moduleKey) => {
@@ -43,70 +42,71 @@ export default function WorkflowConfiguration() {
         if (!workflow) return null;
 
         return (
-          <Paper key={moduleKey} sx={{ p: 3, mb: 3, border: "1px solid #e2e8f0", borderRadius: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, textTransform: "uppercase" }}>
-              {moduleKey} Workflow
+          <Paper key={moduleKey} sx={{ p: 3, mb: 3, border: "1px solid #e2e8f0", borderRadius: 3, boxShadow: 'none' }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, textTransform: "uppercase", color: 'primary.main', fontSize: '0.85rem' }}>
+              {moduleKey} Module
             </Typography>
 
-            {/* States */}
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "#64748b" }}>
-                Available States:
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, color: "#64748b" }}>
+                Configured States:
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {workflow.states.map((state) => (
+                {/* ✅ FIXED: Added WorkflowStep type to 'step' */}
+                {workflow.steps.map((step: WorkflowStep) => (
                   <Chip
-                    key={state}
-                    label={state}
+                    key={step.id}
+                    label={step.label}
                     size="small"
                     sx={{
-                      fontWeight: 600,
-                      bgcolor: state.includes("Closed") || state.includes("Effective") ? "#dcfce7" : "#e0e7ff",
-                      color: state.includes("Closed") || state.includes("Effective") ? "#15803d" : "#4338ca",
+                      fontWeight: 700,
+                      bgcolor: step.status === "CLOSED" || step.status === "EFFECTIVE" ? "#dcfce7" : "#f1f5f9",
+                      color: step.status === "CLOSED" || step.status === "EFFECTIVE" ? "#15803d" : "#475569",
+                      borderRadius: 1
                     }}
                   />
                 ))}
               </Box>
             </Box>
 
-            {/* Transitions */}
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, color: "#64748b" }}>
-              Workflow Transitions:
+              Transition Rules:
             </Typography>
-            <TableContainer>
+            <TableContainer sx={{ border: '1px solid #f1f5f9', borderRadius: 2 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                    <TableCell sx={{ fontWeight: 700 }}>From State</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>To State</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Required Role</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>E-Signature</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem' }}>FROM</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem' }}>ACTION</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem' }}>TO</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem' }}>AUTHORIZED ROLES</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: '0.7rem' }} align="center">E-SIG</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {Object.entries(workflow.transitions).map(([fromState, transitions]) =>
-                    transitions.map((transition, idx) => (
+                    /* ✅ FIXED: Cast transitions to WorkflowTransition[] to avoid 'unknown' error */
+                    (transitions as WorkflowTransition[]).map((transition: WorkflowTransition, idx: number) => (
                       <TableRow key={`${fromState}-${idx}`} hover>
                         <TableCell>
-                          <Chip label={fromState} size="small" variant="outlined" />
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: "#6366f1" }}>
-                          {transition.label}
+                          <Typography variant="caption" fontWeight={700} color="text.secondary">{fromState}</Typography>
                         </TableCell>
                         <TableCell>
-                          <Chip label={transition.toStatus} size="small" variant="outlined" />
+                          <Typography variant="body2" fontWeight={700} color="primary.main">{transition.label}</Typography>
                         </TableCell>
                         <TableCell>
-                          {transition.requiredRole.map((r) => (
-                            <Chip key={r} label={r} size="small" sx={{ mr: 0.5, fontSize: "0.7rem" }} />
+                           <Chip label={transition.to} size="small" variant="outlined" sx={{ fontWeight: 700, height: 20, fontSize: '0.65rem' }} />
+                        </TableCell>
+                        <TableCell>
+                          {transition.requiredRole.map((r: string) => (
+                            <Chip key={r} label={r} size="small" sx={{ mr: 0.5, fontSize: "0.6rem", fontWeight: 700, height: 18 }} />
                           ))}
                         </TableCell>
                         <TableCell align="center">
                           {transition.requiresEsig ? (
-                            <Chip label="Required" size="small" color="error" />
+                            <Chip label="PART 11" size="small" color="error" sx={{ fontWeight: 800, height: 18, fontSize: '0.55rem' }} />
                           ) : (
-                            <Chip label="Not Required" size="small" />
+                            <Typography variant="caption" color="text.disabled">—</Typography>
                           )}
                         </TableCell>
                       </TableRow>
