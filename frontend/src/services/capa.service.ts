@@ -36,7 +36,8 @@ export interface CapaRecord extends Omit<
     | "PENDING"
     | "IMPLEMENTATION"
     | "VERIFICATION"
-    | "VERIFIED"; // ✅ UI & LIST HELPER FIELDS
+    | "VERIFIED"
+    | "CLOSED";
   initiator?: string;
   owner?: string;
   priority?: "Low" | "Medium" | "High" | "Critical";
@@ -47,6 +48,7 @@ export interface CapaRecord extends Omit<
   source?: string; // e.g., "Deviation DEV-042"
   root_cause?: string;
   proposed_plan?: string;
+  change_reason?: string;
   audit_trail?: AuditTrailEntry[];
   signatures?: any[];
   moduleKey?: "capa";

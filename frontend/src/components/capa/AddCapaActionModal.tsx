@@ -1,17 +1,20 @@
 import { 
   Dialog, DialogTitle, DialogContent, DialogActions, 
-  Button, TextField, Box, MenuItem 
+  Button, TextField, Box, MenuItem, Typography, Stack 
 } from "@mui/material";
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { useState } from "react";
+import type { CapaAction } from "../../services/capa.service";
 
 interface AddCapaActionModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (action: any) => void;
+  // ✅ Explicitly typing the callback to match CapaAction structure
+  onAdd: (action: Omit<CapaAction, "id">) => void;
 }
 
 export default function AddCapaActionModal({ open, onClose, onAdd }: AddCapaActionModalProps) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Omit<CapaAction, "id">>({
     description: "",
     owner: "",
     due_date: "",
@@ -21,31 +24,61 @@ export default function AddCapaActionModal({ open, onClose, onAdd }: AddCapaActi
   const handleSubmit = () => {
     if (!form.description || !form.due_date) return;
     onAdd(form);
+    // Reset form for next use
     setForm({ description: "", owner: "", due_date: "", status: "PENDING" });
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: 800 }}>Add New Corrective Action</DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      fullWidth 
+      maxWidth="sm"
+      PaperProps={{
+        sx: { borderRadius: 3, p: 1 }
+      }}
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+        <Box sx={{ 
+          bgcolor: 'primary.light', 
+          color: 'primary.main', 
+          p: 0.5, 
+          borderRadius: 1, 
+          display: 'flex' 
+        }}>
+          <PlaylistAddCheckIcon />
+        </Box>
+        <Typography variant="h6" fontWeight={800}>Define Corrective Action</Typography>
+      </DialogTitle>
+
       <DialogContent>
-        <Box sx={{ display: 'grid', gap: 2, mt: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Specify a clear task, assign a responsible owner, and set a target date for completion.
+        </Typography>
+
+        <Stack spacing={2.5}>
           <TextField 
             label="Action Description" 
             fullWidth 
             multiline 
-            rows={2}
+            rows={3}
+            placeholder="e.g., Update SOP-QA-05 to reflect new gowning requirements..."
             value={form.description}
             onChange={(e) => setForm({...form, description: e.target.value})}
+            sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fcfcfc" } }}
           />
+
           <TextField 
-            label="Owner / Department" 
+            label="Responsible Owner" 
             fullWidth 
+            placeholder="e.g., Production Manager / QA Lead"
             value={form.owner}
             onChange={(e) => setForm({...form, owner: e.target.value})}
           />
+
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField 
-              label="Due Date" 
+              label="Target Due Date" 
               type="date" 
               fullWidth 
               InputLabelProps={{ shrink: true }}
@@ -57,18 +90,27 @@ export default function AddCapaActionModal({ open, onClose, onAdd }: AddCapaActi
               label="Initial Status" 
               fullWidth 
               value={form.status}
-              onChange={(e) => setForm({...form, status: e.target.value})}
+              onChange={(e) => setForm({...form, status: e.target.value as any})}
             >
               <MenuItem value="PENDING">Pending</MenuItem>
               <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
+              <MenuItem value="DONE">Done (Completed)</MenuItem>
             </TextField>
           </Box>
-        </Box>
+        </Stack>
       </DialogContent>
-      <DialogActions sx={{ p: 3 }}>
-        <Button onClick={onClose} color="inherit">Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={!form.description}>
-          Add Action
+
+      <DialogActions sx={{ p: 3, pt: 1 }}>
+        <Button onClick={onClose} color="inherit" sx={{ fontWeight: 700 }}>
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained" 
+          disabled={!form.description || !form.due_date}
+          sx={{ borderRadius: 2, px: 3, fontWeight: 700, textTransform: 'none' }}
+        >
+          Add Action Item
         </Button>
       </DialogActions>
     </Dialog>

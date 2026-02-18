@@ -1,8 +1,11 @@
 import api from "./api";
 import type { WorkflowMeta } from "./workflow.service";
-import {type AuditTrailEntry } from "./audit.service";
+import { type AuditTrailEntry } from "./audit.service";
 
-export interface ChangeRecord extends Omit<Partial<WorkflowMeta>, 'id' | 'status'> {
+export interface ChangeRecord extends Omit<
+  Partial<WorkflowMeta>,
+  "id" | "status"
+> {
   id: number;
   cc_id: string;
   title: string;
@@ -13,8 +16,9 @@ export interface ChangeRecord extends Omit<Partial<WorkflowMeta>, 'id' | 'status
   status: "DRAFT" | "EVALUATION" | "APPROVAL" | "IMPLEMENTATION" | "CLOSED";
   target_date: string;
   audit_trail?: AuditTrailEntry[];
+  change_reason?: string;
+  signatureLog?: any[];
   initiator_details?: { username: string; role: string };
-  // ✅ Real field for Impact Assessment JSON
   impact_data?: {
     areas: Record<string, boolean>;
     risk_level: string;
@@ -30,12 +34,17 @@ export const changeService = {
   },
 
   async getById(id: string | number): Promise<ChangeRecord> {
-    const response = await api.get<ChangeRecord>(`/quality/change-control/${id}/`);
+    const response = await api.get<ChangeRecord>(
+      `/quality/change-control/${id}/`,
+    );
     return response.data;
   },
 
   async create(data: Partial<ChangeRecord>) {
-    const response = await api.post<ChangeRecord>("/quality/change-control/", data);
+    const response = await api.post<ChangeRecord>(
+      "/quality/change-control/",
+      data,
+    );
     return response.data;
   },
 
@@ -44,7 +53,10 @@ export const changeService = {
       ...data,
       change_reason: (data as any).change_reason || "Metadata update",
     };
-    const response = await api.patch<ChangeRecord>(`/quality/change-control/${id}/`, payload);
+    const response = await api.patch<ChangeRecord>(
+      `/quality/change-control/${id}/`,
+      payload,
+    );
     return response.data;
   },
 };

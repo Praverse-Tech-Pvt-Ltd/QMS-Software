@@ -7,6 +7,7 @@ import {
   Typography 
 } from "@mui/material";
 import PrintIcon from '@mui/icons-material/Print';
+import { auditService } from "../../services/audit.service";
 
 interface ControlledCopyPrintModalProps {
   open: boolean;
@@ -24,8 +25,21 @@ export default function ControlledCopyPrintModal({
   version
 }: ControlledCopyPrintModalProps) {
 
-  const handlePrint = () => {
-    window.print(); // Triggers browser print (which would ideally capture this view)
+  const handlePrint = async () => {
+    // 1. Trigger the browser print
+    window.print(); 
+
+    // 2. Log to Audit Trail (Critical for Compliance)
+    await auditService.add("dms", docId, {
+      actionType: "UPDATE", // or create a specific "PRINT" type
+      field: "Controlled Copy",
+      oldValue: "N/A",
+      newValue: `Printed Version ${version}`,
+      user: "Current User", // Replace with actual user context
+      role: "QA", 
+      reason: "Issuance of controlled physical copy for production floor.",
+    });
+
     onClose();
   };
 

@@ -1,53 +1,40 @@
+// src/services/training.service.ts
 import api from "./api";
-import type { WorkflowMeta, WorkflowStatus } from "./workflow.service"; // ✅ Import from merged workflow service
-
-// --- TYPES ---
+import type { WorkflowMeta, WorkflowStatus } from "./workflow.service";
+import { type AuditTrailEntry } from "./audit.service";
 
 export interface TrainingAssignment {
   id: number;
-  plan: number;         // FK to TrainingPlan
-  user: number;         // FK to User
+  plan: number;
+  user: number;
+  user_name?: string; // For UI display
   due_date: string;
   completion_date?: string;
   status: "PENDING" | "COMPLETED" | "OVERDUE";
   score?: number;
 }
 
-/**
- * ✅ CONSOLIDATED TRAINING PLAN INTERFACE
- * Merged from training.service.ts and training.types.ts
- */
-export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, 'id'> {
-  id: number;           // Database PK
+export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
+  id: number;
   title: string;
   description: string;
   department: string;
   trainer: string;
   status: WorkflowStatus;
-  
-  // Method mapping
   method: "Classroom" | "Online" | "Read" | string;
   duration_minutes: number;
-  
-  // UI & Workflow Helpers
   version?: string;
   passScore?: number;
   objectives?: string;
   change_reason?: string;
   updated_at?: string;
-
-  // Analytics Helpers (calculated or retrieved from backend)
   totalTrainees?: number;
-  completionRate?: number; // 0-100
-  
+  audit_trail?: AuditTrailEntry[];
+  completionRate?: number;
   moduleKey?: "training";
 }
 
-// --- SERVICE LOGIC ---
-
 export const trainingService = {
-  // --- Training Plans (Course Definitions) ---
-
   async list(): Promise<TrainingPlan[]> {
     const response = await api.get<TrainingPlan[]>("/training/plans/");
     return response.data;
@@ -55,6 +42,16 @@ export const trainingService = {
 
   async getById(id: string | number): Promise<TrainingPlan> {
     const response = await api.get<TrainingPlan>(`/training/plans/${id}/`);
+    return response.data;
+  },
+
+  // ✅ NEW: Fetch trainees assigned to this specific plan
+  async getAssignmentsByPlan(
+    planId: string | number,
+  ): Promise<TrainingAssignment[]> {
+    const response = await api.get<TrainingAssignment[]>(
+      `/training/plans/${planId}/assignments/`,
+    );
     return response.data;
   },
 
@@ -71,25 +68,29 @@ export const trainingService = {
     const response = await api.patch(`/training/plans/${id}/`, payload);
     return response.data;
   },
-
-  // --- Assignments (User Participation) ---
-
-  /**
-   * Fetches assignments for the logged-in user
-   */
   async getMyAssignments(): Promise<TrainingAssignment[]> {
-    const response = await api.get<TrainingAssignment[]>("/training/assignments/");
+    const response = await api.get<TrainingAssignment[]>(
+      "/training/assignments/my-tasks/",
+    );
+    return response.data;
+  },
+  
+  async recordCompletion(
+    assignmentId: number,
+    data: {
+      score?: number;
+      evidence_url?: string;
+      signature_password: string;
+      comments?: string;
+    },
+  ) {
+    const response = await api.post(
+      `/training/assignments/${assignmentId}/complete/`,
+      data,
+    );
     return response.data;
   },
 
-  async getHistory() {
-    const response = await api.get("/training/history/");
-    return response.data;
-  },
-
-  /**
-   * Creates a new training requirement for a specific user
-   */
   async assignUserToPlan(planId: number, userId: number, dueDate: string) {
     const response = await api.post(`/training/plans/${planId}/assign/`, {
       user_id: userId,
@@ -98,14 +99,23 @@ export const trainingService = {
     return response.data;
   },
 
-  /**
-   * Finalizes an assignment with a score (GxP Compliance check)
-   */
-  async completeTraining(id: number, score: number, signature_password?: string) {
-  const response = await api.post(`/training/assignments/${id}/complete/`, {
-    score,
-    signature_password // Django will verify this matches the logged-in user's password
-  });
-  return response.data;
-}
+  async initiateRetraining(planId: number, reason: string) {
+    const response = await api.post(
+      `/training/plans/${planId}/initiate-retraining/`,
+      { reason },
+    );
+    return response.data;
+  },
+
+  async completeTraining(
+    id: number,
+    score: number,
+    signature_password?: string,
+  ) {
+    const response = await api.post(`/training/assignments/${id}/complete/`, {
+      score,
+      signature_password,
+    });
+    return response.data;
+  },
 };

@@ -8,7 +8,7 @@ import {
   TextField,
   Typography,
   Chip,
-  Grid,
+  Grid, // ✅ Updated to Grid2
 } from "@mui/material";
 import SecurityIcon from "@mui/icons-material/Security";
 
@@ -24,7 +24,8 @@ export default function ImpactAssessmentPanel({
   readOnly = false,
 }: ImpactAssessmentPanelProps) {
   const impact = data?.areas || {};
-  const riskLevel = data?.risk_level || "Medium";
+  // ✅ Default to "MINOR" to align with backend enum
+  const riskLevel = data?.risk_level || "MINOR";
 
   const impactAreas = [
     { key: "validation", label: "Validation (IQ/OQ/PQ)" },
@@ -45,33 +46,53 @@ export default function ImpactAssessmentPanel({
 
   return (
     <Paper
+      elevation={0}
       sx={{
         p: 3,
-        borderRadius: 3,
-        border: "1px solid rgba(0,0,0,0.06)",
-        bgcolor: readOnly ? "#fafafa" : "white",
+        borderRadius: 4,
+        border: "1px solid #e2e8f0",
+        bgcolor: readOnly ? "#f8fafc" : "white",
       }}
     >
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          mb: 3,
+        }}
+      >
         <Box>
           <Typography variant="h6" fontWeight={900}>
-            Impact Assessment
+            Quality Impact Assessment
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Evaluate compliance impact before implementation.
+            Identify all quality-related areas affected by this change.
           </Typography>
         </Box>
         <Chip
           label={`${impactCount} Areas Impacted`}
-          color={impactCount > 3 ? "error" : "warning"}
-          variant="filled"
+          color={
+            impactCount > 3 ? "error" : impactCount > 0 ? "warning" : "default"
+          }
+          sx={{ fontWeight: 700, borderRadius: 2 }}
         />
       </Box>
 
       <Grid container spacing={2}>
         {impactAreas.map((area) => (
           <Grid size={{ xs: 12, sm: 6, md: 3 }} key={area.key}>
-            <Paper variant="outlined" sx={{ px: 2, py: 0.5 }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                px: 2,
+                py: 0.5,
+                borderRadius: 2,
+                transition: "0.2s",
+                bgcolor: impact[area.key] ? "#eff6ff" : "transparent",
+                borderColor: impact[area.key] ? "#3b82f6" : "#e2e8f0",
+              }}
+            >
               <FormControlLabel
                 control={
                   <Checkbox
@@ -83,7 +104,14 @@ export default function ImpactAssessmentPanel({
                     }
                   />
                 }
-                label={<Typography variant="body2">{area.label}</Typography>}
+                label={
+                  <Typography
+                    variant="body2"
+                    fontWeight={impact[area.key] ? 600 : 400}
+                  >
+                    {area.label}
+                  </Typography>
+                }
               />
             </Paper>
           </Grid>
@@ -92,10 +120,10 @@ export default function ImpactAssessmentPanel({
 
       <Divider sx={{ my: 4 }} />
 
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
-        <SecurityIcon color="warning" />
+      <Box sx={{ display: "flex", gap: 1.5, mb: 3, alignItems: "center" }}>
+        <SecurityIcon color="primary" />
         <Typography variant="h6" fontWeight={800}>
-          Risk Assessment
+          Risk Evaluation
         </Typography>
       </Box>
 
@@ -103,28 +131,43 @@ export default function ImpactAssessmentPanel({
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             select
-            label="Risk Level"
+            label="Overall Risk Level"
             value={riskLevel}
             fullWidth
             disabled={readOnly}
             onChange={(e) => onChange({ ...data, risk_level: e.target.value })}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
           >
-            <MenuItem value="Low">Low</MenuItem>
-            <MenuItem value="Medium">Medium</MenuItem>
-            <MenuItem value="High">High</MenuItem>
-            <MenuItem value="Critical">Critical</MenuItem>
+            <MenuItem value="MINOR">Minor (Low Impact)</MenuItem>
+            <MenuItem value="MAJOR">Major (Moderate Impact)</MenuItem>
+            <MenuItem value="CRITICAL">Critical (High Impact)</MenuItem>
+            <MenuItem value="EMERGENCY">Emergency (Urgent)</MenuItem>
           </TextField>
         </Grid>
         <Grid size={{ xs: 12, md: 8 }}>
           <TextField
-            label="Risk Justification"
+            label="Risk Justification & Mitigation"
             value={data?.risk_notes || ""}
             fullWidth
+            multiline
+            rows={2}
+            placeholder="Explain the rationale for the selected risk level and any planned mitigations..."
             disabled={readOnly}
             onChange={(e) => onChange({ ...data, risk_notes: e.target.value })}
+            sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
           />
         </Grid>
       </Grid>
+
+      {readOnly && impactCount === 0 && (
+        <Typography
+          variant="caption"
+          color="error"
+          sx={{ mt: 2, display: "block", fontWeight: 600 }}
+        >
+          * No impact areas were selected for this change request.
+        </Typography>
+      )}
     </Paper>
   );
 }
