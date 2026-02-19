@@ -1,6 +1,6 @@
 import { 
   Dialog, DialogTitle, DialogContent, DialogActions, 
-  Button, TextField, Box, MenuItem, Typography, Stack 
+  Button, TextField, Box, MenuItem, Typography, Stack, alpha 
 } from "@mui/material";
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { useState } from "react";
@@ -9,108 +9,134 @@ import type { CapaAction } from "../../services/capa.service";
 interface AddCapaActionModalProps {
   open: boolean;
   onClose: () => void;
-  // ✅ Explicitly typing the callback to match CapaAction structure
   onAdd: (action: Omit<CapaAction, "id">) => void;
 }
 
 export default function AddCapaActionModal({ open, onClose, onAdd }: AddCapaActionModalProps) {
-  const [form, setForm] = useState<Omit<CapaAction, "id">>({
+  const initialState: Omit<CapaAction, "id"> = {
     description: "",
     owner: "",
     due_date: "",
     status: "PENDING"
-  });
+  };
+
+  const [form, setForm] = useState<Omit<CapaAction, "id">>(initialState);
 
   const handleSubmit = () => {
-    if (!form.description || !form.due_date) return;
+    // Basic validation to ensure audit readiness
+    if (!form.description || !form.due_date || !form.owner) return;
+    
     onAdd(form);
-    // Reset form for next use
-    setForm({ description: "", owner: "", due_date: "", status: "PENDING" });
+    handleClose();
+  };
+
+  const handleClose = () => {
+    setForm(initialState);
+    onClose();
   };
 
   return (
     <Dialog 
       open={open} 
-      onClose={onClose} 
+      onClose={handleClose} 
       fullWidth 
       maxWidth="sm"
       PaperProps={{
-        sx: { borderRadius: 3, p: 1 }
+        sx: { borderRadius: 4, p: 1 }
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1, pt: 3 }}>
         <Box sx={{ 
-          bgcolor: 'primary.light', 
+          bgcolor: alpha("#4f46e5", 0.1), 
           color: 'primary.main', 
-          p: 0.5, 
-          borderRadius: 1, 
+          p: 1, 
+          borderRadius: 2, 
           display: 'flex' 
         }}>
           <PlaylistAddCheckIcon />
         </Box>
-        <Typography variant="h6" fontWeight={800}>Define Corrective Action</Typography>
+        <Box>
+            <Typography variant="h6" fontWeight={900} sx={{ letterSpacing: '-0.01em' }}>
+                New Corrective Action
+            </Typography>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                TASK ASSIGNMENT & SCHEDULING
+            </Typography>
+        </Box>
       </DialogTitle>
 
       <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Specify a clear task, assign a responsible owner, and set a target date for completion.
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 4, mt: 1, lineHeight: 1.6 }}>
+          Define the specific task required to address the root cause. Assign a lead owner who will be responsible for providing evidence of completion.
         </Typography>
 
-        <Stack spacing={2.5}>
+        <Stack spacing={3}>
           <TextField 
             label="Action Description" 
             fullWidth 
             multiline 
             rows={3}
-            placeholder="e.g., Update SOP-QA-05 to reflect new gowning requirements..."
+            required
+            placeholder="Describe the specific steps to be taken..."
             value={form.description}
             onChange={(e) => setForm({...form, description: e.target.value})}
-            sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#fcfcfc" } }}
+            sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#f8fafc", borderRadius: 3 } }}
           />
 
           <TextField 
-            label="Responsible Owner" 
+            label="Responsible Assignee" 
             fullWidth 
-            placeholder="e.g., Production Manager / QA Lead"
+            required
+            placeholder="Name or Department (e.g. John Doe / QA)"
             value={form.owner}
             onChange={(e) => setForm({...form, owner: e.target.value})}
+            sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#f8fafc", borderRadius: 3 } }}
           />
 
           <Box sx={{ display: 'flex', gap: 2 }}>
             <TextField 
-              label="Target Due Date" 
+              label="Target Date" 
               type="date" 
+              required
               fullWidth 
               InputLabelProps={{ shrink: true }}
               value={form.due_date}
               onChange={(e) => setForm({...form, due_date: e.target.value})}
+              sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#f8fafc", borderRadius: 3 } }}
             />
             <TextField 
               select 
-              label="Initial Status" 
+              label="Initial Phase" 
               fullWidth 
               value={form.status}
               onChange={(e) => setForm({...form, status: e.target.value as any})}
+              sx={{ "& .MuiOutlinedInput-root": { bgcolor: "#f8fafc", borderRadius: 3 } }}
             >
-              <MenuItem value="PENDING">Pending</MenuItem>
-              <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
-              <MenuItem value="DONE">Done (Completed)</MenuItem>
+              <MenuItem value="PENDING" sx={{ fontWeight: 600 }}>Pending</MenuItem>
+              <MenuItem value="IN_PROGRESS" sx={{ fontWeight: 600 }}>In Progress</MenuItem>
+              <MenuItem value="DONE" sx={{ fontWeight: 600 }}>Completed</MenuItem>
             </TextField>
           </Box>
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, pt: 1 }}>
-        <Button onClick={onClose} color="inherit" sx={{ fontWeight: 700 }}>
-          Cancel
+      <DialogActions sx={{ p: 4, pt: 1 }}>
+        <Button onClick={handleClose} color="inherit" sx={{ fontWeight: 800, textTransform: 'none' }}>
+          Discard
         </Button>
         <Button 
           onClick={handleSubmit} 
           variant="contained" 
-          disabled={!form.description || !form.due_date}
-          sx={{ borderRadius: 2, px: 3, fontWeight: 700, textTransform: 'none' }}
+          disabled={!form.description || !form.due_date || !form.owner}
+          sx={{ 
+            borderRadius: 2.5, 
+            px: 4, 
+            fontWeight: 800, 
+            textTransform: 'none',
+            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
+          }}
         >
-          Add Action Item
+          Add to Plan
         </Button>
       </DialogActions>
     </Dialog>

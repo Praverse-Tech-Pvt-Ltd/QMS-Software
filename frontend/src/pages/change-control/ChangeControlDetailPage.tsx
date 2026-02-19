@@ -41,22 +41,22 @@ import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 
-const mapStatusToWorkflow = (backendStatus: string): any => {
-  switch (backendStatus) {
-    case "DRAFT":
-      return "Draft";
-    case "EVALUATION":
-      return "Evaluation";
-    case "APPROVAL":
-      return "Review";
-    case "IMPLEMENTATION":
-      return "In Progress";
-    case "CLOSED":
-      return "Closed";
-    default:
-      return "Draft";
-  }
-};
+// const mapStatusToWorkflow = (backendStatus: string): any => {
+//   switch (backendStatus) {
+//     case "DRAFT":
+//       return "Draft";
+//     case "EVALUATION":
+//       return "Evaluation";
+//     case "APPROVAL":
+//       return "Review";
+//     case "IMPLEMENTATION":
+//       return "In Progress";
+//     case "CLOSED":
+//       return "Closed";
+//     default:
+//       return "Draft";
+//   }
+// };
 
 export default function ChangeControlDetailPage() {
   const { id } = useParams(); // Using business cc_id (e.g. CC-2026-001)
@@ -157,7 +157,7 @@ export default function ChangeControlDetailPage() {
         rightPanel={
           <Box sx={{ display: "grid", gap: 3 }}>
             <WorkflowTimeline
-              currentStatus={mapStatusToWorkflow(record.status)}
+              currentStatus={record.status}
               steps={WORKFLOWS.change.steps}
             />
             <WorkflowActionsPanel
@@ -167,7 +167,7 @@ export default function ChangeControlDetailPage() {
                 {
                   ...record,
                   id: record.id.toString(),
-                  status: mapStatusToWorkflow(record.status),
+                  status: record.status,
                   approvalRequests: [],
                   approvalsLog: [],
                   signatureLog: [],

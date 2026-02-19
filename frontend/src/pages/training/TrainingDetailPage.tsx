@@ -9,7 +9,8 @@ import {
   Button,
   CircularProgress,
   Alert,
-  Grid, // ✅ Standardized Grid
+   Grid, // ✅ Standardized Grid2
+  Stack,
 } from "@mui/material";
 
 import SaveIcon from "@mui/icons-material/Save";
@@ -41,24 +42,8 @@ import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
 
-const mapStatusToWorkflow = (backendStatus: string): any => {
-  const status = backendStatus as string;
-  switch (status) {
-    case "DRAFT":
-      return "Draft";
-    case "ACTIVE":
-      return "Effective";
-    case "EFFECTIVE":
-      return "Effective";
-    case "OBSOLETE":
-      return "Obsolete";
-    default:
-      return "Draft";
-  }
-};
-
 export default function TrainingDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const { role } = useRole();
 
   const [record, setRecord] = useState<TrainingPlan | null>(null);
@@ -74,15 +59,14 @@ export default function TrainingDetailPage() {
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
   const loadData = async () => {
-    const safeId = id || "";
-    if (!safeId) return;
-
+    if (!id) return;
     try {
       setLoading(true);
-      const data = await trainingService.getById(safeId);
+      // ✅ Handshake: Backend typically expects numeric ID for Detail lookup
+      const lookupId = id.includes("-") ? id.split("-").pop() : id;
+      const data = await trainingService.getById(lookupId!);
       setRecord(data);
     } catch (err) {
-      console.error(err);
       setError("Failed to load Training Plan.");
     } finally {
       setLoading(false);
@@ -102,22 +86,17 @@ export default function TrainingDetailPage() {
   const handleSaveClick = () => setSaveDialogOpen(true);
 
   const handleConfirmSave = async (reason?: string) => {
-    const safeId = id || "";
-    if (!record || !safeId) return;
-
+    if (!record || !id) return;
     try {
-      console.log("Saving with reason:", reason);
-      await trainingService.update(safeId, { ...record });
+      await trainingService.update(String(record.id), {
+        ...record,
+        change_reason: reason || "Training configuration updated",
+      });
       setSaveDialogOpen(false);
       loadData();
     } catch (err) {
-      alert("Failed to save changes.");
+      alert("Failed to save training plan changes.");
     }
-  };
-
-  const handleAddReviewer = (user: any) => {
-    console.log("Assigning Reviewer:", user);
-    setAssignModalOpen(false);
   };
 
   const handleCompare = (vOld: string, vNew: string) => {
@@ -125,19 +104,14 @@ export default function TrainingDetailPage() {
     setCompareModalOpen(true);
   };
 
-  const handleValidate = () => {
-    if (record?.status === "DRAFT" && !record.title) {
-      return "Title is required.";
-    }
-    return true;
-  };
-
   if (loading)
     return (
       <Box sx={{ p: 5, textAlign: "center" }}>
-        <CircularProgress /> <Typography>Loading Training Plan...</Typography>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>Syncing Training Record...</Typography>
       </Box>
     );
+
   if (error || !record)
     return (
       <Box sx={{ p: 5 }}>
@@ -148,65 +122,83 @@ export default function TrainingDetailPage() {
   return (
     <>
       <DetailTabsLayout
-        title={`${record.id}: ${record.title}`}
-        subtitle={`Plan ID: ${id}`}
+        title={`${record.title}`}
+        subtitle={`System ID: ${record.id}`}
         backTo="/training"
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {((record.status as string) === "ACTIVE" ||
-              (record.status as string) === "EFFECTIVE") && (
+            {(record.status === "ACTIVE" || record.status === "EFFECTIVE") && (
               <SignatureStamp
                 isSigned={true}
-                signedBy="QA Manager"
+                signedBy="Training Coordinator"
                 date={new Date().toLocaleDateString()}
               />
             )}
-            <StatusChip status={mapStatusToWorkflow(record.status)} />
+            <StatusChip status={record.status} />
           </Box>
         }
         rightPanel={
           <Box sx={{ display: "grid", gap: 3 }}>
             <WorkflowTimeline
-              currentStatus={mapStatusToWorkflow(record.status)}
+              currentStatus={record.status}
               steps={WORKFLOWS.training.steps}
             />
 
             <WorkflowActionsPanel
-              recordId={id || ""}
+              recordId={record.id.toString()}
               moduleKey="training"
-              meta={{
-                ...record,
-                id: record.id.toString(),
-                moduleKey: "training",
-                status: mapStatusToWorkflow(record.status),
-                approvalRequests: [],
-                approvalsLog: [],
-                signatureLog: [],
-              }}
               onUpdated={loadData}
-              onValidate={handleValidate}
+              meta={{ ...record, id: record.id.toString() } as any}
+              onValidate={() => {
+                if (!record.title)
+                  return "A descriptive title is required for publishing.";
+                if (!record.trainer)
+                  return "Please assign a Trainer or Coordinator.";
+                return true;
+              }}
             />
 
             <Divider />
 
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                Plan Stats
+            <Box sx={{ p: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 800,
+                  color: "text.secondary",
+                  textTransform: "uppercase",
+                  fontSize: "0.7rem",
+                  mb: 2,
+                }}
+              >
+                Plan Metrics
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Total Trainees
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    TOTAL TRAINEES
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" fontWeight={800}>
                     {(record as any).totalTrainees || 0}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Completion
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    COMPLETION
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography
+                    variant="body2"
+                    fontWeight={800}
+                    color="primary.main"
+                  >
                     {(record as any).completionRate || 0}%
                   </Typography>
                 </Grid>
@@ -217,19 +209,25 @@ export default function TrainingDetailPage() {
         overview={
           <Box sx={{ p: 1 }}>
             <Box
-              sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mb: 4,
+                alignItems: "center",
+              }}
             >
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              <Typography variant="h6" fontWeight={900}>
                 Training Configuration
               </Typography>
-              <Box sx={{ display: "flex", gap: 1 }}>
+              <Stack direction="row" spacing={1}>
                 <Button
                   variant="outlined"
                   startIcon={<PrintIcon />}
                   size="small"
                   onClick={() => setPrintModalOpen(true)}
+                  sx={{ borderRadius: 2 }}
                 >
-                  Print Plan
+                  Print Syllabus
                 </Button>
                 {canEdit && (
                   <Button
@@ -237,11 +235,12 @@ export default function TrainingDetailPage() {
                     startIcon={<SaveIcon />}
                     onClick={handleSaveClick}
                     size="small"
+                    sx={{ borderRadius: 2 }}
                   >
                     Save Changes
                   </Button>
                 )}
-              </Box>
+              </Stack>
             </Box>
 
             <Grid container spacing={3}>
@@ -249,13 +248,24 @@ export default function TrainingDetailPage() {
                 <TextField
                   select
                   label="Training Method"
-                  defaultValue={record.method}
+                  value={record.method}
                   fullWidth
                   disabled={!canEdit}
+                  onChange={(e) =>
+                    setRecord({ ...record, method: e.target.value })
+                  }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 >
-                  <MenuItem value="Classroom">Classroom</MenuItem>
+                  <MenuItem value="Classroom">
+                    Classroom / Instructor-Led
+                  </MenuItem>
                   <MenuItem value="Online">Online / SCORM</MenuItem>
-                  <MenuItem value="Read">Read & Understand</MenuItem>
+                  <MenuItem value="Read">Read & Understand (SOP)</MenuItem>
                 </TextField>
               </Grid>
 
@@ -263,52 +273,88 @@ export default function TrainingDetailPage() {
                 <TextField
                   label="Duration (Minutes)"
                   type="number"
-                  defaultValue={record.duration_minutes}
+                  value={record.duration_minutes}
                   fullWidth
                   disabled={!canEdit}
+                  onChange={(e) =>
+                    setRecord({
+                      ...record,
+                      duration_minutes: Number(e.target.value),
+                    })
+                  }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
-                  label="Pass Score (%)"
+                  label="Minimum Pass Score (%)"
                   type="number"
-                  defaultValue={(record as any).passScore || 80}
+                  value={(record as any).passScore || 80}
                   fullWidth
                   disabled={!canEdit}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 />
               </Grid>
 
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Learning Objectives"
-                  defaultValue={record.description}
+                  value={record.description}
                   fullWidth
                   multiline
                   rows={4}
                   disabled={!canEdit}
+                  onChange={(e) =>
+                    setRecord({ ...record, description: e.target.value })
+                  }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 />
               </Grid>
 
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
-                  label="Trainer / Coordinator"
-                  defaultValue={record.trainer}
+                  label="Designated Trainer"
+                  value={record.trainer}
                   fullWidth
                   disabled={!canEdit}
+                  onChange={(e) =>
+                    setRecord({ ...record, trainer: e.target.value })
+                  }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 />
               </Grid>
             </Grid>
 
-            <Divider sx={{ my: 4 }} />
+            <Divider sx={{ my: 5, borderStyle: "dashed" }} />
 
             <Box sx={{ display: "grid", gap: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Plan Lifecycle
+              <Typography variant="h6" fontWeight={900}>
+                Version Governance
               </Typography>
               <VersionHistoryPanel
                 currentVersion={(record as any).version || "v1.0"}
                 rows={[]}
-                onView={(v) => console.log("View:", v)}
+                onView={(v) => console.log("Viewing syllabus version:", v)}
                 onCompare={handleCompare}
               />
             </Box>
@@ -317,7 +363,7 @@ export default function TrainingDetailPage() {
         attachments={
           <AttachmentsUploader
             readOnly={!canEdit}
-            title="Training Materials"
+            title="Training Courseware"
             acceptedFormats=".pdf,.ppt,.pptx"
           />
         }
@@ -328,19 +374,16 @@ export default function TrainingDetailPage() {
               canAddReviewer={canEdit}
               onAddReviewer={() => setAssignModalOpen(true)}
             />
-            <SignatureLogTable rows={[]} />
+            <SignatureLogTable rows={record.signatureLog || []} />{" "}
           </Box>
         }
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ActivityLog />
-            <Divider />
-
-            {/* ✅ FIXED: Use separate Typography for title */}
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Audit Log
+            <Typography variant="h6" fontWeight={900}>
+              Regulatory Audit Trail
             </Typography>
-            <AuditTrailTable rows={[]} />
+            <AuditTrailTable rows={record.audit_trail || []} />
           </Box>
         }
       />
@@ -348,28 +391,25 @@ export default function TrainingDetailPage() {
       <UserSelectionModal
         open={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
-        onSelect={handleAddReviewer}
+        onSelect={(user) => {
+          console.log(user);
+          setAssignModalOpen(false);
+        }}
         title="Assign Training Approver"
       />
 
       <ReasonForChangeModal
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
-        onConfirm={(reason) => {
-          setReasonModalOpen(false);
-          handleConfirmSave(reason);
-        }}
+        onConfirm={handleConfirmSave}
       />
 
       <ConfirmDialog
         open={saveDialogOpen}
-        title="Save Training Plan?"
-        message="This will update the training configuration."
-        confirmText="Save"
+        title="Save Training Configuration?"
+        message="All changes to the learning objectives or requirements will be tracked in the audit trail."
         onClose={() => setSaveDialogOpen(false)}
-        onConfirm={() => {
-          handleConfirmSave();
-        }}
+        onConfirm={() => handleConfirmSave()}
       />
 
       <VersionCompareModal

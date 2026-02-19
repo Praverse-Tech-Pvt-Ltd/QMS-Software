@@ -1,6 +1,6 @@
 // src/services/training.service.ts
 import api from "./api";
-import type { WorkflowMeta, WorkflowStatus } from "./workflow.service";
+import type { SignatureEntry, WorkflowMeta, WorkflowStatus } from "./workflow.service";
 import { type AuditTrailEntry } from "./audit.service";
 
 export interface TrainingAssignment {
@@ -30,6 +30,8 @@ export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
   updated_at?: string;
   totalTrainees?: number;
   audit_trail?: AuditTrailEntry[];
+  // ✅ Changed to match WorkflowMeta standard used in other modules
+  signatureLog?: SignatureEntry[]; 
   completionRate?: number;
   moduleKey?: "training";
 }

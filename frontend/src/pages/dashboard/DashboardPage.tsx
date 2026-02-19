@@ -13,7 +13,7 @@ import {
   Grid,
   CircularProgress,
   Stack,
-  LinearProgress,
+  // LinearProgress,
 } from "@mui/material";
 
 import { useNavigate } from "react-router-dom";
@@ -188,10 +188,10 @@ export default function DashboardPage() {
     );
 
   // Calculate max hotspot count for the bar scale
-  const maxHotspot = Math.max(
-    ...stats.quality.department_hotspots.map((h) => h.count),
-    1,
-  );
+  // const maxHotspot = Math.max(
+  //   ...stats.quality.department_hotspots.map((h) => h.count),
+  //   1,
+  // );
 
   return (
     <Box sx={{ maxWidth: 1600, mx: "auto", p: 2 }}>
@@ -369,7 +369,7 @@ export default function DashboardPage() {
             </Paper>
 
             {/* Departmental Hotspots - Horizontal Bar Chart */}
-            <Paper
+            {/* <Paper
               sx={{
                 p: 3,
                 borderRadius: 4,
@@ -426,7 +426,7 @@ export default function DashboardPage() {
                   </Typography>
                 )}
               </Box>
-            </Paper>
+            </Paper> */}
           </Stack>
         </Grid>
 

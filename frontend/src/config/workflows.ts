@@ -13,43 +13,12 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
       { id: "4", label: "Effective", status: "EFFECTIVE", order: 4 },
     ],
     transitions: {
-      DRAFT: [
-        {
-          to: "REVIEW",
-          label: "Submit for Review",
-          action: "SUBMIT",
-          requiredRole: ["Admin", "QA"],
-          variant: "primary",
-        },
-      ],
+      DRAFT: [{ to: "REVIEW", label: "Submit for Review", action: "SUBMIT", requiredRole: ["Admin", "QA"], variant: "primary" }],
       REVIEW: [
-        {
-          to: "APPROVED",
-          label: "Approve Document",
-          action: "APPROVE",
-          requiredRole: ["QA"],
-          requiresEsig: true,
-          variant: "success",
-        },
-        {
-          to: "DRAFT",
-          label: "Request Changes",
-          action: "REJECT",
-          requiredRole: ["QA"],
-          requiresComment: true,
-          variant: "error",
-        },
+        { to: "APPROVED", label: "Approve Document", action: "APPROVE", requiredRole: ["QA"], requiresEsig: true, variant: "success" },
+        { to: "DRAFT", label: "Request Changes", action: "REJECT", requiredRole: ["QA"], requiresComment: true, variant: "error" },
       ],
-      APPROVED: [
-        {
-          to: "EFFECTIVE",
-          label: "Publish",
-          action: "PUBLISH",
-          requiredRole: ["QA"],
-          requiresEsig: true,
-          variant: "primary",
-        },
-      ],
+      APPROVED: [{ to: "EFFECTIVE", label: "Publish", action: "PUBLISH", requiredRole: ["QA"], requiresEsig: true, variant: "primary" }],
     },
   },
 
@@ -62,35 +31,9 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
       { id: "4", label: "Closed", status: "CLOSED", order: 4 },
     ],
     transitions: {
-      PLANNING: [
-        {
-          to: "PENDING",
-          label: "Approve Plan",
-          action: "SUBMIT",
-          requiredRole: ["QA"],
-          requiresEsig: true,
-          variant: "primary",
-        },
-      ],
-      PENDING: [
-        {
-          to: "VERIFICATION",
-          label: "Complete Execution",
-          action: "SUBMIT",
-          requiredRole: ["Production", "QA"],
-          variant: "primary",
-        },
-      ],
-      VERIFICATION: [
-        {
-          to: "CLOSED",
-          label: "Verify & Close",
-          action: "CLOSE",
-          requiredRole: ["QA"],
-          requiresEsig: true,
-          variant: "success",
-        },
-      ],
+      PLANNING: [{ to: "PENDING", label: "Approve Plan", action: "SUBMIT", requiredRole: ["QA"], requiresEsig: true, variant: "primary" }],
+      PENDING: [{ to: "VERIFICATION", label: "Complete Execution", action: "SUBMIT", requiredRole: ["Production", "QA"], variant: "primary" }],
+      VERIFICATION: [{ to: "CLOSED", label: "Verify & Close", action: "CLOSE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
     },
   },
 
@@ -103,34 +46,9 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
       { id: "4", label: "Closed", status: "CLOSED", order: 4 },
     ],
     transitions: {
-      DRAFT: [
-        {
-          to: "INVESTIGATION",
-          label: "Submit Event",
-          action: "SUBMIT",
-          requiredRole: ["QA"],
-          variant: "primary",
-        },
-      ],
-      INVESTIGATION: [
-        {
-          to: "QA_REVIEW",
-          label: "Submit Investigation",
-          action: "SUBMIT",
-          requiredRole: ["QA"],
-          variant: "primary",
-        },
-      ],
-      QA_REVIEW: [
-        {
-          to: "CLOSED",
-          label: "Approve & Close",
-          action: "CLOSE",
-          requiredRole: ["QA"],
-          requiresEsig: true,
-          variant: "success",
-        },
-      ],
+      DRAFT: [{ to: "INVESTIGATION", label: "Submit Event", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      INVESTIGATION: [{ to: "QA_REVIEW", label: "Submit Investigation", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      QA_REVIEW: [{ to: "CLOSED", label: "Approve & Close", action: "CLOSE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
     },
   },
 
@@ -141,15 +59,7 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
       { id: "2", label: "Active", status: "ACTIVE", order: 2 },
     ],
     transitions: {
-      DRAFT: [
-        {
-          to: "ACTIVE",
-          label: "Publish Plan",
-          action: "PUBLISH",
-          requiredRole: ["QA"],
-          variant: "primary",
-        },
-      ],
+      DRAFT: [{ to: "ACTIVE", label: "Publish Plan", action: "PUBLISH", requiredRole: ["QA"], variant: "primary" }],
     },
   },
 
@@ -158,38 +68,17 @@ export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
     steps: [
       { id: "1", label: "Draft", status: "DRAFT", order: 1 },
       { id: "2", label: "Evaluation", status: "EVALUATION", order: 2 },
-      { id: "3", label: "Implementation", status: "IMPLEMENTATION", order: 3 },
-      { id: "4", label: "Closed", status: "CLOSED", order: 4 },
+      { id: "3", label: "Approval", status: "APPROVAL", order: 3 }, // ✅ Added missing step
+      { id: "4", label: "Implementation", status: "IMPLEMENTATION", order: 4 },
+      { id: "5", label: "QA Review", status: "QA_REVIEW", order: 5 }, // ✅ Added to match STATE_MACHINE
+      { id: "6", label: "Closed", status: "CLOSED", order: 6 },
     ],
     transitions: {
-      DRAFT: [
-        {
-          to: "EVALUATION",
-          label: "Submit for Evaluation",
-          action: "SUBMIT",
-          requiredRole: ["QA"],
-          variant: "primary",
-        },
-      ],
-      EVALUATION: [
-        {
-          to: "IMPLEMENTATION",
-          label: "Approve Implementation",
-          action: "APPROVE",
-          requiredRole: ["QA"],
-          requiresEsig: true,
-          variant: "success",
-        },
-      ],
-      IMPLEMENTATION: [
-        {
-          to: "CLOSED",
-          label: "Close CC",
-          action: "CLOSE",
-          requiredRole: ["QA"],
-          variant: "primary",
-        },
-      ],
+      DRAFT: [{ to: "EVALUATION", label: "Submit for Evaluation", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      EVALUATION: [{ to: "APPROVAL", label: "Submit for Approval", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      APPROVAL: [{ to: "IMPLEMENTATION", label: "Approve Implementation", action: "APPROVE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
+      IMPLEMENTATION: [{ to: "QA_REVIEW", label: "Submit for Closure", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      QA_REVIEW: [{ to: "CLOSED", label: "Close CC", action: "CLOSE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
     },
   },
 };
