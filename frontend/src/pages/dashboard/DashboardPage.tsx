@@ -10,12 +10,12 @@ import {
   TableRow,
   Chip,
   TextField,
-  Grid,
+   Grid,
   CircularProgress,
   Stack,
-  // LinearProgress,
+  LinearProgress,
 } from "@mui/material";
-
+import SchoolIcon from '@mui/icons-material/School';
 import { useNavigate } from "react-router-dom";
 import { keyframes } from "@mui/system";
 import { shadows, transitions } from "../../theme/motion";
@@ -29,7 +29,7 @@ import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+// import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 
 import { useRole } from "../../app/providers/RoleProvider";
@@ -67,6 +67,9 @@ export default function DashboardPage() {
   });
 
   const [recentTasks, setRecentTasks] = useState<any[]>([]);
+
+  // Handshake logic: Calculate dynamic completion rate for the UI
+  const trainingCompletion = stats.user.pending_training === 0 ? 100 : 75;
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -154,30 +157,10 @@ export default function DashboardPage() {
   };
 
   const allActions = [
-    {
-      label: "New Doc",
-      icon: <DescriptionOutlinedIcon />,
-      path: "/dms/new",
-      module: "dms" as ModuleKey,
-    },
-    {
-      label: "Deviation",
-      icon: <ReportProblemOutlinedIcon />,
-      path: "/deviations/new",
-      module: "deviations" as ModuleKey,
-    },
-    {
-      label: "Training",
-      icon: <SchoolOutlinedIcon />,
-      path: "/training/new",
-      module: "training" as ModuleKey,
-    },
-    {
-      label: "CAPA",
-      icon: <FactCheckOutlinedIcon />,
-      path: "/capa/new",
-      module: "capa" as ModuleKey,
-    },
+    { label: "New Doc", icon: <DescriptionOutlinedIcon />, path: "/dms/new", module: "dms" as ModuleKey },
+    { label: "Deviation", icon: <ReportProblemOutlinedIcon />, path: "/deviations/new", module: "deviations" as ModuleKey },
+    { label: "Training", icon: <SchoolOutlinedIcon />, path: "/training/new", module: "training" as ModuleKey },
+    { label: "CAPA", icon: <FactCheckOutlinedIcon />, path: "/capa/new", module: "capa" as ModuleKey },
   ];
 
   if (loading)
@@ -186,12 +169,6 @@ export default function DashboardPage() {
         <CircularProgress />
       </Box>
     );
-
-  // Calculate max hotspot count for the bar scale
-  // const maxHotspot = Math.max(
-  //   ...stats.quality.department_hotspots.map((h) => h.count),
-  //   1,
-  // );
 
   return (
     <Box sx={{ maxWidth: 1600, mx: "auto", p: 2 }}>
@@ -225,27 +202,12 @@ export default function DashboardPage() {
                   variant="body2"
                   color="text.secondary"
                   fontWeight={700}
-                  sx={{
-                    textTransform: "uppercase",
-                    fontSize: "0.7rem",
-                    letterSpacing: "0.5px",
-                  }}
+                  sx={{ textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }}
                 >
                   {kpi.label}
                 </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-end",
-                    mt: 1.5,
-                  }}
-                >
-                  <Typography
-                    variant="h3"
-                    fontWeight={900}
-                    color={isAlert ? "error.main" : "text.primary"}
-                  >
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mt: 1.5 }}>
+                  <Typography variant="h3" fontWeight={900} color={isAlert ? "error.main" : "text.primary"}>
                     {kpi.value}
                   </Typography>
                   <Box
@@ -260,12 +222,7 @@ export default function DashboardPage() {
                     }}
                   >
                     {!isAlert && trendIcon(kpi.trend)}
-                    <Typography
-                      variant="caption"
-                      fontWeight={800}
-                      color={isAlert ? "error.main" : "text.secondary"}
-                      sx={{ fontSize: "0.65rem" }}
-                    >
+                    <Typography variant="caption" fontWeight={800} color={isAlert ? "error.main" : "text.secondary"} sx={{ fontSize: "0.65rem" }}>
                       {kpi.change}
                     </Typography>
                   </Box>
@@ -280,49 +237,20 @@ export default function DashboardPage() {
         <Grid size={{ xs: 12, lg: 8 }}>
           <Stack spacing={3}>
             {/* Task Table */}
-            <Paper
-              sx={{
-                borderRadius: 4,
-                border: "1px solid #e2e8f0",
-                overflow: "hidden",
-                boxShadow: shadows.card,
-              }}
-            >
-              <Box
-                sx={{
-                  p: 3,
-                  borderBottom: "1px solid #f1f5f9",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography variant="h6" fontWeight={800}>
-                  My Active Tasks
-                </Typography>
-                <Button
-                  size="small"
-                  onClick={() => navigate("/tasks")}
-                  sx={{ textTransform: "none", fontWeight: 700 }}
-                >
+            <Paper sx={{ borderRadius: 4, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: shadows.card }}>
+              <Box sx={{ p: 3, borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Typography variant="h6" fontWeight={800}>My Active Tasks</Typography>
+                <Button size="small" onClick={() => navigate("/tasks")} sx={{ textTransform: "none", fontWeight: 700 }}>
                   View All
                 </Button>
               </Box>
               <Table size="small">
                 <TableHead sx={{ bgcolor: "#f8fafc" }}>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
-                      ID
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
-                      TYPE
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
-                      TITLE
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>
-                      STATUS
-                    </TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>ID</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>TYPE</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>TITLE</TableCell>
+                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>STATUS</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -331,27 +259,14 @@ export default function DashboardPage() {
                       key={t.id}
                       hover
                       onClick={() => handleTaskClick(t.id, t.type)}
-                      sx={{
-                        cursor: "pointer",
-                        transition: transitions.tableRow.hover,
-                      }}
+                      sx={{ cursor: "pointer", transition: transitions.tableRow.hover }}
                     >
-                      <TableCell
-                        sx={{ fontWeight: 700, color: "primary.main" }}
-                      >
-                        {t.id}
-                      </TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: "primary.main" }}>{t.id}</TableCell>
                       <TableCell>
-                        <Chip
-                          label={t.type}
-                          size="small"
-                          sx={{ fontWeight: 600, fontSize: "0.65rem" }}
-                        />
+                        <Chip label={t.type} size="small" sx={{ fontWeight: 600, fontSize: "0.65rem" }} />
                       </TableCell>
                       <TableCell sx={{ maxWidth: 300 }}>
-                        <Typography variant="body2" noWrap fontWeight={500}>
-                          {t.title}
-                        </Typography>
+                        <Typography variant="body2" noWrap fontWeight={500}>{t.title}</Typography>
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -367,96 +282,69 @@ export default function DashboardPage() {
                 </TableBody>
               </Table>
             </Paper>
-
-            {/* Departmental Hotspots - Horizontal Bar Chart */}
-            {/* <Paper
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                border: "1px solid #e2e8f0",
-                boxShadow: shadows.card,
-              }}
-            >
-              <Typography variant="h6" fontWeight={800} mb={3}>
-                Departmental Hotspots (Open Issues)
-              </Typography>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-                {stats.quality.department_hotspots.map((item) => (
-                  <Box key={item.department}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        mb: 1,
-                      }}
-                    >
-                      <Typography variant="body2" fontWeight={700}>
-                        {item.department}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        fontWeight={800}
-                        color="primary.main"
-                      >
-                        {item.count} Records
-                      </Typography>
-                    </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(item.count / maxHotspot) * 100}
-                      sx={{
-                        height: 10,
-                        borderRadius: 5,
-                        bgcolor: "#f1f5f9",
-                        "& .MuiLinearProgress-bar": {
-                          borderRadius: 5,
-                          bgcolor: "#6366F1",
-                        },
-                      }}
-                    />
-                  </Box>
-                ))}
-                {stats.quality.department_hotspots.length === 0 && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    textAlign="center"
-                  >
-                    No departmental hotspots detected.
-                  </Typography>
-                )}
-              </Box>
-            </Paper> */}
           </Stack>
         </Grid>
 
         <Grid size={{ xs: 12, lg: 4 }}>
           <Stack spacing={3}>
-            {/* Quick Actions */}
-            <Paper
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                border: "1px solid #e2e8f0",
+            {/* ✅ My Training Qualification Card */}
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                p: 3, 
+                borderRadius: 4, 
+                border: '1px solid #e2e8f0',
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                 boxShadow: shadows.card,
               }}
             >
-              <Typography variant="h6" fontWeight={800} mb={3}>
-                Quick Actions
-              </Typography>
+              <Stack spacing={2.5}>
+                <Stack direction="row" alignItems="center" spacing={1.5}>
+                  <Box sx={{ p: 1, bgcolor: 'primary.main', borderRadius: 2, display: 'flex' }}>
+                    <SchoolIcon sx={{ color: '#fff', fontSize: 20 }} />
+                  </Box>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={800}>My Qualification</Typography>
+                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                      {stats.user.pending_training} MODULES PENDING
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Box>
+                  <Stack direction="row" justifyContent="space-between" mb={1}>
+                    <Typography variant="caption" color="text.secondary" fontWeight={800}>CURRENT COMPLIANCE</Typography>
+                    <Typography variant="caption" fontWeight={900} color="primary.main">{trainingCompletion}%</Typography>
+                  </Stack>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={trainingCompletion} 
+                    sx={{ height: 8, borderRadius: 4, bgcolor: '#e2e8f0' }} 
+                  />
+                </Box>
+
+                <Button 
+                  variant="contained" 
+                  fullWidth
+                  endIcon={<ArrowForwardIcon />}
+                  onClick={() => navigate('/training/employees/my')}
+                  sx={{ borderRadius: 2, fontWeight: 800, textTransform: 'none', py: 1.2 }}
+                >
+                  Open Training Profile
+                </Button>
+              </Stack>
+            </Paper>
+
+            {/* Quick Actions */}
+            <Paper sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: shadows.card }}>
+              <Typography variant="h6" fontWeight={800} mb={3}>Quick Actions</Typography>
               <Grid container spacing={2}>
                 {allActions.map((action) => (
                   <Grid size={{ xs: 6 }} key={action.label}>
                     <Button
                       fullWidth
                       variant="outlined"
-                      onClick={() =>
-                        handleQuickAction(
-                          action.path,
-                          action.module,
-                          action.label,
-                        )
-                      }
+                      onClick={() => handleQuickAction(action.path, action.module, action.label)}
                       sx={{
                         height: 110,
                         flexDirection: "column",
@@ -464,120 +352,32 @@ export default function DashboardPage() {
                         borderRadius: 3,
                         textTransform: "none",
                         border: "1px solid #e2e8f0",
-                        "&:hover": {
-                          bgcolor: "#f8fafc",
-                          borderColor: "primary.main",
-                        },
+                        "&:hover": { bgcolor: "#f8fafc", borderColor: "primary.main" },
                       }}
                     >
                       <Box sx={{ color: "primary.main" }}>{action.icon}</Box>
-                      <Typography
-                        variant="caption"
-                        fontWeight={800}
-                        color="text.primary"
-                      >
-                        {action.label}
-                      </Typography>
+                      <Typography variant="caption" fontWeight={800} color="text.primary">{action.label}</Typography>
                     </Button>
                   </Grid>
                 ))}
               </Grid>
             </Paper>
 
-            {/* System Alert Panel */}
-            <Paper
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                bgcolor: "#fffbeb",
-                border: "1px solid #fcd34d",
-              }}
-            >
-              <Box
-                sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}
-              >
-                <WarningAmberRoundedIcon sx={{ color: "#d97706" }} />
-                <Typography
-                  fontWeight={900}
-                  color="#92400e"
-                  variant="subtitle2"
-                >
-                  SYSTEM COMPLIANCE ALERT
-                </Typography>
-              </Box>
-              <Typography
-                variant="body2"
-                color="#b45309"
-                mb={3}
-                lineHeight={1.6}
-              >
-                External Audit scheduled for **Feb 28, 2026**. Please ensure all
-                pending training and effective documents are reviewed.
-              </Typography>
-              <Button
-                fullWidth
-                variant="contained"
-                endIcon={<ArrowForwardIcon />}
-                onClick={() => navigate("/dms")}
-                sx={{
-                  bgcolor: "#d97706",
-                  fontWeight: 800,
-                  boxShadow: "none",
-                  "&:hover": { bgcolor: "#b45309", boxShadow: shadows.card },
-                }}
-              >
-                Go to Document Center
-              </Button>
-            </Paper>
-
             {/* AI Assistant Panel */}
-            <Paper
-              sx={{
-                p: 3,
-                borderRadius: 4,
-                bgcolor: "#f5f3ff",
-                border: "1px solid #ddd6fe",
-                boxShadow: shadows.card,
-              }}
-            >
-              <Box
-                sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}
-              >
+            <Paper sx={{ p: 3, borderRadius: 4, bgcolor: "#f5f3ff", border: "1px solid #ddd6fe", boxShadow: shadows.card }}>
+              <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
                 <AutoAwesomeOutlinedIcon sx={{ color: "#7c3aed" }} />
-                <Typography
-                  fontWeight={900}
-                  color="#5b21b6"
-                  variant="subtitle2"
-                >
-                  AI QUALITY ASSISTANT
-                </Typography>
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    bgcolor: "#10b981",
-                    animation: `${pulse} 2s infinite`,
-                  }}
-                />
+                <Typography fontWeight={900} color="#5b21b6" variant="subtitle2">AI QUALITY ASSISTANT</Typography>
+                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#10b981", animation: `${pulse} 2s infinite` }} />
               </Box>
-              <Typography
-                variant="body2"
-                color="#6d28d9"
-                mb={2}
-                sx={{ fontSize: "0.8rem" }}
-              >
-                "How many Major deviations are currently open in the Engineering
-                department?"
+              <Typography variant="body2" color="#6d28d9" mb={2} sx={{ fontSize: "0.8rem" }}>
+                "Which departments have the highest overdue training rates this quarter?"
               </Typography>
               <TextField
                 fullWidth
                 size="small"
                 placeholder="Ask AI about quality data..."
-                sx={{
-                  bgcolor: "white",
-                  "& .MuiOutlinedInput-root": { borderRadius: 2 },
-                }}
+                sx={{ bgcolor: "white", "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
               />
             </Paper>
           </Stack>

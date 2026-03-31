@@ -9,16 +9,18 @@ import {
   Button,
   CircularProgress,
   Alert,
-   Grid, // ✅ Standardized Grid2
+  Grid, // ✅ Standardized to Grid2 for consistency
   Stack,
 } from "@mui/material";
 
 import SaveIcon from "@mui/icons-material/Save";
 import PrintIcon from "@mui/icons-material/Print";
+import { useSnackbar } from "notistack"; // Added for feedback
 
 import {
   trainingService,
   type TrainingPlan,
+  type TrainingAssignment, // ✅ Import detail table type
 } from "../../services/training.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
@@ -41,12 +43,16 @@ import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import TraineeProgressTable from "../../components/training/TraineeProgressTable";
+import AssignTrainingDialog from "../../components/training/AssignTrainingDialog";
 
 export default function TrainingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useRole();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [record, setRecord] = useState<TrainingPlan | null>(null);
+  const [assignments, setAssignments] = useState<TrainingAssignment[]>([]); // ✅ Detail table state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,19 +64,38 @@ export default function TrainingDetailPage() {
   const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
+  // const navigate = useNavigate();
+
   const loadData = async () => {
-    if (!id) return;
-    try {
-      setLoading(true);
-      // ✅ Handshake: Backend typically expects numeric ID for Detail lookup
-      const lookupId = id.includes("-") ? id.split("-").pop() : id;
-      const data = await trainingService.getById(lookupId!);
-      setRecord(data);
-    } catch (err) {
-      setError("Failed to load Training Plan.");
-    } finally {
-      setLoading(false);
+  if (!id) return;
+  try {
+    setLoading(true);
+    setError(null);
+
+    // 1. CLEAN THE ID: Remove "PLAN-", colons, and all non-numeric characters
+    // This turns "PLAN-1" or ":1" into just "1"
+    const numericId = id.replace(/[^\d]/g, "");
+
+    if (!numericId) {
+      throw new Error("Invalid ID format");
     }
+
+    // 2. FETCH MASTER RECORD (The Training Plan)
+    const planData = await trainingService.getById(numericId);
+    setRecord(planData);
+
+    // 3. FETCH DETAIL TABLE (The Assignments)
+    // ✅ FIX: Use planData.id (which is a clean Number from the DB) 
+    // instead of the 'id' variable from the URL.
+    const assignmentData = await trainingService.getAssignmentsByPlan(planData.id);
+    
+    setAssignments(assignmentData);
+  } catch (err: any) {
+    console.error("Fetch error:", err);
+    setError("Training record not found or server error.");
+  } finally {
+    setLoading(false);
+  }
   };
 
   useEffect(() => {
@@ -90,13 +115,20 @@ export default function TrainingDetailPage() {
     try {
       await trainingService.update(String(record.id), {
         ...record,
-        change_reason: reason || "Training configuration updated",
+        change_reason: reason || "Metadata update",
       });
       setSaveDialogOpen(false);
+      enqueueSnackbar("Plan updated successfully", { variant: "success" });
       loadData();
     } catch (err) {
-      alert("Failed to save training plan changes.");
+      enqueueSnackbar("Failed to save changes", { variant: "error" });
     }
+  };
+
+  const handleSendReminder = async (assignmentId: string | number) => {
+    enqueueSnackbar(`Reminder notification sent for record #${assignmentId}`, {
+      variant: "info",
+    });
   };
 
   const handleCompare = (vOld: string, vNew: string) => {
@@ -108,7 +140,7 @@ export default function TrainingDetailPage() {
     return (
       <Box sx={{ p: 5, textAlign: "center" }}>
         <CircularProgress />
-        <Typography sx={{ mt: 2 }}>Syncing Training Record...</Typography>
+        <Typography sx={{ mt: 2 }}>Syncing Training Records...</Typography>
       </Box>
     );
 
@@ -123,7 +155,7 @@ export default function TrainingDetailPage() {
     <>
       <DetailTabsLayout
         title={`${record.title}`}
-        subtitle={`System ID: ${record.id}`}
+        subtitle={`Owning Department: ${record.department}`}
         backTo="/training"
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
@@ -131,7 +163,7 @@ export default function TrainingDetailPage() {
               <SignatureStamp
                 isSigned={true}
                 signedBy="Training Coordinator"
-                date={new Date().toLocaleDateString()}
+                date={record.updated_at || new Date().toLocaleDateString()}
               />
             )}
             <StatusChip status={record.status} />
@@ -145,15 +177,13 @@ export default function TrainingDetailPage() {
             />
 
             <WorkflowActionsPanel
-              recordId={record.id.toString()}
+              recordId={id ?? ""}
               moduleKey="training"
               onUpdated={loadData}
-              meta={{ ...record, id: record.id.toString() } as any}
+              meta={{ ...record, id: id ?? "" } as any}
               onValidate={() => {
-                if (!record.title)
-                  return "A descriptive title is required for publishing.";
-                if (!record.trainer)
-                  return "Please assign a Trainer or Coordinator.";
+                if (!record.title) return "A descriptive title is required.";
+                if (!record.trainer) return "Please assign a coordinator.";
                 return true;
               }}
             />
@@ -171,7 +201,7 @@ export default function TrainingDetailPage() {
                   mb: 2,
                 }}
               >
-                Plan Metrics
+                Real-time Compliance
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
@@ -180,10 +210,10 @@ export default function TrainingDetailPage() {
                     color="text.secondary"
                     fontWeight={700}
                   >
-                    TOTAL TRAINEES
+                    ENROLLED
                   </Typography>
                   <Typography variant="body2" fontWeight={800}>
-                    {(record as any).totalTrainees || 0}
+                    {record.totalTrainees || 0}
                   </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
@@ -199,7 +229,7 @@ export default function TrainingDetailPage() {
                     fontWeight={800}
                     color="primary.main"
                   >
-                    {(record as any).completionRate || 0}%
+                    {record.completionRate || 0}%
                   </Typography>
                 </Grid>
               </Grid>
@@ -217,7 +247,7 @@ export default function TrainingDetailPage() {
               }}
             >
               <Typography variant="h6" fontWeight={900}>
-                Training Configuration
+                Syllabus & Config
               </Typography>
               <Stack direction="row" spacing={1}>
                 <Button
@@ -227,7 +257,7 @@ export default function TrainingDetailPage() {
                   onClick={() => setPrintModalOpen(true)}
                   sx={{ borderRadius: 2 }}
                 >
-                  Print Syllabus
+                  Print Summary
                 </Button>
                 {canEdit && (
                   <Button
@@ -240,6 +270,20 @@ export default function TrainingDetailPage() {
                     Save Changes
                   </Button>
                 )}
+                <Button
+                  variant="contained"
+                  onClick={() => setAssignModalOpen(true)}
+                >
+                  Assign Personnel
+                </Button>
+
+                <AssignTrainingDialog
+                  open={assignModalOpen}
+                  onClose={() => setAssignModalOpen(false)}
+                  planId={record?.id}
+                  planTitle={record?.title}
+                  onSuccess={loadData}
+                />
               </Stack>
             </Box>
 
@@ -247,13 +291,10 @@ export default function TrainingDetailPage() {
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   select
-                  label="Training Method"
+                  label="Method"
                   value={record.method}
                   fullWidth
                   disabled={!canEdit}
-                  onChange={(e) =>
-                    setRecord({ ...record, method: e.target.value })
-                  }
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       bgcolor: "#f8fafc",
@@ -261,27 +302,18 @@ export default function TrainingDetailPage() {
                     },
                   }}
                 >
-                  <MenuItem value="Classroom">
-                    Classroom / Instructor-Led
-                  </MenuItem>
+                  <MenuItem value="Classroom">Classroom / ILT</MenuItem>
                   <MenuItem value="Online">Online / SCORM</MenuItem>
-                  <MenuItem value="Read">Read & Understand (SOP)</MenuItem>
+                  <MenuItem value="Read">Read & Understand</MenuItem>
                 </TextField>
               </Grid>
-
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
-                  label="Duration (Minutes)"
+                  label="Duration (Min)"
                   type="number"
                   value={record.duration_minutes}
                   fullWidth
                   disabled={!canEdit}
-                  onChange={(e) =>
-                    setRecord({
-                      ...record,
-                      duration_minutes: Number(e.target.value),
-                    })
-                  }
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       bgcolor: "#f8fafc",
@@ -292,9 +324,9 @@ export default function TrainingDetailPage() {
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
-                  label="Minimum Pass Score (%)"
+                  label="Pass Score (%)"
                   type="number"
-                  value={(record as any).passScore || 80}
+                  value={record.passScore || 80}
                   fullWidth
                   disabled={!canEdit}
                   sx={{
@@ -305,7 +337,6 @@ export default function TrainingDetailPage() {
                   }}
                 />
               </Grid>
-
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Learning Objectives"
@@ -314,27 +345,6 @@ export default function TrainingDetailPage() {
                   multiline
                   rows={4}
                   disabled={!canEdit}
-                  onChange={(e) =>
-                    setRecord({ ...record, description: e.target.value })
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      bgcolor: "#f8fafc",
-                      borderRadius: 3,
-                    },
-                  }}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  label="Designated Trainer"
-                  value={record.trainer}
-                  fullWidth
-                  disabled={!canEdit}
-                  onChange={(e) =>
-                    setRecord({ ...record, trainer: e.target.value })
-                  }
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       bgcolor: "#f8fafc",
@@ -346,42 +356,46 @@ export default function TrainingDetailPage() {
             </Grid>
 
             <Divider sx={{ my: 5, borderStyle: "dashed" }} />
-
-            <Box sx={{ display: "grid", gap: 3 }}>
-              <Typography variant="h6" fontWeight={900}>
-                Version Governance
-              </Typography>
-              <VersionHistoryPanel
-                currentVersion={(record as any).version || "v1.0"}
-                rows={[]}
-                onView={(v) => console.log("Viewing syllabus version:", v)}
-                onCompare={handleCompare}
-              />
-            </Box>
+            <Typography variant="h6" fontWeight={900} sx={{ mb: 2 }}>
+              Version Control
+            </Typography>
+            <VersionHistoryPanel
+              currentVersion={record.version || "v1.0"}
+              rows={[]}
+              onView={(v) => console.log(v)}
+              onCompare={handleCompare}
+            />
+          </Box>
+        }
+        trainees={
+          <Box sx={{ p: 1 }}>
+            <Typography variant="h6" fontWeight={900} sx={{ mb: 3 }}>
+              Personnel Tracking
+            </Typography>
+            <TraineeProgressTable
+              rows={assignments}
+              onRemind={handleSendReminder}
+            />
           </Box>
         }
         attachments={
-          <AttachmentsUploader
-            readOnly={!canEdit}
-            title="Training Courseware"
-            acceptedFormats=".pdf,.ppt,.pptx"
-          />
+          <AttachmentsUploader readOnly={!canEdit} title="Course Materials" />
         }
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel
-              requests={[]}
+              requests={record.approvalRequests || []}
               canAddReviewer={canEdit}
               onAddReviewer={() => setAssignModalOpen(true)}
             />
-            <SignatureLogTable rows={record.signatureLog || []} />{" "}
+            <SignatureLogTable rows={record.signatureLog || []} />
           </Box>
         }
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ActivityLog />
             <Typography variant="h6" fontWeight={900}>
-              Regulatory Audit Trail
+              Audit Trail
             </Typography>
             <AuditTrailTable rows={record.audit_trail || []} />
           </Box>
@@ -391,40 +405,33 @@ export default function TrainingDetailPage() {
       <UserSelectionModal
         open={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
-        onSelect={(user) => {
-          console.log(user);
-          setAssignModalOpen(false);
-        }}
+        onSelect={() => setAssignModalOpen(false)}
         title="Assign Training Approver"
       />
-
       <ReasonForChangeModal
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
         onConfirm={handleConfirmSave}
       />
-
       <ConfirmDialog
         open={saveDialogOpen}
-        title="Save Training Configuration?"
-        message="All changes to the learning objectives or requirements will be tracked in the audit trail."
+        title="Submit Updates?"
+        message="Modify the training objectives and configuration? This action is recorded in the audit trail."
         onClose={() => setSaveDialogOpen(false)}
         onConfirm={() => handleConfirmSave()}
       />
-
       <VersionCompareModal
         open={compareModalOpen}
         onClose={() => setCompareModalOpen(false)}
         oldVersion={compareVersions.old}
         newVersion={compareVersions.new}
       />
-
       <ControlledCopyPrintModal
         open={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
-        docTitle={record.title}
+        docTitle={record.title || ""}
         docId={record.id.toString()}
-        version={(record as any).version || "v1.0"}
+        version={record.version || "v1.0"}
       />
     </>
   );

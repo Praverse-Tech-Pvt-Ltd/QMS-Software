@@ -1,52 +1,110 @@
 import { 
   Paper, Typography, Box,  Grid, TextField, MenuItem, 
   List, ListItem, ListItemIcon, ListItemText, Checkbox, 
-  Button, Divider, Chip, Stack
+  Button, Divider, Chip, Stack, CircularProgress, alpha
 } from "@mui/material";
 import SaveIcon from '@mui/icons-material/Save';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { trainingService, type TrainingPlan } from "../../services/training.service";
+import { useSnackbar } from "notistack";
 
-const ROLES = ["Operator", "Supervisor", "QA Specialist", "Maintenance"];
-const SOPS = [
-  { id: "SOP-001", title: "Gowning Procedure", version: "v2.0" },
-  { id: "SOP-002", title: "Line Clearance", version: "v1.5" },
-  { id: "SOP-003", title: "Deviation Reporting", version: "v3.0" },
-  { id: "SOP-004", title: "Document Control Basics", version: "v1.0" },
-  { id: "SOP-005", title: "Equipment Cleaning", version: "v2.2" },
-];
+interface TrainingMatrixBuilderProps {
+  // ✅ This prop allows the Parent Page to know which plan is being looked at
+  onSelectPlan?: (plan: TrainingPlan) => void;
+}
 
-export default function TrainingMatrixBuilder() {
+const ROLES = ["Operator", "Supervisor", "QA Specialist", "Maintenance", "Lab Technician"];
+
+export default function TrainingMatrixBuilder({ onSelectPlan }: TrainingMatrixBuilderProps) {
+  const { enqueueSnackbar } = useSnackbar();
+  
   const [selectedRole, setSelectedRole] = useState(ROLES[0]);
-  const [assignedSops, setAssignedSops] = useState<string[]>(["SOP-001", "SOP-005"]);
+  const [availablePlans, setAvailablePlans] = useState<TrainingPlan[]>([]);
+  const [assignedSopIds, setAssignedSopIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const handleToggle = (sopId: string) => {
-    const currentIndex = assignedSops.indexOf(sopId);
-    const newChecked = [...assignedSops];
-    if (currentIndex === -1) newChecked.push(sopId);
-    else newChecked.splice(currentIndex, 1);
-    setAssignedSops(newChecked);
+  // Fetch Master Data
+  useEffect(() => {
+    const loadMasterData = async () => {
+      try {
+        setLoading(true);
+        const data = await trainingService.list();
+        setAvailablePlans(data);
+        
+        // Initial Mock - In production this would fetch the current assignments for the role
+        setAssignedSopIds(["1", "2"]); 
+      } catch (err) {
+        enqueueSnackbar("Failed to sync training curriculum", { variant: "error" });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadMasterData();
+  }, [selectedRole, enqueueSnackbar]);
+
+  const handleToggle = (plan: TrainingPlan) => {
+    const sopId = plan.id.toString();
+    const currentIndex = assignedSopIds.indexOf(sopId);
+    const newChecked = [...assignedSopIds];
+    
+    if (currentIndex === -1) {
+        newChecked.push(sopId);
+    } else {
+        newChecked.splice(currentIndex, 1);
+    }
+    
+    setAssignedSopIds(newChecked);
+    
+    // ✅ Trigger the parent's select handler so the "Retraining Modal" knows the context
+    if (onSelectPlan) onSelectPlan(plan);
   };
 
-  const handleSave = () => {
-    alert(`Saved ${assignedSops.length} assignments for role: ${selectedRole}`);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      // ✅ Handshake: Pass role and associated Plan IDs to the backend to generate assignments
+      // await trainingService.updateRoleMatrix(selectedRole, assignedSopIds);
+      
+      enqueueSnackbar(`Matrix committed. Generated assignments for ${selectedRole}.`, { 
+        variant: "success" 
+      });
+    } catch (err) {
+      enqueueSnackbar("Compliance commit failed", { variant: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) return (
+    <Box sx={{ p: 5, textAlign: 'center' }}>
+      <CircularProgress size={30} />
+      <Typography variant="body2" sx={{ mt: 2, fontWeight: 600 }}>Syncing Master Curriculum...</Typography>
+    </Box>
+  );
 
   return (
     <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: "1px solid #e2e8f0" }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
         <Stack direction="row" spacing={2} alignItems="center">
-          <Box sx={{ bgcolor: 'primary.light', p: 1, borderRadius: 2, display: 'flex' }}>
+          <Box sx={{ bgcolor: alpha('#4F46E5', 0.1), p: 1, borderRadius: 2, display: 'flex' }}>
             <FactCheckIcon color="primary" />
           </Box>
           <Box>
             <Typography variant="h5" fontWeight={900} sx={{ letterSpacing: '-0.02em' }}>Job Role Matrix</Typography>
-            <Typography variant="body2" color="text.secondary">Define required SOPs for specific personnel classifications</Typography>
+            <Typography variant="body2" color="text.secondary">Map required SOPs to personnel classifications</Typography>
           </Box>
         </Stack>
-        <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ borderRadius: 2, fontWeight: 700 }}>
-          Commit Matrix
+        <Button 
+          variant="contained" 
+          startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />} 
+          onClick={handleSave} 
+          disabled={saving}
+          sx={{ borderRadius: 2.5, fontWeight: 700, px: 3, textTransform: 'none' }}
+        >
+          {saving ? "Processing..." : "Commit Matrix"}
         </Button>
       </Box>
 
@@ -65,16 +123,16 @@ export default function TrainingMatrixBuilder() {
             {ROLES.map(role => <MenuItem key={role} value={role}>{role}</MenuItem>)}
           </TextField>
 
-          <Box sx={{ mt: 4, p: 3, bgcolor: '#f0f7ff', borderRadius: 4, border: '1px solid #dbeafe' }}>
+          <Box sx={{ mt: 4, p: 3, bgcolor: alpha('#4F46E5', 0.05), borderRadius: 4, border: `1px solid ${alpha('#4F46E5', 0.1)}` }}>
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
               <InfoOutlinedIcon fontSize="small" color="primary" />
               <Typography variant="caption" color="primary" fontWeight={800} sx={{ textTransform: 'uppercase' }}>
                 Impact Analysis
               </Typography>
             </Stack>
-            <Typography variant="body2" sx={{ lineHeight: 1.6, fontWeight: 500 }}>
-              Modifying this matrix will generate <b>{assignedSops.length * 5}</b> training tasks across current staff in this role. 
-              Staff will be marked as <b>"Out of Compliance"</b> until new tasks are completed.
+            <Typography variant="body2" sx={{ lineHeight: 1.6, fontWeight: 500, color: 'text.primary' }}>
+              Modifying this matrix will impact personnel in the <b>{selectedRole}</b> role. 
+              New <b>Training Assignments</b> will be generated automatically for any gaps found.
             </Typography>
           </Box>
         </Grid>
@@ -85,35 +143,54 @@ export default function TrainingMatrixBuilder() {
           </Typography>
           <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden', borderColor: '#e2e8f0' }}>
             <List sx={{ py: 0 }}>
-              {SOPS.map((sop, index) => {
-                const isChecked = assignedSops.indexOf(sop.id) !== -1;
+              {availablePlans.map((plan, index) => {
+                const isChecked = assignedSopIds.indexOf(plan.id.toString()) !== -1;
                 return (
-                  <Box key={sop.id}>
+                  <Box key={plan.id}>
                     <ListItem 
                       sx={{ 
                         py: 2, 
                         px: 3, 
-                        bgcolor: isChecked ? '#fdfdfd' : 'transparent',
-                        '&:hover': { bgcolor: '#f8fafc' } 
+                        bgcolor: isChecked ? alpha('#4F46E5', 0.02) : 'transparent',
+                        '&:hover': { bgcolor: '#f8fafc', cursor: 'pointer' } 
                       }}
-                      secondaryAction={<Chip label={sop.version} size="small" sx={{ fontWeight: 700, borderRadius: 1 }} />}
+                      onClick={() => handleToggle(plan)}
+                      secondaryAction={
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Chip 
+                            label={plan.method} 
+                            size="small" 
+                            variant="outlined"
+                            sx={{ fontWeight: 700, borderRadius: 1, fontSize: '0.65rem' }} 
+                          />
+                          <Chip 
+                            label={plan.version || "v1.0"} 
+                            size="small" 
+                            sx={{ fontWeight: 800, borderRadius: 1, fontSize: '0.65rem' }} 
+                          />
+                        </Stack>
+                      }
                     >
                       <ListItemIcon>
                         <Checkbox 
                           edge="start" 
                           checked={isChecked} 
-                          onChange={() => handleToggle(sop.id)}
-                          sx={{ color: '#cbd5e1' }}
+                          disableRipple
+                          sx={{ color: '#cbd5e1', '&.Mui-checked': { color: 'primary.main' } }}
                         />
                       </ListItemIcon>
                       <ListItemText 
-                        primary={sop.title} 
-                        secondary={sop.id} 
-                        primaryTypographyProps={{ fontWeight: 700, color: isChecked ? 'text.primary' : 'text.secondary' }}
+                        primary={plan.title} 
+                        secondary={`Plan ID: ${plan.id} | ${plan.department}`} 
+                        primaryTypographyProps={{ 
+                          variant: 'body2',
+                          fontWeight: 700, 
+                          color: isChecked ? 'text.primary' : 'text.secondary' 
+                        }}
                         secondaryTypographyProps={{ variant: 'caption', fontWeight: 600 }}
                       />
                     </ListItem>
-                    {index < SOPS.length - 1 && <Divider />}
+                    {index < availablePlans.length - 1 && <Divider />}
                   </Box>
                 );
               })}

@@ -11,18 +11,20 @@ interface QuizModalProps {
   open: boolean;
   onClose: () => void;
   title: string;
-  // ✅ FIXED: Added onComplete callback to interface
-  onComplete: (score: number, signature: string) => Promise<void> | void;
+  // ✅ FIXED: Matched name to 'onSuccess' used in TrainingExecutionPage 
+  // and ensured it passes the calculated score.
+  onSuccess: (score: number) => void; 
 }
 
-export default function QuizModal({ open, onClose, title, onComplete }: QuizModalProps) {
+export default function QuizModal({ open, onClose, title, onSuccess }: QuizModalProps) {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  // Example GxP Questions
   const questions = [
-    { id: 1, text: "What is the minimum gowning requirement for Zone A?", options: ["Lab Coat", "Sterile Gown + Mask", "Street Clothes"] },
-    { id: 2, text: "How often must you change gloves?", options: ["Every hour", "Only when torn", "Assessed by risk"] },
+    { id: 1, text: "What is the minimum gowning requirement for Zone A?", options: ["Lab Coat", "Sterile Gown + Mask", "Street Clothes"], correct: "Sterile Gown + Mask" },
+    { id: 2, text: "How often must you change gloves?", options: ["Every hour", "Only when torn", "Assessed by risk"], correct: "Assessed by risk" },
   ];
 
   const handleNext = () => {
@@ -31,16 +33,22 @@ export default function QuizModal({ open, onClose, title, onComplete }: QuizModa
   };
 
   const handleFinish = () => {
-    // ✅ Logic: Pass 100% score (or calculated) and a placeholder for signature
-    // In a real flow, you might prompt for a password here or in the parent
-    onComplete(100, "ELECTRONICALLY_SIGNED"); 
+    // ✅ Calculate actual score
+    let correctCount = 0;
+    questions.forEach((q, index) => {
+      if (answers[index] === q.correct) correctCount++;
+    });
+    const finalScore = (correctCount / questions.length) * 100;
+
+    // ✅ Trigger success callback
+    onSuccess(finalScore); 
     
+    // Reset state for next use
     setSubmitted(false);
     setStep(0);
     setAnswers({});
     onClose();
   };
-
   const progress = ((step + 1) / questions.length) * 100;
 
   return (

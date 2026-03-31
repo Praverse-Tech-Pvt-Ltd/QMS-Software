@@ -51,11 +51,7 @@ export default function AppRouter() {
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/access-denied" element={<AccessDeniedPage />} />
 
-      {/* --- Protected Routes (Wrapped in AuthGuard) --- */}
-      {/* 1. The AuthGuard checks if user is logged in.
-          2. If yes, it renders the Outlet (which is AppLayout).
-          3. AppLayout renders the specific page (Dashboard, DMS, etc.).
-      */}
+      
       <Route element={<AuthGuard />}>
         <Route path="/" element={<AppLayout />}>
           

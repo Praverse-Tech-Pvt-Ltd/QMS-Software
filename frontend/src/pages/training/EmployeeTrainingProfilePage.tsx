@@ -2,14 +2,11 @@ import {
   Box,
   Paper,
   Typography,
-  LinearProgress,
-  Chip,
   Button,
-  Avatar,
   List,
   ListItem,
   ListItemText,
-  Grid, // ✅ Standardized Grid
+  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,79 +15,78 @@ import {
   RadioGroup,
   FormControlLabel,
   Radio,
+  TextField,
+  CircularProgress,
+  alpha,
 } from "@mui/material";
 
-import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useSnackbar } from "notistack";
+import {
+  trainingService,
+  type TrainingAssignment,
+} from "../../services/training.service";
 import PageHeader from "../../components/common/PageHeader";
-import OjtChecklist from "../../components/training/OjtChecklist";
+
 // Icons
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import HistoryIcon from "@mui/icons-material/History";
 import QuizIcon from "@mui/icons-material/Quiz";
-
-// --- MOCK DATA ---
-const employees: Record<
-  string,
-  { name: string; department: string; completion: number }
-> = {
-  "EMP-1001": { name: "Rahul Patel", department: "Production", completion: 72 },
-  "EMP-1002": { name: "Amit Shah", department: "Production", completion: 55 },
-  "EMP-2001": { name: "Neha Mehta", department: "QC", completion: 88 },
-  "EMP-2002": { name: "Kunal Jain", department: "QC", completion: 61 },
-  "EMP-3001": { name: "Priya Desai", department: "QA", completion: 90 },
-  "EMP-3002": { name: "Ravi Joshi", department: "QA", completion: 70 },
-};
-
-const initialTrainings = [
-  {
-    id: 1,
-    title: "SOP-001 (Gowning)",
-    status: "Completed",
-    due: "2026-01-05",
-    score: "95%",
-  },
-  {
-    id: 2,
-    title: "SOP-014 (Line Clearance)",
-    status: "Due Soon",
-    due: "2026-01-25",
-    score: null,
-  },
-  {
-    id: 3,
-    title: "SOP-022 (Batch Record Review)",
-    status: "Overdue",
-    due: "2026-01-10",
-    score: null,
-  },
-];
+import HistoryIcon from "@mui/icons-material/History";
 
 // --- SUB-COMPONENT: QUIZ MODAL ---
-function QuizModal({ open, onClose, title, onPass }: any) {
+function QuizModal({ open, onClose, title, onPass, isSubmitting }: any) {
   const [answer, setAnswer] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [password, setPassword] = useState("");
+  const [step, setStep] = useState(1); // 1: Quiz, 2: E-Sign
 
-  const handleFinish = () => {
-    setSubmitted(false);
-    setAnswer("");
-    onPass(); // Trigger completion in parent
-    onClose();
+  // Reset local state when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      setStep(1);
+      setAnswer("");
+      setPassword("");
+    }
+  }, [open]);
+
+  const handleNext = () => setStep(2);
+
+  const handleSign = () => {
+    // Passing 100 score (placeholder for actual quiz logic) and the signature password
+    onPass(100, password);
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+    <Dialog
+      open={open}
+      onClose={!isSubmitting ? onClose : undefined}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{ sx: { borderRadius: 3 } }}
+    >
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+          fontWeight: 800,
+          pt: 3,
+        }}
+      >
         <QuizIcon color="primary" />
-        Effectiveness Check: {title}
+        {step === 1 ? `Effectiveness Check: ${title}` : "Legal Certification"}
       </DialogTitle>
-      <DialogContent>
-        {!submitted ? (
-          <Box sx={{ mt: 1 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-              What is the critical parameter for this step?
+
+      <DialogContent sx={{ mt: 1 }}>
+        {step === 1 ? (
+          <Box>
+            <Typography
+              variant="subtitle1"
+              sx={{ mb: 2, fontWeight: 700, color: "text.primary" }}
+            >
+              What is the required sanitation contact time for critical surfaces
+              per the current SOP revision?
             </Typography>
             <FormControl component="fieldset">
               <RadioGroup
@@ -100,43 +96,86 @@ function QuizModal({ open, onClose, title, onPass }: any) {
                 <FormControlLabel
                   value="A"
                   control={<Radio />}
-                  label="Temperature must be < 25°C"
+                  label="Minimum 30 Seconds"
                 />
                 <FormControlLabel
                   value="B"
                   control={<Radio />}
-                  label="Speed must be > 100 rpm"
+                  label="Minimum 2 Minutes (Wet Contact)"
                 />
                 <FormControlLabel
                   value="C"
                   control={<Radio />}
-                  label="Visual inspection only"
+                  label="Dry wipe immediately after application"
                 />
               </RadioGroup>
             </FormControl>
           </Box>
         ) : (
-          <Box sx={{ textAlign: "center", py: 3 }}>
-            <CheckCircleIcon color="success" sx={{ fontSize: 60 }} />
-            <Typography variant="h5" fontWeight={800} gutterBottom>
-              Passed!
-            </Typography>
-            <Typography>Score: 100%</Typography>
+          <Box sx={{ textAlign: "center", py: 1 }}>
+            <Box
+              sx={{
+                bgcolor: alpha("#ed6c02", 0.1),
+                p: 2,
+                borderRadius: 2,
+                border: `1px solid ${alpha("#ed6c02", 0.2)}`,
+                mb: 3,
+              }}
+            >
+              <Typography
+                variant="body2"
+                color="warning.dark"
+                sx={{ fontWeight: 600 }}
+              >
+                By entering your password, you certify that you have read,
+                understood, and successfully completed the training for {title}.
+                This act constitutes your legally binding electronic signature.
+              </Typography>
+            </Box>
+            <TextField
+              fullWidth
+              type="password"
+              label="Confirm System Password"
+              placeholder="Your login password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isSubmitting}
+              autoFocus
+            />
           </Box>
         )}
       </DialogContent>
-      <DialogActions>
-        {!submitted ? (
+
+      <DialogActions sx={{ p: 3, pt: 1 }}>
+        <Button
+          onClick={onClose}
+          color="inherit"
+          disabled={isSubmitting}
+          sx={{ fontWeight: 700 }}
+        >
+          Cancel
+        </Button>
+        {step === 1 ? (
           <Button
             variant="contained"
-            onClick={() => setSubmitted(true)}
+            onClick={handleNext}
             disabled={!answer}
+            sx={{ fontWeight: 700, px: 4 }}
           >
-            Submit Answer
+            Next: E-Sign
           </Button>
         ) : (
-          <Button variant="contained" onClick={handleFinish}>
-            Close & Update Record
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleSign}
+            disabled={!password || isSubmitting}
+            sx={{ fontWeight: 700, px: 4 }}
+            startIcon={
+              isSubmitting && <CircularProgress size={18} color="inherit" />
+            }
+          >
+            {isSubmitting ? "Authenticating..." : "Sign & Complete"}
           </Button>
         )}
       </DialogActions>
@@ -147,215 +186,220 @@ function QuizModal({ open, onClose, title, onPass }: any) {
 // --- MAIN PAGE COMPONENT ---
 export default function EmployeeTrainingProfilePage() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
 
-  // State
-  const [trainings, setTrainings] = useState(initialTrainings);
+  const [assignments, setAssignments] = useState<TrainingAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
-  const [activeTrainingId, setActiveTrainingId] = useState<number | null>(null);
+  const [activeAssignment, setActiveAssignment] =
+    useState<TrainingAssignment | null>(null);
 
-  const emp = employees[id || ""] || {
-    name: "Unknown Employee",
-    department: "N/A",
-    completion: 0,
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      // Calls /api/training/assignments/my-tasks/
+      const data = await trainingService.getMyAssignments();
+      setAssignments(data);
+    } catch (err) {
+      enqueueSnackbar("Failed to synchronize training profile", {
+        variant: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Handlers
-  const handleStart = (tId: number) => {
-    setActiveTrainingId(tId);
-    setQuizOpen(true);
+  useEffect(() => {
+    loadData();
+  }, [id]);
+
+  const handleQuizPass = async (score: number, password: string) => {
+    if (!activeAssignment) return;
+
+    try {
+      setSubmitting(true);
+      // ✅ Handshake: Send completion + legal password signature to backend
+      await trainingService.completeTraining(
+        activeAssignment.id,
+        score,
+        password,
+      );
+
+      enqueueSnackbar("Compliance record updated successfully", {
+        variant: "success",
+      });
+      setQuizOpen(false);
+      loadData(); // Refresh to move task from Pending to History
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.error ||
+        "Signature verification failed. Incorrect password.";
+      enqueueSnackbar(msg, { variant: "error" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleQuizPass = () => {
-    if (activeTrainingId === null) return;
-    setTrainings((prev) =>
-      prev.map((t) =>
-        t.id === activeTrainingId
-          ? { ...t, status: "Completed", score: "100%" }
-          : t,
-      ),
+  if (loading)
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          py: 15,
+          gap: 2,
+        }}
+      >
+        <CircularProgress thickness={5} />
+        <Typography color="text.secondary" fontWeight={600}>
+          Loading LMS Profile...
+        </Typography>
+      </Box>
     );
-  };
+
+  const pending = assignments.filter((a) => a.status !== "COMPLETED");
+  const history = assignments.filter((a) => a.status === "COMPLETED");
 
   return (
     <Box>
-      <Button onClick={() => navigate(-1)} sx={{ mb: 1 }}>
-        &larr; Back to Matrix
-      </Button>
       <PageHeader
-        title="Employee Training Profile"
-        subtitle={`LMS Record for: ${id}`}
-        showBack={false}
+        title="Training & Qualification Profile"
+        subtitle={`Employee ID: ${id || "Self"}`}
+        showBack
       />
 
-      {/* Header Card */}
-      <Paper
-        sx={{
-          p: 3,
-          mt: 2,
-          borderRadius: 3,
-          display: "flex",
-          alignItems: "center",
-          gap: 3,
-        }}
-      >
-        <Avatar
-          sx={{
-            width: 80,
-            height: 80,
-            bgcolor: "primary.main",
-            fontSize: "2rem",
-          }}
-        >
-          {emp.name.charAt(0)}
-        </Avatar>
-        <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h5" fontWeight={800}>
-            {emp.name}
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {emp.department} Department
-          </Typography>
-
-          <Box
+      <Grid container spacing={3} sx={{ mt: 2 }}>
+        {/* Pending Actions */}
+        <Grid size={{ xs: 12, md: 8 }}>
+          <Paper
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              mt: 1.5,
-              maxWidth: 400,
+              borderRadius: 4,
+              border: "1px solid #e2e8f0",
+              overflow: "hidden",
             }}
           >
-            <LinearProgress
-              variant="determinate"
-              value={emp.completion}
-              sx={{ flexGrow: 1, height: 10, borderRadius: 5 }}
-            />
-            <Typography fontWeight={700}>{emp.completion}% Trained</Typography>
-          </Box>
-        </Box>
-      </Paper>
-
-      <Grid container spacing={3} sx={{ mt: 1 }}>
-        {/* LEFT COL: Actionable Items */}
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
             <Box
-              sx={{ p: 2, bgcolor: "#f8f9fa", borderBottom: "1px solid #eee" }}
+              sx={{
+                p: 2,
+                bgcolor: "#f8fafc",
+                borderBottom: "1px solid #e2e8f0",
+              }}
             >
-              <Typography variant="h6" fontWeight={800}>
-                Pending Assignments
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                Assigned Learning Tasks
               </Typography>
             </Box>
-            <List>
-              {trainings.filter((t) => t.status !== "Completed").length ===
-                0 && (
-                <Box sx={{ p: 3, textAlign: "center" }}>
-                  <CheckCircleIcon color="success" />
-                  <Typography>All training complete!</Typography>
+            <List sx={{ p: 0 }}>
+              {pending.length === 0 ? (
+                <Box sx={{ p: 6, textAlign: "center" }}>
+                  <CheckCircleIcon
+                    color="success"
+                    sx={{ fontSize: 40, mb: 1 }}
+                  />
+                  <Typography fontWeight={600} color="text.secondary">
+                    All training cycles are currently current.
+                  </Typography>
                 </Box>
-              )}
-
-              {trainings
-                .filter((t) => t.status !== "Completed")
-                .map((t) => (
+              ) : (
+                pending.map((a) => (
                   <ListItem
-                    key={t.id}
+                    key={a.id}
                     divider
+                    sx={{ py: 2, px: 3 }}
                     secondaryAction={
                       <Button
                         variant="contained"
                         size="small"
-                        color={t.status === "Overdue" ? "error" : "primary"}
-                        startIcon={
-                          t.status === "Overdue" ? (
-                            <WarningAmberIcon />
-                          ) : (
-                            <PlayArrowIcon />
-                          )
-                        }
-                        onClick={() => handleStart(t.id)}
+                        onClick={() => {
+                          setActiveAssignment(a);
+                          setQuizOpen(true);
+                        }}
+                        startIcon={<PlayArrowIcon />}
+                        sx={{
+                          borderRadius: 2,
+                          fontWeight: 700,
+                          textTransform: "none",
+                        }}
                       >
-                        {t.status === "Overdue" ? "Retrain" : "Start"}
+                        Start Training
                       </Button>
                     }
                   >
                     <ListItemText
                       primary={
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Typography fontWeight={600}>{t.title}</Typography>
-                          {t.status === "Overdue" && (
-                            <Chip label="OVERDUE" color="error" size="small" />
-                          )}
-                        </Box>
+                        <Typography variant="body1" fontWeight={700}>
+                          {a.user_details?.first_name ||
+                            "SOP-000: Default Title"}
+                        </Typography>
                       }
-                      secondary={`Due Date: ${t.due}`}
+                      secondary={`Deadline: ${new Date(a.due_date).toLocaleDateString()}`}
                     />
                   </ListItem>
-                ))}
+                ))
+              )}
             </List>
           </Paper>
         </Grid>
 
-        {/* RIGHT COL: History */}
+        {/* History / Completed */}
         <Grid size={{ xs: 12, md: 4 }}>
-          <Paper sx={{ borderRadius: 3, height: "100%" }}>
+          <Paper
+            sx={{
+              borderRadius: 4,
+              border: "1px solid #e2e8f0",
+              overflow: "hidden",
+            }}
+          >
             <Box
               sx={{
                 p: 2,
-                bgcolor: "#f8f9fa",
-                borderBottom: "1px solid #eee",
+                bgcolor: "#f8fafc",
+                borderBottom: "1px solid #e2e8f0",
                 display: "flex",
                 alignItems: "center",
                 gap: 1,
               }}
             >
               <HistoryIcon color="action" />
-              <Typography variant="h6" fontWeight={800}>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>
                 History
               </Typography>
             </Box>
-            <List dense>
-              {trainings
-                .filter((t) => t.status === "Completed")
-                .map((t) => (
-                  <ListItem key={t.id} divider>
+            <List dense sx={{ p: 0 }}>
+              {history.length === 0 ? (
+                <Typography
+                  sx={{ p: 4, textAlign: "center", color: "text.disabled" }}
+                >
+                  No history found.
+                </Typography>
+              ) : (
+                history.map((a) => (
+                  <ListItem key={a.id} divider sx={{ py: 1.5 }}>
                     <ListItemText
-                      primary={t.title}
-                      secondary={
-                        <Typography variant="caption" color="success.main">
-                          Passed • Score: {t.score}
+                      primary={
+                        <Typography variant="body2" fontWeight={700}>
+                          {a.user_details?.first_name || "Completed Plan"}
                         </Typography>
                       }
+                      secondary={`Score: ${a.score}% • ${a.completion_date}`}
                     />
-                    <CheckCircleIcon color="success" fontSize="small" />
+                    <CheckCircleIcon color="success" sx={{ fontSize: 18 }} />
                   </ListItem>
-                ))}
+                ))
+              )}
             </List>
           </Paper>
         </Grid>
-        <Grid size={{ xs: 12 }}>
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h6" fontWeight={800} gutterBottom>
-              On-The-Job (OJT) Tasks
-            </Typography>
-            <OjtChecklist />
-          </Box>
-        </Grid>
       </Grid>
 
-      {/* QUIZ MODAL */}
       <QuizModal
         open={quizOpen}
-        onClose={() => setQuizOpen(false)}
-        title={
-          activeTrainingId
-            ? trainings.find((t) => t.id === activeTrainingId)?.title
-            : ""
-        }
+        onClose={() => !submitting && setQuizOpen(false)}
+        title={activeAssignment?.user_details?.first_name || "Required SOP"}
         onPass={handleQuizPass}
+        isSubmitting={submitting}
       />
     </Box>
   );

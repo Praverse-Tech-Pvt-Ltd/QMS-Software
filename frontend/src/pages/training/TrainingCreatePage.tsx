@@ -6,7 +6,7 @@ import {
   Typography,
   Divider,
   Stack,
-  Grid, // ✅ Standardized Grid
+  Grid,
 } from "@mui/material";
 
 import PageHeader from "../../components/common/PageHeader";
@@ -26,8 +26,13 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { useRole } from "../../app/providers/RoleProvider";
-import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
+import {
+  trainingService,
+  type TrainingPlan,
+} from "../../services/training.service";
+
+// Define valid statuses to match your Workflow types
 
 const schema = z.object({
   title: z.string().min(5, "Training title must be descriptive"),
@@ -68,29 +73,45 @@ export default function TrainingCreatePage() {
 
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      const newId = `TRN-2024-${Math.floor(Math.random() * 1000)}`;
+      // ✅ Payload mapping with explicit type casting for Status
+      // This solves the "string is not assignable to WorkflowStatus" error
+      const payload: Partial<TrainingPlan> = {
+        title: data.title,
+        method: data.trainingMethod,
+        department: data.department,
+        trainer: data.coordinator,
+        due_date: data.dueDate,
+        duration_minutes: data.durationMinutes,
+        description: data.description,
+        // ✅ Type cast to any or specifically to TrainingStatus to satisfy TypeScript
+        status: (action === "Draft" ? "DRAFT" : "ACTIVE") as any,
+      };
 
-      console.log(`Creating Training Plan (${action}):`, data);
+      const response = await trainingService.create(payload);
+      const serverId = response.id;
 
-      workflowService.getOrCreate(newId, "training");
-
-      auditService.add("training", newId, {
+      // Log the event in the Audit Trail for 21 CFR Part 11 compliance
+      auditService.add("training", serverId.toString(), {
         actionType: "CREATE",
         field: "Record",
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
         role: role || "Unknown",
-        reason: `Created Training Plan (${action})`,
+        reason: `Created Training Plan: ${data.title} (${action})`,
       });
 
-      enqueueSnackbar(`Training Plan ${newId} created successfully`, {
+      enqueueSnackbar(`Training Plan PLAN-${serverId} created successfully`, {
         variant: "success",
       });
-      navigate(`/training/${newId}`);
-    } catch (err) {
+
+      // ✅ Redirect using the format the DetailPage expects
+      navigate(`/training/PLAN-${serverId}`);
+    } catch (err: any) {
       console.error(err);
-      enqueueSnackbar("Failed to create training plan", { variant: "error" });
+      const errorMsg =
+        err.response?.data?.detail || "Failed to create training plan";
+      enqueueSnackbar(errorMsg, { variant: "error" });
     }
   };
 
@@ -185,12 +206,7 @@ export default function TrainingCreatePage() {
           </Stack>
         </Box>
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit(onSubmitReview)}
-          sx={{ display: "grid", gap: 3 }}
-        >
-          {/* Configuration Section */}
+        <Box component="form" sx={{ display: "grid", gap: 3 }}>
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField
@@ -202,22 +218,18 @@ export default function TrainingCreatePage() {
                 helperText={
                   errors.title?.message || "Describe the training topic clearly"
                 }
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <SchoolOutlinedIcon
-                        sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
-                      />
-                    ),
-                  },
+                InputProps={{
+                  startAdornment: (
+                    <SchoolOutlinedIcon
+                      sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                    />
+                  ),
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     bgcolor: "#FFFFFF",
                     transition: transitions.fast,
-                    "&.Mui-focused": {
-                      boxShadow: shadows.subtle,
-                    },
+                    "&.Mui-focused": { boxShadow: shadows.subtle },
                   },
                 }}
               />
@@ -234,14 +246,12 @@ export default function TrainingCreatePage() {
                     label="Target Department"
                     fullWidth
                     error={!!errors.department}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <BusinessOutlinedIcon
-                            sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
-                          />
-                        ),
-                      },
+                    InputProps={{
+                      startAdornment: (
+                        <BusinessOutlinedIcon
+                          sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                        />
+                      ),
                     }}
                   >
                     <MenuItem value="Production">Production</MenuItem>
@@ -309,14 +319,12 @@ export default function TrainingCreatePage() {
                 {...register("durationMinutes")}
                 error={!!errors.durationMinutes}
                 helperText={errors.durationMinutes?.message}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <AccessTimeIcon
-                        sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
-                      />
-                    ),
-                  },
+                InputProps={{
+                  startAdornment: (
+                    <AccessTimeIcon
+                      sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                    />
+                  ),
                 }}
               />
             </Grid>
@@ -324,7 +332,6 @@ export default function TrainingCreatePage() {
 
           <Divider />
 
-          {/* Logistics Section */}
           <Typography variant="h6" sx={{ fontWeight: 800, mt: 1 }}>
             Logistics & Objectives
           </Typography>
@@ -338,14 +345,12 @@ export default function TrainingCreatePage() {
                 {...register("coordinator")}
                 error={!!errors.coordinator}
                 helperText={errors.coordinator?.message}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <PersonOutlinedIcon
-                        sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
-                      />
-                    ),
-                  },
+                InputProps={{
+                  startAdornment: (
+                    <PersonOutlinedIcon
+                      sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                    />
+                  ),
                 }}
               />
             </Grid>
@@ -355,7 +360,7 @@ export default function TrainingCreatePage() {
                 label="Completion Deadline"
                 type="date"
                 fullWidth
-                slotProps={{ inputLabel: { shrink: true } }}
+                InputLabelProps={{ shrink: true }}
                 {...register("dueDate")}
                 error={!!errors.dueDate}
                 helperText={errors.dueDate?.message}
@@ -392,6 +397,7 @@ export default function TrainingCreatePage() {
 
           <FormActions
             onSaveDraft={handleSubmit(onSaveDraft)}
+            onSubmit={handleSubmit(onSubmitReview)} 
             isSubmitting={isSubmitting}
             labels={{ submit: "Create Plan", draft: "Save Draft" }}
           />

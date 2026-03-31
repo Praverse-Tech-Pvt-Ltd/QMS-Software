@@ -8,21 +8,16 @@ interface DetailTabsLayoutProps {
   title: string;
   subtitle?: string;
   statusChip?: ReactNode;
-
   showBack?: boolean;
   backTo?: string;
-
   rightPanel: ReactNode;
-  
-  // Tab Content
   overview: ReactNode;
   attachments: ReactNode;
   activity: ReactNode;
   approvals: ReactNode;
-  
-  // Optional Tabs (for Change Control / CAPA)
   impact?: ReactNode;
   plan?: ReactNode;
+  trainees?: ReactNode;
 }
 
 export default function DetailTabsLayout({
@@ -38,6 +33,7 @@ export default function DetailTabsLayout({
   approvals,
   impact,
   plan,
+  trainees,
 }: DetailTabsLayoutProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
@@ -46,6 +42,7 @@ export default function DetailTabsLayout({
   // This array builds the tabs based on what props are available
   const tabs = [
     { label: "Overview", content: overview },
+    ...(trainees ? [{ label: "Trainee Tracking", content: trainees }] : []),
     ...(impact ? [{ label: "Impact Assessment", content: impact }] : []),
     ...(plan ? [{ label: "Implementation Plan", content: plan }] : []),
     { label: "Attachments", content: attachments },
@@ -87,7 +84,10 @@ export default function DetailTabsLayout({
           </Box>
 
           {subtitle && (
-            <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", mt: 0.5 }}
+            >
               {subtitle}
             </Typography>
           )}
@@ -112,25 +112,23 @@ export default function DetailTabsLayout({
             p: 2.5,
             borderRadius: 3,
             border: "1px solid rgba(0,0,0,0.06)",
-            minHeight: 500
+            minHeight: 500,
           }}
         >
-          <Tabs 
-            value={tabIndex} 
-            onChange={(_, v) => setTabIndex(v)} 
-            sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
+          <Tabs
+            value={tabIndex}
+            onChange={(_, v) => setTabIndex(v)}
+            sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
             variant="scrollable"
             scrollButtons="auto"
           >
             {tabs.map((t, i) => (
-                <Tab key={i} label={t.label} />
+              <Tab key={i} label={t.label} />
             ))}
           </Tabs>
 
           {/* Render Active Tab Content */}
-          <Box sx={{ mt: 2 }}>
-            {tabs[tabIndex]?.content}
-          </Box>
+          <Box sx={{ mt: 2 }}>{tabs[tabIndex]?.content}</Box>
         </Paper>
 
         {/* Right Panel (Timeline / Actions) */}

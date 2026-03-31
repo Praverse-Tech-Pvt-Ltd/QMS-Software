@@ -1,17 +1,28 @@
 // src/services/training.service.ts
 import api from "./api";
-import type { SignatureEntry, WorkflowMeta, WorkflowStatus } from "./workflow.service";
+import type {
+  SignatureEntry,
+  WorkflowMeta,
+  WorkflowStatus,
+} from "./workflow.service";
 import { type AuditTrailEntry } from "./audit.service";
 
 export interface TrainingAssignment {
   id: number;
-  plan: number;
-  user: number;
-  user_name?: string; // For UI display
+  status: string;
   due_date: string;
   completion_date?: string;
-  status: "PENDING" | "COMPLETED" | "OVERDUE";
   score?: number;
+  user: number;
+  // ✅ Matches your UserSerializer nested inside TrainingAssignmentSerializer
+  user_details?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    role: string;
+    department?: string;
+  };
+  plan: number;
 }
 
 export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
@@ -30,8 +41,8 @@ export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
   updated_at?: string;
   totalTrainees?: number;
   audit_trail?: AuditTrailEntry[];
-  // ✅ Changed to match WorkflowMeta standard used in other modules
-  signatureLog?: SignatureEntry[]; 
+  due_date: string; 
+  signatureLog?: SignatureEntry[];
   completionRate?: number;
   moduleKey?: "training";
 }
@@ -47,12 +58,12 @@ export const trainingService = {
     return response.data;
   },
 
-  // ✅ NEW: Fetch trainees assigned to this specific plan
   async getAssignmentsByPlan(
     planId: string | number,
   ): Promise<TrainingAssignment[]> {
+    // ✅ Change from nested path to query parameter
     const response = await api.get<TrainingAssignment[]>(
-      `/training/plans/${planId}/assignments/`,
+      `/training/assignments/?plan=${planId}`,
     );
     return response.data;
   },
@@ -70,6 +81,7 @@ export const trainingService = {
     const response = await api.patch(`/training/plans/${id}/`, payload);
     return response.data;
   },
+
   async getMyAssignments(): Promise<TrainingAssignment[]> {
     const response = await api.get<TrainingAssignment[]>(
       "/training/assignments/my-tasks/",
@@ -77,22 +89,6 @@ export const trainingService = {
     return response.data;
   },
   
-  async recordCompletion(
-    assignmentId: number,
-    data: {
-      score?: number;
-      evidence_url?: string;
-      signature_password: string;
-      comments?: string;
-    },
-  ) {
-    const response = await api.post(
-      `/training/assignments/${assignmentId}/complete/`,
-      data,
-    );
-    return response.data;
-  },
-
   async assignUserToPlan(planId: number, userId: number, dueDate: string) {
     const response = await api.post(`/training/plans/${planId}/assign/`, {
       user_id: userId,
@@ -108,16 +104,36 @@ export const trainingService = {
     );
     return response.data;
   },
+  
+  // src/services/training.service.ts
 
-  async completeTraining(
-    id: number,
-    score: number,
-    signature_password?: string,
-  ) {
-    const response = await api.post(`/training/assignments/${id}/complete/`, {
-      score,
-      signature_password,
-    });
-    return response.data;
-  },
+async completeTraining(
+  id: number,
+  score: number,
+  signature_password: string, 
+  comments?: string
+) {
+  const response = await api.post(`/training/assignments/${id}/complete/`, {
+    score,
+    signature_password,
+    comments: comments || "Qualification completed via electronic signature."
+  });
+  return response.data;
+},
+  
+    async recordCompletion(
+      assignmentId: number,
+      data: {
+        score?: number;
+        evidence_url?: string;
+        signature_password: string;
+        comments?: string;
+      },
+    ) {
+      const response = await api.post(
+        `/training/assignments/${assignmentId}/complete/`,
+        data,
+      );
+      return response.data;
+    },
 };

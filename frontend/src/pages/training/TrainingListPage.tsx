@@ -93,8 +93,6 @@ export default function TrainingListPage() {
       if (statusFilter !== "All") {
         const currentStatus = String((r as any).status).toUpperCase();
         matchesStatus = currentStatus === statusFilter.toUpperCase();
-        // ✅ FIX: Force cast to string using `String()` or `as any` to avoid "no overlap" error
-        // This handles cases where status might be defined as number in the interface but string in reality, or vice versa.
 
         if (statusFilter === "Draft") {
           matchesStatus = currentStatus === "DRAFT";
@@ -126,12 +124,12 @@ export default function TrainingListPage() {
             cursor: "pointer",
             fontSize: "0.875rem",
           }}
-          // ✅ REDIRECT USING STRING ID (Training ID or ID fallback)
+          // ✅ REDIRECT USING THE "PLAN-" FORMAT
           onClick={() =>
-            navigate(`/training/${(row as any).training_id || row.id}`)
+            navigate(`/training/PLAN-${row.id}`)
           }
         >
-          {(row as any).training_id || row.id}
+          {`PLAN-${row.id}`}
         </Typography>
       ),
     },
@@ -357,10 +355,8 @@ export default function TrainingListPage() {
         onView={
           role !== "Viewer"
             ? (id) => {
-                // Find the specific record to get its display ID
-                const record = rows.find((r) => String(r.id) === String(id));
-                const navigateId = record ? `TRN-${record.id}` : `TRN-${id}`;
-                navigate(`/training/${navigateId}`);
+                // ✅ REDIRECT USING THE "PLAN-" FORMAT ON ROW CLICK
+                navigate(`/training/PLAN-${id}`);
               }
             : undefined
         }

@@ -9,8 +9,11 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Typography
+  Typography,
+  Stack,
+  alpha
 } from "@mui/material";
+import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import { useEffect, useState } from "react";
 import { trainingService, type TrainingPlan } from "../../services/training.service";
 import { useSnackbar } from "notistack";
@@ -28,7 +31,7 @@ interface AssignTrainingDialogProps {
   onClose: () => void;
   planId?: number;
   planTitle?: string;
-  onSuccess?: () => void; // ✅ Callback to refresh parent data
+  onSuccess?: () => void; 
 }
 
 export default function AssignTrainingDialog({ 
@@ -42,7 +45,7 @@ export default function AssignTrainingDialog({
   
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<number | "">("");
+  const [selectedPlanId, setSelectedPlanId] = useState<number | string | "">(""); // ✅ Allowed string for safety
   const [selectedUserId, setSelectedUserId] = useState<number | "">("");
   const [dueDate, setDueDate] = useState("");
   
@@ -52,6 +55,7 @@ export default function AssignTrainingDialog({
   useEffect(() => {
     if (open) {
       loadInitialData();
+      // If planId is passed from the Detail Page (e.g. 10), set it
       if (planId) setSelectedPlanId(planId);
     }
   }, [open, planId]);
@@ -66,7 +70,7 @@ export default function AssignTrainingDialog({
       setPlans(plansData);
       setUsers(usersResponse.data);
     } catch (err) {
-      enqueueSnackbar("Failed to load assignment data", { variant: "error" });
+      enqueueSnackbar("Failed to synchronize personnel records", { variant: "error" });
     } finally {
       setFetchingData(false);
     }
@@ -74,21 +78,37 @@ export default function AssignTrainingDialog({
 
   const handleAssign = async () => {
     if (!selectedPlanId || !selectedUserId || !dueDate) return;
+
+    // ✅ GxP Validation: No past dates for new assignments
+    const selectedDate = new Date(dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      enqueueSnackbar("Compliance deadline cannot be in the past", { variant: "warning" });
+      return;
+    }
+  
     try {
       setLoading(true);
-      await trainingService.assignUserToPlan(Number(selectedPlanId), Number(selectedUserId), dueDate);
       
-      enqueueSnackbar(`Training assigned successfully!`, { variant: "success" });
-      if (onSuccess) onSuccess(); // ✅ Trigger reload in Detail Page
-      handleClose();
+      // ✅ SUPER CLEANING: Handle PLAN-10, TRN-10, or just 10
+      // Extract only digits to send to the backend
+      const cleanPlanId = typeof selectedPlanId === 'string' 
+        ? Number(selectedPlanId.replace(/\D/g, '')) 
+        : selectedPlanId;
+
+      await trainingService.assignUserToPlan(cleanPlanId, Number(selectedUserId), dueDate);
+      
+      enqueueSnackbar(`Training assignment created successfully!`, { variant: "success" });
+      if (onSuccess) onSuccess(); 
+      onClose();
     } catch (error: any) {
-      const errorMsg = error.response?.data?.error || "Assignment failed";
-      enqueueSnackbar(errorMsg, { variant: "error" });
+      const msg = error.response?.data?.error || "Assignment failed. User may already be assigned.";
+      enqueueSnackbar(msg, { variant: "error" });
     } finally {
       setLoading(false);
     }
   };
-
   const handleClose = () => {
     setSelectedPlanId("");
     setSelectedUserId("");
@@ -96,39 +116,45 @@ export default function AssignTrainingDialog({
     onClose();
   };
 
-  // Find currently selected plan for the alert text
   const currentPlan = plans.find(p => p.id === selectedPlanId);
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-      <DialogTitle sx={{ fontWeight: 900, fontSize: "1.25rem", pt: 3 }}>
-        Create Personnel Assignment
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 4, p: 1 } }}>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 2, pt: 3 }}>
+        <Box sx={{ bgcolor: alpha("#4F46E5", 0.1), color: "#4F46E5", p: 1, borderRadius: 2, display: 'flex' }}>
+            <PersonAddAlt1Icon />
+        </Box>
+        <Box>
+            <Typography variant="h6" fontWeight={900}>Personnel Assignment</Typography>
+            <Typography variant="caption" color="text.secondary" fontWeight={700}>TRAINING & QUALIFICATION</Typography>
+        </Box>
       </DialogTitle>
       
-      <DialogContent sx={{ pt: 1 }}>
+      <DialogContent sx={{ pt: 2 }}>
         {fetchingData ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 8, gap: 2 }}>
             <CircularProgress size={32} thickness={5} />
-            <Typography variant="body2" color="text.secondary">Fetching latest plan & user lists...</Typography>
+            <Typography variant="body2" color="text.secondary" fontWeight={600}>Syncing latest training master data...</Typography>
           </Box>
         ) : (
-          <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 3 }}>
-            <Alert severity="info" variant="outlined" sx={{ borderRadius: 2 }}>
-              Target Plan: <strong>{currentPlan?.title || planTitle || "Selection Required"}</strong>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <Alert severity="info" variant="standard" sx={{ borderRadius: 3, fontWeight: 500 }}>
+              Assigning training for: <strong>{currentPlan?.title || planTitle || "N/A"}</strong>
             </Alert>
 
             <TextField
               select
-              label="Training Module / SOP"
+              label="Select Training Plan"
               fullWidth
               value={selectedPlanId}
               onChange={(e) => setSelectedPlanId(Number(e.target.value))}
-              disabled={!!planId} // ✅ Lock field if planId passed from Detail Page
+              disabled={!!planId}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3, bgcolor: '#f8fafc' } }}
             >
               {plans.map((plan) => (
                 <MenuItem key={plan.id} value={plan.id}>
                   <Box>
-                    <Typography variant="body2" fontWeight={700}>TRN-{plan.id}</Typography>
+                    <Typography variant="body2" fontWeight={800}>TRN-{plan.id.toString().padStart(3, '0')}</Typography>
                     <Typography variant="caption" color="text.secondary">{plan.title}</Typography>
                   </Box>
                 </MenuItem>
@@ -137,34 +163,43 @@ export default function AssignTrainingDialog({
 
             <TextField
               select
-              label="Select Assignee"
+              label="Select Personnel (Trainee)"
               fullWidth
+              required
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(Number(e.target.value))}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3, bgcolor: '#f8fafc' } }}
             >
               {users.map((user) => (
                 <MenuItem key={user.id} value={user.id}>
-                  {user.first_name} {user.last_name} ({user.role})
+                  <Typography variant="body2" fontWeight={600}>
+                    {user.first_name} {user.last_name} 
+                    <Typography component="span" variant="caption" sx={{ ml: 1, color: 'text.secondary' }}>
+                        — {user.role}
+                    </Typography>
+                  </Typography>
                 </MenuItem>
               ))}
             </TextField>
 
             <TextField
               type="date"
-              label="Training Deadline"
+              label="Compliance Deadline"
               fullWidth
+              required
               slotProps={{ inputLabel: { shrink: true } }}
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              helperText="Trainee must complete qualification before this date."
+              helperText="Trainee must certify completion before this date to remain compliant."
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3, bgcolor: '#f8fafc' } }}
             />
-          </Box>
+          </Stack>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, gap: 1 }}>
-        <Button onClick={handleClose} color="inherit" disabled={loading} sx={{ fontWeight: 700 }}>
-          Cancel
+      <DialogActions sx={{ p: 4, pt: 1 }}>
+        <Button onClick={handleClose} color="inherit" disabled={loading} sx={{ fontWeight: 800, textTransform: 'none' }}>
+          Discard
         </Button>
         <Button 
           variant="contained" 
@@ -172,13 +207,14 @@ export default function AssignTrainingDialog({
           disabled={loading || !selectedPlanId || !selectedUserId || !dueDate}
           sx={{ 
             bgcolor: "#4F46E5", 
-            fontWeight: 700, 
+            fontWeight: 800, 
             px: 4,
-            borderRadius: 2,
-            textTransform: 'none'
+            borderRadius: 2.5,
+            textTransform: 'none',
+            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
           }}
         >
-          {loading ? "Processing..." : "Confirm Assignment"}
+          {loading ? "Assigning..." : "Confirm Assignment"}
         </Button>
       </DialogActions>
     </Dialog>
