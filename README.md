@@ -1,107 +1,106 @@
 # NexGen Pharma QMS 💊
 
-**Project:** NexGen Pharma QMS (Quality Management System)
-
-A full-stack Quality Management System designed for pharmaceutical compliance, featuring robust Role-Based Access Control (RBAC), document management, and automated workflow tracking.
+**NexGen Pharma QMS** is a robust, enterprise-grade Quality Management System specifically designed for the pharmaceutical industry. It ensures compliance, automates controlled workflows, and maintains strict quality standards throughout the product lifecycle. This system is designed to be inspection-ready, simulating how a real pharmaceutical QMS behaves during audits and daily operations.
 
 ---
 
 ## 🚀 Project Status
 
 **Current Version:** v0.5.0 (Alpha)
-**Focus:** Authentication, RBAC, Dashboard, and Core Module Architecture.
+**Current Focus:** Authentication, RBAC, Dashboard, and Core Module Architecture.
 
 ---
 
-## 🏗 Architecture Overview
+## 🏗 High-Level Architecture
 
 ### Tech Stack
-
-**Frontend:** React 18, TypeScript, Vite, Material UI (MUI v5)
-
-**Backend:** Django 5.0, Django REST Framework (DRF)
-
-**Authentication:** JWT (JSON Web Tokens) via `simplejwt`
-
-**State Management:** React Context API (`RoleProvider`)
-
-**Routing:** React Router DOM v6
+- **Frontend:** React 19, TypeScript, Vite, Material UI (MUI v7), Tailwind CSS
+- **Backend:** Django 6.0, Django REST Framework (DRF)
+- **Database:** PostgreSQL (via Neon DB)
+- **Authentication:** JWT (JSON Web Tokens) with custom Role-Based Access Control (RBAC)
+- **State Management:** React Context API (`RoleProvider`)
+- **Routing:** React Router v7
 
 ---
 
-## ✅ Completed Features
+## 🛡 Security & Role-Based Access Control (RBAC)
 
-### 1. Authentication & Security
+The system uses a **Matrix-Based Permission Model** to decide "Who can do what."
 
+### Roles
+- **Admin:** Full access to all modules and system settings.
+- **QA (Quality Assurance):** Approval authority, control over Deviations, CAPA, and DMS lifecycles.
+- **QC (Quality Control), Production, Warehouse:** Specific read/write access relevant to their departments.
+- **Viewer:** Strict Read-Only access (default for new signups).
+
+### Key Security Features
 - **JWT Authentication:** Secure login/signup flow with Access and Refresh tokens.
-- **Custom User Model:** Extended Django `AbstractUser` to include:
-  - `role` (Admin, QA, QC, Production, Warehouse, Viewer)
-  - `department`
-  - `employee_id`
-- **Auto-Login:** Users are automatically logged in upon successful registration.
-- **Protected Routes:** `AuthGuard` prevents unauthorized access to internal pages.
-- **Token Persistence:** Tokens are securely stored in `localStorage` (`auth_token`, `refresh_token`).
-
-### 2. Role-Based Access Control (RBAC)
-
 - **Granular Permissions:** A centralized `permissionService` checks access rights for every action (create, read, edit, delete, approve).
-- **Dynamic UI:** Buttons and menus hide/disable automatically based on the user's role.
-- **Role Matrix:**
-  - **Admin:** Full access to all modules.
-  - **QA:** Approval authority, full access to Deviations/CAPA.
-  - **QC/Production/Warehouse:** Specific read/write access relevant to their department.
-  - **Viewer:** Strict Read-Only access (Default for new signups).
+- **Dynamic UI:** UI elements (buttons, menus) are conditionally rendered or disabled based on user permissions.
+- **Route Protection:** Protected routes prevent unauthorized URL-based access.
 
-### 3. Modules & Workflows
+---
 
-- **Dashboard:**
-  - Real-time KPI cards (Pending Approvals, Open Deviations, etc.).
-  - "My Tasks" list tailored to the logged-in user.
-  - Quick Action buttons (New Doc, Log Deviation) that check permissions before navigation.
-- **Document Management System (DMS):**
-  - List view with status filtering.
-  - Workflow states: `Draft` → `Review` → `Approved` → `Effective` → `Obsolete`.
-- **Deviations & CAPA:**
-  - Basic routing and UI shells for logging incidents and corrective actions.
+## 📄 Key Modules & Functionalities
+
+### 1. Unified Dashboard
+The central hub for quality metrics.
+- **KPI Cards:** Real-time counters for pending approvals, open deviations, pending training, etc.
+- **My Tasks:** A tailors list of workflow items assigned specifically to the logged-in user.
+- **Smart Quick Actions:** Context-aware buttons for common tasks (New Doc, Log Deviation) restricted by role.
+
+### 2. Document Management System (DMS)
+Manages SOPs, policies, and controlled documents with full lifecycle support.
+- **Workflow:** `Draft` → `Review` → `Approved` → `Effective` → `Obsolete`.
+- **Versioning:** Automated version increments (v1.0 → v1.1 → v2.0) and version history comparison.
+- **Departmental Isolation:** Documents are categorized and filtered by department.
+
+### 3. Quality & Incident Management
+Tracks non-conformities and corrective improvements.
+- **Deviations:** Log incidents with severity (Minor, Major, Critical), perform root-cause analysis, and link to CAPA.
+- **CAPA (Corrective and Preventive Action):** Manage corrective plans, upload evidence, and verify effectiveness.
+- **Change Control:** Formal management of modifications to validated processes or systems.
+
+### 4. Learning Management (Training)
+Ensures employees are qualified for their roles.
+- **Training Matrix:** Automated mapping of roles to required SOPs.
+- **Progress Tracking:** Individual training profiles with completion metrics.
+- **Retraining:** Triggers automatically when a document version changes.
+
+---
+
+## ⚙️ Workflow Engine & Compliance
+
+### Standardized Workflow
+All quality modules share a unified engine that enforces:
+- Status lifecycle transitions.
+- Role-based approval routing.
+- Transition validation rules.
+- Workflow timeline visualization.
+
+### E-Signature & Audit Trail
+- **E-Signature:** Username/password re-authentication for approvals (compliant with electronic record standards).
+- **Audit Trail:** immutable, field-level change tracking including the user, timestamp, and "reason for change."
 
 ---
 
 ## 📂 Project Structure
 
-### Frontend (`/client`)
-
 ```text
-src/
-├── app/
-│   ├── providers/          # Context Providers (RoleProvider, ThemeProvider)
-│   └── routes/             # AppRouter, ProtectedRoute
-├── components/
-│   ├── common/             # Reusable UI (Header, Sidebar, PageContainer)
-│   └── layout/             # MainLayout (Sidebar + Navbar wrapper)
-├── config/
-│   └── permissions.ts      # 🔐 The Central Permission Matrix
-├── pages/
-│   ├── auth/               # LoginPage.tsx, SignupPage.tsx
-│   ├── dashboard/          # DashboardPage.tsx
-│   └── dms/                # DmsListPage.tsx, DmsEditor.tsx
-├── services/
-│   ├── api.ts              # Axios instance with Interceptors
-│   ├── auth.service.ts     # Login/Register API calls
-│   └── permission.service.ts # Logic for checking permissions
-└── types/
-    ├── auth.types.ts       # User & Role Type definitions
-    └── permissions.types.ts # Module & Action definitions
-```
-
-### Backend (`/server`)
-
-```text
-core/                       # Project Settings
-api/                        # Main App
-├── models.py               # Custom User Model (Role Enum)
-├── serializers.py          # Custom Registration & Token Serializers
-├── views.py                # Auth Views (Register, Login, UserDetails)
-└── urls.py                 # API Routes (/auth/login, /auth/register)
+QMS-Software/
+├── frontend/               # React client built with TypeScript/Vite
+│   ├── src/
+│   │   ├── app/            # Context Providers & Routing
+│   │   ├── components/     # Common UI & Layouts
+│   │   ├── config/         # Central Permission Matrix
+│   │   ├── services/       # API & Permission services
+│   │   └── pages/          # Dashboard, DMS, Auth, etc.
+├── backend/                # Django server with modular apps
+│   ├── core/               # Project settings
+│   ├── accounts/           # Auth, User model & Roles
+│   ├── dms/                # Document Management logic
+│   ├── quality/            # Deviations, CAPA, Change Control
+│   └── training/           # LMS & Training matrix
 ```
 
 ---
@@ -109,49 +108,35 @@ api/                        # Main App
 ## ⚙️ Setup Instructions
 
 ### 1. Backend (Django)
-
 ```bash
-# Navigate to server folder
-cd server
-
-# Create virtual env
+cd backend
 python -m venv venv
-source venv/bin/activate  # (Windows: venv\Scripts\activate)
+# Windows
+venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
 
-# Install dependencies
-pip install django djangorestframework djangorestframework-simplejwt django-cors-headers
-
-# Run Migrations
-python manage.py makemigrations
+pip install -r requirements.txt
 python manage.py migrate
-
-# Start Server
 python manage.py runserver
 ```
 
 ### 2. Frontend (React)
-
 ```bash
-# Navigate to client folder
-cd client
-
-# Install dependencies
+cd frontend
 npm install
-
-# Start Dev Server
 npm run dev
 ```
 
 ---
 
 ## 🔮 Roadmap (Next Steps)
-
-- [ ] **DMS Workflow:** Implement the actual "Submit for Review" backend logic.
-- [ ] **Audit Trail:** Log every action (who did what & when) in the backend.
-- [ ] **PDF Generation:** Allow exporting reports/documents to PDF.
-- [ ] **Profile Page:** Allow users to view/edit their own details.
+- [ ] **Audit Trail Export:** Backend-integrated PDF/Excel export for regulators.
+- [ ] **Profile Management:** Detailed user profiles and preference settings.
+- [ ] **Advanced Analytics:** Chart-based reporting for quality metrics.
+- [ ] **Batch Records:** Integration of batch production records with the QMS.
 
 ---
 
-**Developed by:** [Your Name/Team]
+**Developed for:** High-compliance and inspection-ready pharmaceutical operations.
 **License:** Private / Proprietary
