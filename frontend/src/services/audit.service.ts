@@ -1,57 +1,80 @@
-import type { AuditTrailEntry, AuditActionType } from "../types/audit.types";
-import type { WorkflowModuleKey } from "../types/workflow.types";
+import api from "./api";
 
-const getKey = (moduleKey: WorkflowModuleKey, recordId: string) =>
-  `qms_audit_${moduleKey}_${recordId}`;
+// --- TYPES ---
+export type AuditActionType =
+  | "CREATE"
+  | "UPDATE"
+  | "STATUS_CHANGE"
+  | "APPROVAL"
+  | "E_SIGNATURE"   
+  | "REJECT"
+  | "ATTACHMENT_ADD"
+  | "FIELD_EDIT"
+  | "LINKED_RECORD"; // ✅ Added for Deviation -> CAPA linking
 
-const now = () => new Date().toISOString();
+export interface AuditTrailEntry {
+  id: string | number;
+  recordId: string;       
+  moduleKey: string;     
+  actionType: AuditActionType;
+  
+  field?: string;
+  oldValue?: string;
+  newValue?: string;
+  
+  changes?: Record<string, { old: any; new: any }>;
 
+  user: string;          
+  role: string;          
+  timestamp: string;
+  reason?: string;
+}
+
+// --- SERVICE LOGIC ---
 export const auditService = {
-  seedIfEmpty(moduleKey: WorkflowModuleKey, recordId: string) {
-    const key = getKey(moduleKey, recordId);
-    const existing = localStorage.getItem(key);
-
-    if (!existing) {
-      const seed: AuditTrailEntry[] = [
-        {
-          id: crypto.randomUUID(),
-          recordId,
-          moduleKey,
-          actionType: "CREATE",
-          user: "System",
-          role: "System",
-          timestamp: now(),
-          reason: "Record created (mock seed).",
-        },
-      ];
-      localStorage.setItem(key, JSON.stringify(seed));
-      return seed;
+  async list(moduleKey: string, recordId: string): Promise<AuditTrailEntry[]> {
+    try {
+      const response = await api.get<AuditTrailEntry[]>(`/quality/${moduleKey}/${recordId}/history/`);
+      
+      return response.data.map(log => ({
+        ...log,
+        moduleKey,
+        recordId: String(recordId)
+      }));
+    } catch (err) {
+      console.warn(`Audit history not found for ${moduleKey}:${recordId}. Using fallback.`);
+      return this.getFallbackSeed(moduleKey, recordId);
     }
-
-    return JSON.parse(existing) as AuditTrailEntry[];
   },
 
-  list(moduleKey: WorkflowModuleKey, recordId: string): AuditTrailEntry[] {
-    return this.seedIfEmpty(moduleKey, recordId);
-  },
-
-  add(
-    moduleKey: WorkflowModuleKey,
+  async add(
+    moduleKey: string,
     recordId: string,
     entry: Omit<AuditTrailEntry, "id" | "timestamp" | "recordId" | "moduleKey">
-  ) {
-    const key = getKey(moduleKey, recordId);
-    const list = this.seedIfEmpty(moduleKey, recordId);
-
-    const newEntry: AuditTrailEntry = {
-      id: crypto.randomUUID(),
-      recordId,
-      moduleKey,
-      timestamp: now(),
+  ): Promise<AuditTrailEntry> {
+    const payload = {
       ...entry,
+      module_key: moduleKey, // ✅ Standardized to snake_case for Django
+      record_id: recordId,
+      change_reason: entry.reason
     };
 
-    localStorage.setItem(key, JSON.stringify([newEntry, ...list]));
-    return newEntry;
+    const response = await api.post<AuditTrailEntry>(`/quality/${moduleKey}/${recordId}/history/`, payload);
+    return response.data;
   },
+
+  getFallbackSeed(moduleKey: string, recordId: string): AuditTrailEntry[] {
+    return [
+      {
+        id: "seed-0",
+        recordId: String(recordId),
+        moduleKey,
+        actionType: "CREATE",
+        user: "System",
+        role: "System",
+        timestamp: new Date().toISOString(),
+        reason: "Initial record tracking started.",
+      },
+    ];
+  }
 };

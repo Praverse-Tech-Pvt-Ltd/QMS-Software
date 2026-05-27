@@ -1,4 +1,4 @@
-import {type PermissionMatrix } from "../types/permissions.types";
+import { type PermissionMatrix } from "../services/permission.service";
 
 export const ROLE_PERMISSIONS: PermissionMatrix = {
   Admin: {
@@ -13,7 +13,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     reports: ["view", "export"]
   },
   QA: {
-    dashboard: ["view"],
+    dashboard: ["view", "export"],
     dms: ["view", "create", "edit", "approve"],
     training: ["view", "create", "edit"],
     training_matrix: ["view"],
@@ -56,6 +56,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     settings: [],
     reports: []
   },
+  // ✅ This matches your Django default
   Viewer: {
     dashboard: ["view"],
     dms: ["view"],

@@ -1,51 +1,54 @@
-import { deviationsMock } from "../mock/deviations.mock";
-import type { DeviationRecord } from "../types/deviation.types";
+import api from "./api";
+import type { WorkflowMeta } from "./workflow.service";
+import {type  AuditTrailEntry } from "./audit.service";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export interface DeviationRecord extends Omit<Partial<WorkflowMeta>, 'id'| 'status'> {
+  id: number;
+  deviation_id: string; 
+  title: string;
+  description: string;
+  department: string;
+  
+  // ✅ Backend Alignments
+  risk_level: "CRITICAL" | "MAJOR" | "MINOR";
+  status: "DRAFT" | "INVESTIGATION" | "QA_REVIEW" | "CLOSED" | "UNDER_REVIEW" | "APPROVED";
+  
+  occurrence_date: string;
+  created_at: string;
+  
+  // ✅ Investigation Fields (Binding these ensures they SAVE)
+  immediate_actions?: string;
+  root_cause?: string;
+  
+  // ✅ Audit Trail
+  audit_trail?: AuditTrailEntry[];
+  change_reason?: string;
+  capas?: any[];
+}
 
 export const deviationsService = {
-  // List
   async list(): Promise<DeviationRecord[]> {
-    await delay(800);
-    return deviationsMock;
+    const response = await api.get<DeviationRecord[]>("/quality/deviations/");
+    return response.data;
   },
 
-  // Get Single
-  async getById(id: string): Promise<DeviationRecord> {
-    await delay(600);
-    const item = deviationsMock.find((d) => d.id === id);
-
-    if (!item) {
-      // ✅ Fallback matching updated interface
-      const fallback: DeviationRecord = {
-        id,
-        title: "New Deviation Request",
-        status: "Draft",
-        moduleKey: "deviations",
-        
-        severity: "Minor",
-        reportedBy: "Current User",
-        department: "Production",
-        reportedDate: new Date().toISOString().split('T')[0],
-
-        type: "General",
-        description: "Description of the deviation.",
-        location: "Plant A",
-        immediateAction: "None",
-        
-        approvalRequests: [],
-        signatureLog: [],
-        approvalsLog: []
-      };
-      return fallback;
-    }
-    return item;
+  async getById(id: string | number): Promise<DeviationRecord> {
+    const response = await api.get<DeviationRecord>(`/quality/deviations/${id}/`);
+    return response.data;
   },
 
-  // Update
-  async update(id: string, data: any) {
-    await delay(1000);
-    console.log(`Updating Deviation (${id}):`, data);
-    return { id, ...data };
-  }
+  async update(id: string | number, data: Partial<DeviationRecord>) {
+    const payload = {
+      ...data,
+      change_reason: data.change_reason || "Deviation investigation update",
+    };
+    const response = await api.patch(`/quality/deviations/${id}/`, payload);
+    return response.data;
+  },
+
+  async submit(id: string | number, reason: string) {
+    return await api.post(`/quality/deviations/${id}/submit/`, {
+      change_reason: reason,
+    });
+  },
 };

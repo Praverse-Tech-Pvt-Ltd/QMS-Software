@@ -1,54 +1,139 @@
-import { trainingMock } from "../mock/training.mock";
-import type { TrainingPlan } from "../types/training.types";
+// src/services/training.service.ts
+import api from "./api";
+import type {
+  SignatureEntry,
+  WorkflowMeta,
+  WorkflowStatus,
+} from "./workflow.service";
+import { type AuditTrailEntry } from "./audit.service";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export interface TrainingAssignment {
+  id: number;
+  status: string;
+  due_date: string;
+  completion_date?: string;
+  score?: number;
+  user: number;
+  // ✅ Matches your UserSerializer nested inside TrainingAssignmentSerializer
+  user_details?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    role: string;
+    department?: string;
+  };
+  plan: number;
+}
+
+export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
+  id: number;
+  title: string;
+  description: string;
+  department: string;
+  trainer: string;
+  status: WorkflowStatus;
+  method: "Classroom" | "Online" | "Read" | string;
+  duration_minutes: number;
+  version?: string;
+  passScore?: number;
+  objectives?: string;
+  change_reason?: string;
+  updated_at?: string;
+  totalTrainees?: number;
+  audit_trail?: AuditTrailEntry[];
+  due_date: string; 
+  signatureLog?: SignatureEntry[];
+  completionRate?: number;
+  moduleKey?: "training";
+}
 
 export const trainingService = {
-  // List
   async list(): Promise<TrainingPlan[]> {
-    await delay(800);
-    return trainingMock;
+    const response = await api.get<TrainingPlan[]>("/training/plans/");
+    return response.data;
   },
 
-  // Get Single
-  async getById(id: string): Promise<TrainingPlan> {
-    await delay(600);
-    const item = trainingMock.find((t) => t.id === id);
-
-    if (!item) {
-      // ✅ Fallback matching updated interface
-      const fallback: TrainingPlan = {
-        id,
-        title: "Annual GMP Refresher",
-        status: "Draft",
-        moduleKey: "training",
-        
-        assignedTo: "All Staff",
-        department: "Quality Assurance",
-        dueDate: "2026-12-31",
-        completionRate: 0,
-
-        method: "Classroom",
-        duration: 60,
-        passScore: 80,
-        objectives: "Refresh knowledge on GMP standards.",
-        trainer: "John Doe",
-        version: "v2.0",
-        totalTrainees: 0,
-        
-        approvalRequests: [],
-        signatureLog: [],
-        approvalsLog: []
-      };
-      return fallback;
-    }
-    return item;
+  async getById(id: string | number): Promise<TrainingPlan> {
+    const response = await api.get<TrainingPlan>(`/training/plans/${id}/`);
+    return response.data;
   },
 
-  // Update
-  async update(id: string, data: any) {
-    await delay(1000);
-    console.log(`Updating Training Plan (${id}):`, data);
-    return { id, ...data };
-  }
+  async getAssignmentsByPlan(
+    planId: string | number,
+  ): Promise<TrainingAssignment[]> {
+    // ✅ Change from nested path to query parameter
+    const response = await api.get<TrainingAssignment[]>(
+      `/training/assignments/?plan=${planId}`,
+    );
+    return response.data;
+  },
+
+  async create(data: Partial<TrainingPlan>) {
+    const response = await api.post("/training/plans/", data);
+    return response.data;
+  },
+
+  async update(id: string | number, data: Partial<TrainingPlan>) {
+    const payload = {
+      ...data,
+      change_reason: (data as any).change_reason || "Training plan update",
+    };
+    const response = await api.patch(`/training/plans/${id}/`, payload);
+    return response.data;
+  },
+
+  async getMyAssignments(): Promise<TrainingAssignment[]> {
+    const response = await api.get<TrainingAssignment[]>(
+      "/training/assignments/my-tasks/",
+    );
+    return response.data;
+  },
+  
+  async assignUserToPlan(planId: number, userId: number, dueDate: string) {
+    const response = await api.post(`/training/plans/${planId}/assign/`, {
+      user_id: userId,
+      due_date: dueDate,
+    });
+    return response.data;
+  },
+
+  async initiateRetraining(planId: number, reason: string) {
+    const response = await api.post(
+      `/training/plans/${planId}/initiate-retraining/`,
+      { reason },
+    );
+    return response.data;
+  },
+  
+  // src/services/training.service.ts
+
+async completeTraining(
+  id: number,
+  score: number,
+  signature_password: string, 
+  comments?: string
+) {
+  const response = await api.post(`/training/assignments/${id}/complete/`, {
+    score,
+    signature_password,
+    comments: comments || "Qualification completed via electronic signature."
+  });
+  return response.data;
+},
+  
+    async recordCompletion(
+      assignmentId: number,
+      data: {
+        score?: number;
+        evidence_url?: string;
+        signature_password: string;
+        comments?: string;
+      },
+    ) {
+      const response = await api.post(
+        `/training/assignments/${assignmentId}/complete/`,
+        data,
+      );
+      return response.data;
+    },
 };

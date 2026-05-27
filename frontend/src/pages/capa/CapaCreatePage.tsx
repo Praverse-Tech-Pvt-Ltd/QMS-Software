@@ -5,12 +5,12 @@ import {
   MenuItem,
   Typography,
   Divider,
-  Grid,
   Chip,
   Stack,
   Alert,
-  AlertTitle,
+   Grid, // ✅ Standardized Grid Import
 } from "@mui/material";
+
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
@@ -27,16 +27,14 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
 import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
 
-// Schema Definition
 const schema = z.object({
   title: z.string().min(5, "Title must be descriptive"),
   sourceType: z.string().min(1, "Source is required"),
-  sourceReference: z.string().optional(), // e.g. Deviation ID
+  sourceReference: z.string().optional(),
   department: z.string().min(1, "Department is required"),
   owner: z.string().min(2, "Owner is required"),
   riskLevel: z.string().min(1, "Initial risk level is required"),
@@ -72,28 +70,25 @@ export default function CapaCreatePage() {
     },
   });
 
-  // Reusable Create Logic
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      // 1. Generate ID (Mock)
       const newId = `CAPA-2024-${Math.floor(Math.random() * 1000)}`;
 
-      // 2. Persist Data
-      // In a real app, we would pass 'data' to this method
+      // Simulate API call
+      console.log(`Submitting CAPA Data (${action}):`, data);
+      
       workflowService.getOrCreate(newId, "capa");
 
-      // 3. Log Audit
       auditService.add("capa", newId, {
         actionType: "CREATE",
         field: "Record",
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        role: role,
+        role: role || "Unknown", 
         reason: `CAPA Initiated (${action})`,
       });
 
-      // 4. Redirect
       enqueueSnackbar(`CAPA ${newId} created successfully`, {
         variant: "success",
       });
@@ -120,33 +115,43 @@ export default function CapaCreatePage() {
         showBack
       />
 
-      <Alert 
-        severity="info" 
-        icon={<InfoOutlinedIcon />}
-        sx={{ 
-          mt: 3, 
-          maxWidth: 1200, 
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 2.5,
+          maxWidth: 1200,
           mx: "auto",
           borderRadius: 3,
-          border: "1px solid #C7D2FE",
-          bgcolor: "#F5F7FF",
+          border: "1px solid #fde68a",
+          bgcolor: "#fef3c7",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 2,
         }}
       >
-        <AlertTitle sx={{ fontWeight: 700 }}>CAPA Investigation Process</AlertTitle>
-        Define the problem statement, identify root causes, and establish corrective/preventive actions.
-      </Alert>
+        <InfoOutlinedIcon sx={{ color: "#f59e0b", mt: 0.5 }} />
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a", mb: 0.5 }}>
+            CAPA Investigation Process
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#64748b", fontSize: "14px" }}>
+            Define the problem statement, identify root causes, and establish corrective/preventive actions.
+          </Typography>
+        </Box>
+      </Paper>
 
       <Paper
         elevation={0}
         sx={{
           mt: 3,
-          p: 5,
-          borderRadius: 4,
-          border: "1px solid #E9ECEF",
-          boxShadow: shadows.card,
+          p: 4,
+          borderRadius: 3,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
           maxWidth: 1200,
           mx: "auto",
-          background: "linear-gradient(to bottom, #FFFFFF 0%, #FAFBFC 100%)",
+          bgcolor: "#ffffff",
         }}
       >
         <Box sx={{ mb: 4 }}>
@@ -190,10 +195,12 @@ export default function CapaCreatePage() {
                 {...register("title")}
                 error={!!errors.title}
                 helperText={errors.title?.message || "Provide a clear problem summary"}
-                InputProps={{
-                  startAdornment: (
-                    <FactCheckOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <FactCheckOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                    ),
+                  }
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -219,10 +226,12 @@ export default function CapaCreatePage() {
                     fullWidth
                     error={!!errors.department}
                     helperText={errors.department?.message || "Owning department"}
-                    InputProps={{
-                      startAdornment: (
-                        <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                      ),
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+                                <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                            ),
+                        }
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -317,10 +326,12 @@ export default function CapaCreatePage() {
                     fullWidth
                     error={!!errors.riskLevel}
                     helperText={errors.riskLevel?.message || "Impact severity"}
-                    InputProps={{
-                      startAdornment: (
-                        <PriorityHighIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                      ),
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+                                <PriorityHighIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                            ),
+                        }
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -393,10 +404,12 @@ export default function CapaCreatePage() {
                 {...register("owner")}
                 error={!!errors.owner}
                 helperText={errors.owner?.message || "Lead investigator"}
-                InputProps={{
-                  startAdornment: (
-                    <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                  ),
+                slotProps={{
+                    input: {
+                        startAdornment: (
+                            <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                        ),
+                    }
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -415,7 +428,7 @@ export default function CapaCreatePage() {
                 label="Target Closure Date *"
                 type="date"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 {...register("targetDate")}
                 error={!!errors.targetDate}
                 helperText={errors.targetDate?.message || "Expected completion"}

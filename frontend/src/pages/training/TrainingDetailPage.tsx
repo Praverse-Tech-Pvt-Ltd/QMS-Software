@@ -1,25 +1,30 @@
 import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
-  Grid, // ✅ Grid v2
   TextField,
   Typography,
   Divider,
   MenuItem,
   Button,
+  CircularProgress,
+  Alert,
+  Grid, // ✅ Standardized to Grid2 for consistency
+  Stack,
 } from "@mui/material";
+
 import SaveIcon from "@mui/icons-material/Save";
 import PrintIcon from "@mui/icons-material/Print";
+import { useSnackbar } from "notistack"; // Added for feedback
 
-// --- ENGINEERING STANDARDS IMPORTS ---
-import { useFetch } from "../../hooks/useFetch";
-import { trainingService } from "../../services/training.service"; // ✅ Service
-import LoadingState from "../../components/common/LoadingState";
-import ErrorState from "../../components/common/ErrorState";
-import ConfirmDialog from "../../components/common/ConfirmDialog";import { useRole } from "../../app/providers/RoleProvider";
+import {
+  trainingService,
+  type TrainingPlan,
+  type TrainingAssignment, // ✅ Import detail table type
+} from "../../services/training.service";
+import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
-// --- COMPONENT IMPORTS ---
+
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
 import SignatureStamp from "../../components/qms/SignatureStamp";
@@ -29,7 +34,6 @@ import WorkflowTimeline from "../../components/qms/WorkflowTimeline";
 import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
 import { WORKFLOWS } from "../../config/workflows";
 
-// Module Specific Components
 import VersionHistoryPanel from "../../components/dms/VersionHistoryPanel";
 import VersionCompareModal from "../../components/dms/VersionCompareModal";
 import ControlledCopyPrintModal from "../../components/dms/ControlledCopyPrintModal";
@@ -38,43 +42,93 @@ import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import ActivityLog from "../../components/qms/ActivityLog";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+import TraineeProgressTable from "../../components/training/TraineeProgressTable";
+import AssignTrainingDialog from "../../components/training/AssignTrainingDialog";
 
 export default function TrainingDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const { role } = useRole();
+  const { enqueueSnackbar } = useSnackbar();
 
-  // 1. DATA FETCHING
-  const { 
-    data: record, 
-    isLoading, 
-    error, 
-    refetch 
-  } = useFetch(() => trainingService.getById(id || ""), [id]);
+  const [record, setRecord] = useState<TrainingPlan | null>(null);
+  const [assignments, setAssignments] = useState<TrainingAssignment[]>([]); // ✅ Detail table state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 2. LOCAL STATE
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // DMS/Training Specific State
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
   const [printModalOpen, setPrintModalOpen] = useState(false);
 
-  // 3. PERMISSIONS (Mocked logic)
-  const canEdit = record?.status === 'Draft' || record?.status === 'Review';
+  // const navigate = useNavigate();
 
-  // 4. HANDLERS
-  const handleSaveClick = () => setSaveDialogOpen(true);
+  const loadData = async () => {
+  if (!id) return;
+  try {
+    setLoading(true);
+    setError(null);
 
-  const handleConfirmSave = async () => {
-    await trainingService.update(id!, { ...record });
-    setSaveDialogOpen(false);
-    refetch();
+    // 1. CLEAN THE ID: Remove "PLAN-", colons, and all non-numeric characters
+    // This turns "PLAN-1" or ":1" into just "1"
+    const numericId = id.replace(/[^\d]/g, "");
+
+    if (!numericId) {
+      throw new Error("Invalid ID format");
+    }
+
+    // 2. FETCH MASTER RECORD (The Training Plan)
+    const planData = await trainingService.getById(numericId);
+    setRecord(planData);
+
+    // 3. FETCH DETAIL TABLE (The Assignments)
+    // ✅ FIX: Use planData.id (which is a clean Number from the DB) 
+    // instead of the 'id' variable from the URL.
+    const assignmentData = await trainingService.getAssignmentsByPlan(planData.id);
+    
+    setAssignments(assignmentData);
+  } catch (err: any) {
+    console.error("Fetch error:", err);
+    setError("Training record not found or server error.");
+  } finally {
+    setLoading(false);
+  }
   };
 
-  const handleAddReviewer = (user: any) => {
-    console.log("Assigning Reviewer:", user);
-    setAssignModalOpen(false);
+  useEffect(() => {
+    loadData();
+  }, [id]);
+
+  const canEdit =
+    role && record
+      ? permissionService.can(role, "training", "edit") &&
+        record.status === "DRAFT"
+      : false;
+
+  const handleSaveClick = () => setSaveDialogOpen(true);
+
+  const handleConfirmSave = async (reason?: string) => {
+    if (!record || !id) return;
+    try {
+      await trainingService.update(String(record.id), {
+        ...record,
+        change_reason: reason || "Metadata update",
+      });
+      setSaveDialogOpen(false);
+      enqueueSnackbar("Plan updated successfully", { variant: "success" });
+      loadData();
+    } catch (err) {
+      enqueueSnackbar("Failed to save changes", { variant: "error" });
+    }
+  };
+
+  const handleSendReminder = async (assignmentId: string | number) => {
+    enqueueSnackbar(`Reminder notification sent for record #${assignmentId}`, {
+      variant: "info",
+    });
   };
 
   const handleCompare = (vOld: string, vNew: string) => {
@@ -82,41 +136,39 @@ export default function TrainingDetailPage() {
     setCompareModalOpen(true);
   };
 
-  const handleValidate = () => {
-    // Training specific validation
-    if (record?.status === "Draft" && !canEdit) {
-       return "Please upload training materials first.";
-    }
-    return true;
-  };
+  if (loading)
+    return (
+      <Box sx={{ p: 5, textAlign: "center" }}>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>Syncing Training Records...</Typography>
+      </Box>
+    );
 
-  // 5. LOADING / ERROR STATES
-  if (isLoading) return <LoadingState message="Loading Training Plan..." />;
-  if (error || !record) return <ErrorState onRetry={refetch} />;
+  if (error || !record)
+    return (
+      <Box sx={{ p: 5 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
 
-  // 6. RENDER
   return (
     <>
       <DetailTabsLayout
-        title={`${record.id}: ${record.title}`}
-        subtitle={`Plan ID: ${id}`}
+        title={`${record.title}`}
+        subtitle={`Owning Department: ${record.department}`}
         backTo="/training"
-        
-        // Header Status Chip & Signature
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {(record.status === "Effective" || record.status === "Approved") && (
-                <SignatureStamp
-                  isSigned={true}
-                  signedBy="QA Manager"
-                  date={new Date().toLocaleDateString()}
-                />
+            {(record.status === "ACTIVE" || record.status === "EFFECTIVE") && (
+              <SignatureStamp
+                isSigned={true}
+                signedBy="Training Coordinator"
+                date={record.updated_at || new Date().toLocaleDateString()}
+              />
             )}
             <StatusChip status={record.status} />
           </Box>
         }
-
-        // RIGHT PANEL: Workflow & Stats
         rightPanel={
           <Box sx={{ display: "grid", gap: 3 }}>
             <WorkflowTimeline
@@ -125,146 +177,210 @@ export default function TrainingDetailPage() {
             />
 
             <WorkflowActionsPanel
-              recordId={id || ""}
+              recordId={id ?? ""}
               moduleKey="training"
-              meta={record}
-              onUpdated={refetch}
-              onValidate={handleValidate}
+              onUpdated={loadData}
+              meta={{ ...record, id: id ?? "" } as any}
+              onValidate={() => {
+                if (!record.title) return "A descriptive title is required.";
+                if (!record.trainer) return "Please assign a coordinator.";
+                return true;
+              }}
             />
 
             <Divider />
 
-            <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                Plan Stats
+            <Box sx={{ p: 1 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 800,
+                  color: "text.secondary",
+                  textTransform: "uppercase",
+                  fontSize: "0.7rem",
+                  mb: 2,
+                }}
+              >
+                Real-time Compliance
               </Typography>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Total Trainees</Typography>
-                  <Typography variant="body2">{record.totalTrainees}</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    ENROLLED
+                  </Typography>
+                  <Typography variant="body2" fontWeight={800}>
+                    {record.totalTrainees || 0}
+                  </Typography>
                 </Grid>
                 <Grid size={{ xs: 6 }}>
-                  <Typography variant="caption" color="text.secondary">Completion</Typography>
-                  <Typography variant="body2">{record.completionRate}%</Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    fontWeight={700}
+                  >
+                    COMPLETION
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    fontWeight={800}
+                    color="primary.main"
+                  >
+                    {record.completionRate || 0}%
+                  </Typography>
                 </Grid>
               </Grid>
             </Box>
           </Box>
         }
-
-        // TAB 1: OVERVIEW (Configuration)
         overview={
           <Box sx={{ p: 1 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Training Configuration
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                mb: 4,
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="h6" fontWeight={900}>
+                Syllabus & Config
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Stack direction="row" spacing={1}>
                 <Button
-                    variant="outlined"
-                    startIcon={<PrintIcon />}
-                    size="small"
-                    onClick={() => setPrintModalOpen(true)}
+                  variant="outlined"
+                  startIcon={<PrintIcon />}
+                  size="small"
+                  onClick={() => setPrintModalOpen(true)}
+                  sx={{ borderRadius: 2 }}
                 >
-                    Print Plan
+                  Print Summary
                 </Button>
                 {canEdit && (
-                    <Button
+                  <Button
                     variant="contained"
                     startIcon={<SaveIcon />}
                     onClick={handleSaveClick}
                     size="small"
-                    >
+                    sx={{ borderRadius: 2 }}
+                  >
                     Save Changes
-                    </Button>
+                  </Button>
                 )}
-              </Box>
+                <Button
+                  variant="contained"
+                  onClick={() => setAssignModalOpen(true)}
+                >
+                  Assign Personnel
+                </Button>
+
+                <AssignTrainingDialog
+                  open={assignModalOpen}
+                  onClose={() => setAssignModalOpen(false)}
+                  planId={record?.id}
+                  planTitle={record?.title}
+                  onSuccess={loadData}
+                />
+              </Stack>
             </Box>
 
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   select
-                  label="Training Method"
-                  defaultValue={record.method}
+                  label="Method"
+                  value={record.method}
                   fullWidth
                   disabled={!canEdit}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 >
-                  <MenuItem value="Classroom">Classroom</MenuItem>
+                  <MenuItem value="Classroom">Classroom / ILT</MenuItem>
                   <MenuItem value="Online">Online / SCORM</MenuItem>
                   <MenuItem value="Read">Read & Understand</MenuItem>
                 </TextField>
               </Grid>
-
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
-                  label="Duration (Minutes)"
+                  label="Duration (Min)"
                   type="number"
-                  defaultValue={record.duration}
+                  value={record.duration_minutes}
                   fullWidth
                   disabled={!canEdit}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   label="Pass Score (%)"
                   type="number"
-                  defaultValue={record.passScore}
+                  value={record.passScore || 80}
                   fullWidth
                   disabled={!canEdit}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 />
               </Grid>
-
               <Grid size={{ xs: 12 }}>
                 <TextField
                   label="Learning Objectives"
-                  defaultValue={record.objectives}
+                  value={record.description}
                   fullWidth
                   multiline
                   rows={4}
                   disabled={!canEdit}
-                />
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  label="Trainer / Coordinator"
-                  defaultValue={record.trainer}
-                  fullWidth
-                  disabled={!canEdit}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f8fafc",
+                      borderRadius: 3,
+                    },
+                  }}
                 />
               </Grid>
             </Grid>
 
-            <Divider sx={{ my: 4 }} />
-
-            <Box sx={{ display: "grid", gap: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                    Plan Lifecycle
-                </Typography>
-                <VersionHistoryPanel
-                    currentVersion={record.version}
-                    rows={[
-                        { version: "v2.0", status: "Draft", effectiveDate: "-", updatedBy: "Training Lead", updatedAt: "2024-02-10" },
-                        { version: "v1.0", status: "Effective", effectiveDate: "2023-01-15", updatedBy: "QA Manager", updatedAt: "2023-01-15" },
-                    ]}
-                    onView={(v) => console.log("View:", v)}
-                    onCompare={handleCompare}
-                />
-            </Box>
+            <Divider sx={{ my: 5, borderStyle: "dashed" }} />
+            <Typography variant="h6" fontWeight={900} sx={{ mb: 2 }}>
+              Version Control
+            </Typography>
+            <VersionHistoryPanel
+              currentVersion={record.version || "v1.0"}
+              rows={[]}
+              onView={(v) => console.log(v)}
+              onCompare={handleCompare}
+            />
           </Box>
         }
-
-        // TAB 2: MATERIALS (Attachments)
-        attachments={
-            <AttachmentsUploader
-                readOnly={!canEdit}
-                title="Training Materials"
-                acceptedFormats=".pdf,.ppt,.pptx"
+        trainees={
+          <Box sx={{ p: 1 }}>
+            <Typography variant="h6" fontWeight={900} sx={{ mb: 3 }}>
+              Personnel Tracking
+            </Typography>
+            <TraineeProgressTable
+              rows={assignments}
+              onRemind={handleSendReminder}
             />
+          </Box>
         }
-
-        // TAB 3: APPROVALS
+        attachments={
+          <AttachmentsUploader readOnly={!canEdit} title="Course Materials" />
+        }
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel
@@ -275,61 +391,47 @@ export default function TrainingDetailPage() {
             <SignatureLogTable rows={record.signatureLog || []} />
           </Box>
         }
-
-        // TAB 4: AUDIT TRAIL
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ActivityLog />
-            <Divider />
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Audit Log
+            <Typography variant="h6" fontWeight={900}>
+              Audit Trail
             </Typography>
-            <AuditTrailTable rows={[]} /> 
+            <AuditTrailTable rows={record.audit_trail || []} />
           </Box>
         }
       />
 
-      {/* --- MODALS --- */}
       <UserSelectionModal
         open={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
-        onSelect={handleAddReviewer}
+        onSelect={() => setAssignModalOpen(false)}
         title="Assign Training Approver"
       />
-
       <ReasonForChangeModal
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
-        onConfirm={(reason) => {
-             setReasonModalOpen(false);
-             handleConfirmSave();
-        }}
+        onConfirm={handleConfirmSave}
       />
-
-      <ConfirmDialog 
+      <ConfirmDialog
         open={saveDialogOpen}
-        title="Save Training Plan?"
-        message="This will update the training configuration. Version increment may be required."
-        confirmText="Save"
+        title="Submit Updates?"
+        message="Modify the training objectives and configuration? This action is recorded in the audit trail."
         onClose={() => setSaveDialogOpen(false)}
-        onConfirm={() => {
-             handleConfirmSave();
-        }}
+        onConfirm={() => handleConfirmSave()}
       />
-
       <VersionCompareModal
         open={compareModalOpen}
         onClose={() => setCompareModalOpen(false)}
         oldVersion={compareVersions.old}
         newVersion={compareVersions.new}
       />
-
       <ControlledCopyPrintModal
         open={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
-        docTitle={record.title}
-        docId={record.id}
-        version={record.version}
+        docTitle={record.title || ""}
+        docId={record.id.toString()}
+        version={record.version || "v1.0"}
       />
     </>
   );

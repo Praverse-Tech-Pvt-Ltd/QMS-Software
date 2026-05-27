@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { UserRole } from "../../types/permissions.types";
+import type { UserRole } from "../../services/permission.service"; // ✅ Import UserRole type from service, not config
 
 type RoleContextType = {
   role: UserRole | null; // ✅ Allow null (Logged Out)

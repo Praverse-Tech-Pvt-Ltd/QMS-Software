@@ -1,12 +1,12 @@
 import { Box, Button, CircularProgress } from "@mui/material";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
-import { transitions, shadows, motion } from "../../theme/motion";
+import { transitions, shadows } from "../../theme/motion";
 
-// ✅ 1. Define flexible props
 interface FormActionsProps {
   onCancel?: () => void;
   onSaveDraft?: () => void;
+  onSubmit?: () => void; // ✅ Added explicit onSubmit prop
   isSubmitting?: boolean;
   labels?: {
     cancel?: string;
@@ -18,6 +18,7 @@ interface FormActionsProps {
 export default function FormActions({
   onCancel,
   onSaveDraft,
+  onSubmit, // ✅ Destructure onSubmit
   isSubmitting = false,
   labels = { cancel: "Cancel", draft: "Save Draft", submit: "Submit for Review" },
 }: FormActionsProps) {
@@ -44,14 +45,8 @@ export default function FormActions({
             px: 3,
             color: "#5C6370",
             transition: transitions.button.default,
-            "&:hover": {
-              bgcolor: "#F3F4F6",
-              transform: "translateY(-1px)",
-            },
-            "&:active": {
-              transform: "translateY(0)",
-              transition: transitions.button.press,
-            },
+            "&:hover": { bgcolor: "#F3F4F6", transform: "translateY(-1px)" },
+            "&:active": { transform: "translateY(0)", transition: transitions.button.press },
           }}
         >
           {labels.cancel}
@@ -78,10 +73,7 @@ export default function FormActions({
               transform: "translateY(-1px)",
               boxShadow: shadows.subtle,
             },
-            "&:active": {
-              transform: "translateY(0)",
-              transition: transitions.button.press,
-            },
+            "&:active": { transform: "translateY(0)", transition: transitions.button.press },
           }}
         >
           {labels.draft}
@@ -92,7 +84,9 @@ export default function FormActions({
       <Button
         variant="contained"
         size="large"
-        type="submit"
+        // ✅ If onSubmit is passed, use it. Otherwise, act as a standard form submit button.
+        type={onSubmit ? "button" : "submit"} 
+        onClick={onSubmit}
         disabled={isSubmitting}
         endIcon={
           isSubmitting ? (
@@ -111,13 +105,8 @@ export default function FormActions({
             boxShadow: shadows.card,
             transform: "translateY(-1px)",
           },
-          "&:active": {
-            transform: "translateY(0)",
-            transition: transitions.button.press,
-          },
-          "&:disabled": {
-            bgcolor: "#E9ECEF",
-          },
+          "&:active": { transform: "translateY(0)", transition: transitions.button.press },
+          "&:disabled": { bgcolor: "#E9ECEF" },
         }}
       >
         {isSubmitting ? "Processing..." : labels.submit}

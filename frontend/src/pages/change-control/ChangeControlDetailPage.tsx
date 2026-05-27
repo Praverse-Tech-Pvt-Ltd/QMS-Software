@@ -1,151 +1,232 @@
 import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
-  Grid, // ✅ Grid v2
   TextField,
   Typography,
   Divider,
   MenuItem,
   Button,
+  CircularProgress,
+  Alert,
+  Grid,
+  Stack,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
+import { useSnackbar } from "notistack";
 
-// --- ENGINEERING STANDARDS IMPORTS ---
-import { useFetch } from "../../hooks/useFetch";
-import { changeService } from "../../services/change.service"; // ✅ Service
-import LoadingState from "../../components/common/LoadingState";
-import ErrorState from "../../components/common/ErrorState";
-import ConfirmDialog from "../../components/common/ConfirmDialog";import { useRole } from "../../app/providers/RoleProvider";
+// --- SERVICES ---
+import {
+  changeService,
+  type ChangeRecord,
+} from "../../services/change.service";
+import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
-// --- COMPONENT IMPORTS ---
+
+// --- COMPONENTS ---
 import DetailTabsLayout from "../../components/qms/DetailTabsLayout";
 import StatusChip from "../../components/qms/StatusChip";
 import SignatureStamp from "../../components/qms/SignatureStamp";
 import ReasonForChangeModal from "../../components/common/ReasonForChangeModal";
 import UserSelectionModal from "../../components/common/UserSelectionModal";
-import WorkflowTimeline from "../../components/qms/WorkflowTimeline"; 
-import { WORKFLOWS } from "../../config/workflows"; 
+import WorkflowTimeline from "../../components/qms/WorkflowTimeline";
+import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
+import { WORKFLOWS } from "../../config/workflows";
 
-// Module Specific Components
-import ImpactAssessmentPanel from "../../components/change/ImpactAssessmentPanel"; 
-import ClosureChecklist from "../../components/qms/ClosureChecklist";
+import ImpactAssessmentPanel from "../../components/change/ImpactAssessmentPanel";
 import AttachmentsUploader from "../../components/qms/AttachmentsUploader";
 import ApprovalsPanel from "../../components/qms/ApprovalsPanel";
 import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
-import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
+import ActivityLog from "../../components/qms/ActivityLog";
+import ConfirmDialog from "../../components/common/ConfirmDialog";
+
+// const mapStatusToWorkflow = (backendStatus: string): any => {
+//   switch (backendStatus) {
+//     case "DRAFT":
+//       return "Draft";
+//     case "EVALUATION":
+//       return "Evaluation";
+//     case "APPROVAL":
+//       return "Review";
+//     case "IMPLEMENTATION":
+//       return "In Progress";
+//     case "CLOSED":
+//       return "Closed";
+//     default:
+//       return "Draft";
+//   }
+// };
 
 export default function ChangeControlDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams(); // Using business cc_id (e.g. CC-2026-001)
   const { role } = useRole();
+  const { enqueueSnackbar } = useSnackbar();
 
-  // 1. DATA FETCHING
-  const { 
-    data: record, 
-    isLoading, 
-    error, 
-    refetch 
-  } = useFetch(() => changeService.getById(id || ""), [id]);
+  const [record, setRecord] = useState<ChangeRecord | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // 2. LOCAL STATE
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  // 3. PERMISSIONS - Check both role and record status
-  const canEdit = permissionService.can(role, 'change', 'edit') && 
-                  record?.status !== 'Closed' && record?.status !== 'Cancelled';
-  const canDelete = permissionService.can(role, 'change', 'delete');
+  const loadData = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      const data = await changeService.getById(id);
+      setRecord(data);
+    } catch (err) {
+      setError("Failed to load Change Request.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // 4. HANDLERS
+  useEffect(() => {
+    loadData();
+  }, [id]);
+
+  const canEdit =
+    role && record
+      ? permissionService.can(role, "change", "edit") &&
+        record.status !== "CLOSED"
+      : false;
+
+  const handleFieldChange = (field: keyof ChangeRecord, value: any) => {
+    if (record) setRecord({ ...record, [field]: value });
+  };
+
+  const handleImpactChange = (newImpactData: any) => {
+    if (record) setRecord({ ...record, impact_data: newImpactData });
+  };
+
   const handleSaveClick = () => setSaveDialogOpen(true);
 
-  const handleConfirmSave = async () => {
-    await changeService.update(id!, { ...record });
-    setSaveDialogOpen(false);
-    refetch();
+  const handleConfirmSave = async (reason?: string) => {
+    if (!record || !id) return;
+    try {
+      // ✅ Handshake: Use numeric record.id for API PATCH while URL remains cc_id
+      await changeService.update(record.id, {
+        ...record,
+        change_reason: reason || "Investigation/Assessment Update",
+      });
+      setSaveDialogOpen(false);
+      enqueueSnackbar("Change Control updated successfully", {
+        variant: "success",
+      });
+      loadData();
+    } catch (err) {
+      enqueueSnackbar("Failed to save changes", { variant: "error" });
+    }
   };
 
-  const handleAddReviewer = (user: any) => {
-    console.log("Assigning Reviewer:", user);
-    setAssignModalOpen(false);
-    // In real app: changeService.addReviewer(id, user)
-  };
+  if (loading)
+    return (
+      <Box sx={{ p: 5, textAlign: "center" }}>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>Loading Change Request...</Typography>
+      </Box>
+    );
+  if (error || !record)
+    return (
+      <Box sx={{ p: 5 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
 
-  const handleValidate = () => {
-     // Add validation logic here (e.g., check required fields)
-     return true;
-  };
-
-  // 5. LOADING / ERROR STATES
-  if (isLoading) return <LoadingState message="Loading Change Request..." />;
-  if (error || !record) return <ErrorState onRetry={refetch} />;
-
-  // 6. RENDER
   return (
     <>
       <DetailTabsLayout
-        title={`${record.id}: ${record.title}`}
-        subtitle={`Change Request ID: ${id}`}
+        title={`${record.cc_id}: ${record.title}`}
+        subtitle={`Originating Dept: ${record.department}`}
         backTo="/change-control"
-        
-        // Header Status Chip & Signature
         statusChip={
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {(record.status === "Closed" || record.status === "Approved") && (
-                <SignatureStamp
-                  isSigned={true}
-                  signedBy="QA Manager"
-                  date={new Date().toLocaleDateString()}
-                />
+            {record.status === "CLOSED" && (
+              <SignatureStamp
+                isSigned={true}
+                signedBy="QA Manager"
+                date={new Date().toLocaleDateString()}
+              />
             )}
             <StatusChip status={record.status} />
           </Box>
         }
-
-        // RIGHT PANEL: Workflow Timeline & Actions
         rightPanel={
-            <Box sx={{ display: "grid", gap: 3 }}>
-                <WorkflowTimeline
-                    currentStatus={record.status}
-                    steps={WORKFLOWS.change.steps}
-                />
-                
-                <WorkflowActionsPanel
-                    recordId={id || ""}
-                    moduleKey="change"
-                    meta={record} 
-                    onUpdated={refetch}
-                    onValidate={handleValidate}
-                />
-
-                <Divider />
-
+          <Box sx={{ display: "grid", gap: 3 }}>
+            <WorkflowTimeline
+              currentStatus={record.status}
+              steps={WORKFLOWS.change.steps}
+            />
+            <WorkflowActionsPanel
+              recordId={record.id.toString()}
+              moduleKey="change"
+              meta={
+                {
+                  ...record,
+                  id: record.id.toString(),
+                  status: record.status,
+                  approvalRequests: [],
+                  approvalsLog: [],
+                  signatureLog: [],
+                } as any
+              }
+              onUpdated={loadData}
+              // ✅ GxP Validation: Cannot move past evaluation without impact notes
+              onValidate={() => {
+                if (
+                  record.status === "EVALUATION" &&
+                  !record.impact_data?.risk_notes
+                ) {
+                  return "Impact assessment risk notes are required for evaluation.";
+                }
+                return true;
+              }}
+            />
+            <Divider />
+            <Box>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 800,
+                  mb: 1,
+                  color: "text.secondary",
+                  textTransform: "uppercase",
+                  fontSize: "0.75rem",
+                }}
+              >
+                Classification
+              </Typography>
+              <Stack spacing={1}>
                 <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
-                        Change Stats
-                    </Typography>
-                    <Grid container spacing={2}>
-                        <Grid size={{ xs: 6 }}>
-                            <Typography variant="caption" color="text.secondary">Priority</Typography>
-                            <Typography variant="body2">{record.priority}</Typography>
-                        </Grid>
-                        <Grid size={{ xs: 6 }}>
-                            <Typography variant="caption" color="text.secondary">Department</Typography>
-                            <Typography variant="body2">{record.department}</Typography>
-                        </Grid>
-                    </Grid>
+                  <Typography variant="caption" color="text.secondary">
+                    Strategy
+                  </Typography>
+                  <Typography variant="body2" fontWeight={700}>
+                    {record.change_type}
+                  </Typography>
                 </Box>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Target Date
+                  </Typography>
+                  <Typography variant="body2" fontWeight={700}>
+                    {record.target_date || "N/A"}
+                  </Typography>
+                </Box>
+              </Stack>
             </Box>
+          </Box>
         }
-
-        // TAB 1: OVERVIEW (Change Request Form)
         overview={
           <Box sx={{ p: 1 }}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
+            >
               <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Change Request Details
+                General Information
               </Typography>
               {canEdit && (
                 <Button
@@ -153,117 +234,96 @@ export default function ChangeControlDetailPage() {
                   startIcon={<SaveIcon />}
                   onClick={handleSaveClick}
                   size="small"
+                  sx={{ borderRadius: 2 }}
                 >
                   Save Changes
                 </Button>
               )}
             </Box>
-
             <Grid container spacing={3}>
               <Grid size={{ xs: 12, md: 8 }}>
                 <TextField
                   label="Change Title"
-                  defaultValue={record.title}
+                  value={record.title}
                   fullWidth
                   disabled={!canEdit}
+                  onChange={(e) => handleFieldChange("title", e.target.value)}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
                 <TextField
                   select
-                  label="Change Type"
-                  defaultValue={record.type}
+                  label="Change Classification"
+                  value={record.change_type}
                   fullWidth
                   disabled={!canEdit}
+                  onChange={(e) =>
+                    handleFieldChange("change_type", e.target.value)
+                  }
                 >
-                  <MenuItem value="Minor">Minor</MenuItem>
-                  <MenuItem value="Major">Major</MenuItem>
-                  <MenuItem value="Critical">Critical</MenuItem>
+                  <MenuItem value="STANDARD">Standard</MenuItem>
+                  <MenuItem value="PERMANENT">Permanent</MenuItem>
+                  <MenuItem value="TEMPORARY">Temporary</MenuItem>
+                  <MenuItem value="EMERGENCY">Emergency</MenuItem>
                 </TextField>
               </Grid>
-
               <Grid size={{ xs: 12 }}>
                 <TextField
-                  label="Description / Reason for Change"
-                  defaultValue={record.description}
+                  label="Description & Justification"
+                  value={record.description}
                   fullWidth
                   multiline
                   rows={4}
                   disabled={!canEdit}
+                  placeholder="Detail the proposed change and why it is necessary..."
+                  onChange={(e) =>
+                    handleFieldChange("description", e.target.value)
+                  }
                 />
               </Grid>
-              
-               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  label="Owner"
-                  defaultValue={record.owner}
-                  fullWidth
-                  disabled={!canEdit}
-                />
-              </Grid>
-               <Grid size={{ xs: 12, md: 6 }}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   label="Target Implementation Date"
                   type="date"
-                  defaultValue={record.targetDate}
+                  value={record.target_date || ""}
                   fullWidth
                   disabled={!canEdit}
-                  InputLabelProps={{ shrink: true }}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  onChange={(e) =>
+                    handleFieldChange("target_date", e.target.value)
+                  }
                 />
               </Grid>
             </Grid>
           </Box>
         }
-
-        // TAB 2: IMPACT ASSESSMENT
         impact={
           <Box sx={{ p: 1 }}>
-            <ImpactAssessmentPanel readOnly={!canEdit} />
-            
-            {record.status === "Closure" && (
-              <Box sx={{ mt: 3 }}>
-                <ClosureChecklist />
-              </Box>
-            )}
+            <ImpactAssessmentPanel
+              data={record.impact_data || {}}
+              onChange={handleImpactChange}
+              readOnly={!canEdit}
+            />
           </Box>
         }
-
-        // TAB 3: IMPLEMENTATION PLAN (Redirect to Impact)
-        plan={
-          <Box sx={{ p: 5, textAlign: "center", color: "text.secondary" }}>
-            <Typography gutterBottom>
-              The Implementation Plan is now managed within the <b>Impact Assessment</b> tab.
-            </Typography>
-            <Button variant="outlined" disabled>
-              See Impact Tab
-            </Button>
-          </Box>
-        }
-
-        // TAB 4: ATTACHMENTS
-        attachments={
-          <AttachmentsUploader readOnly={!canEdit} title="Drawings & Specs" />
-        }
-
-        // TAB 5: APPROVALS
+        attachments={<AttachmentsUploader readOnly={!canEdit} />}
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel
-              requests={record.approvalRequests || []}
+              requests={[]}
               canAddReviewer={canEdit}
               onAddReviewer={() => setAssignModalOpen(true)}
             />
-            <SignatureLogTable rows={record.signatureLog || []} />
+            <SignatureLogTable rows={record.signatureLog || []} />{" "}
           </Box>
         }
-
-        // TAB 6: AUDIT TRAIL
         activity={
           <Box sx={{ display: "grid", gap: 3 }}>
+            <ActivityLog />
             <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Audit Log
+              Audit Trail
             </Typography>
-            <AuditTrailTable rows={[]} /> 
+            <AuditTrailTable rows={record.audit_trail || []} />
           </Box>
         }
       />
@@ -272,31 +332,21 @@ export default function ChangeControlDetailPage() {
       <UserSelectionModal
         open={assignModalOpen}
         onClose={() => setAssignModalOpen(false)}
-        onSelect={handleAddReviewer}
-        title="Assign Change Control Approver"
+        onSelect={() => setAssignModalOpen(false)}
+        title="Assign Reviewer"
       />
-
       <ReasonForChangeModal
         open={reasonModalOpen}
         onClose={() => setReasonModalOpen(false)}
-        onConfirm={(reason) => {
-             setReasonModalOpen(false);
-             handleConfirmSave();
-        }}
+        onConfirm={(r) => handleConfirmSave(r)}
       />
-
-      <ConfirmDialog 
+      <ConfirmDialog
         open={saveDialogOpen}
-        title="Save Change Request?"
-        message="This will update the change details. Ensure impact assessment is reviewed if scope has changed."
-        confirmText="Save"
+        title="Commit Changes"
+        message="Are you sure you want to update the change control assessment? All modifications will be tracked."
+        confirmText="Confirm Save"
         onClose={() => setSaveDialogOpen(false)}
-        onConfirm={() => {
-             // You can force a reason check here if required:
-             // setReasonModalOpen(true);
-             // OR just save:
-             handleConfirmSave();
-        }}
+        onConfirm={() => handleConfirmSave()}
       />
     </>
   );

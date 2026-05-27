@@ -1,5 +1,5 @@
 import { 
-  Box, Typography, Avatar, TextField, Button, Paper, Divider 
+  Box, Typography, Avatar, TextField, Button, Paper,  
 } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import { useState } from "react";

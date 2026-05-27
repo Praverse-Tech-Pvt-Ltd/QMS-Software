@@ -1,4 +1,4 @@
-import type { DeviationRecord } from "../types/deviation.types";
+import type { DeviationRecord } from "../services/deviations.service";
 
 export const deviationsMock: DeviationRecord[] = [
   {

@@ -1,4 +1,14 @@
-import { Box, Paper, TextField, MenuItem, Typography, Divider,  Grid, Chip, Stack, Alert, AlertTitle } from "@mui/material";
+import {
+  Box,
+  Paper,
+  TextField,
+  MenuItem,
+  Typography,
+  Divider,
+  Stack,
+  Grid,
+} from "@mui/material";
+
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
 import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
@@ -15,12 +25,15 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
-import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
+import {
+  trainingService,
+  type TrainingPlan,
+} from "../../services/training.service";
 
-// Schema Definition
+// Define valid statuses to match your Workflow types
+
 const schema = z.object({
   title: z.string().min(5, "Training title must be descriptive"),
   trainingMethod: z.string().min(1, "Method is required"),
@@ -28,12 +41,10 @@ const schema = z.object({
   department: z.string().min(1, "Target Department is required"),
   coordinator: z.string().min(2, "Coordinator/Trainer name is required"),
   dueDate: z.string().min(1, "Completion due date is required"),
-  // z.coerce handles string "60" -> number 60 automatically
   durationMinutes: z.coerce.number().min(5, "Duration must be at least 5 mins"),
   description: z.string().min(10, "Learning objectives are required"),
 });
 
-// Infer type from schema
 type FormValues = z.infer<typeof schema>;
 
 export default function TrainingCreatePage() {
@@ -41,7 +52,6 @@ export default function TrainingCreatePage() {
   const { enqueueSnackbar } = useSnackbar();
   const { role } = useRole();
 
-  // ✅ Fix: Removed <FormValues> generic to allow resolver type inference
   const {
     register,
     control,
@@ -56,43 +66,61 @@ export default function TrainingCreatePage() {
       department: "Production",
       coordinator: "",
       dueDate: "",
-      durationMinutes: 60, // Default must match the coerced type (number)
+      durationMinutes: 60,
       description: "",
     },
   });
 
-  // Reusable Create Logic
-  const handleCreate = async (data: FormValues, action: 'Draft' | 'Submit') => {
+  const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      const newId = `TRN-2024-${Math.floor(Math.random() * 1000)}`;
-      
-      workflowService.getOrCreate(newId, 'training');
+      // ✅ Payload mapping with explicit type casting for Status
+      // This solves the "string is not assignable to WorkflowStatus" error
+      const payload: Partial<TrainingPlan> = {
+        title: data.title,
+        method: data.trainingMethod,
+        department: data.department,
+        trainer: data.coordinator,
+        due_date: data.dueDate,
+        duration_minutes: data.durationMinutes,
+        description: data.description,
+        // ✅ Type cast to any or specifically to TrainingStatus to satisfy TypeScript
+        status: (action === "Draft" ? "DRAFT" : "ACTIVE") as any,
+      };
 
-      auditService.add('training', newId, {
+      const response = await trainingService.create(payload);
+      const serverId = response.id;
+
+      // Log the event in the Audit Trail for 21 CFR Part 11 compliance
+      auditService.add("training", serverId.toString(), {
         actionType: "CREATE",
         field: "Record",
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        role: role,
-        reason: `Created Training Plan (${action})`
+        role: role || "Unknown",
+        reason: `Created Training Plan: ${data.title} (${action})`,
       });
 
-      enqueueSnackbar(`Training Plan ${newId} created successfully`, { variant: "success" });
-      navigate(`/training/${newId}`);
+      enqueueSnackbar(`Training Plan PLAN-${serverId} created successfully`, {
+        variant: "success",
+      });
 
-    } catch (err) {
+      // ✅ Redirect using the format the DetailPage expects
+      navigate(`/training/PLAN-${serverId}`);
+    } catch (err: any) {
       console.error(err);
-      enqueueSnackbar("Failed to create training plan", { variant: "error" });
+      const errorMsg =
+        err.response?.data?.detail || "Failed to create training plan";
+      enqueueSnackbar(errorMsg, { variant: "error" });
     }
   };
 
-  const onSaveDraft = (data: FormValues) => handleCreate(data, 'Draft');
-  const onSubmitReview = (data: FormValues) => handleCreate(data, 'Submit');
+  const onSaveDraft = (data: FormValues) => handleCreate(data, "Draft");
+  const onSubmitReview = (data: FormValues) => handleCreate(data, "Submit");
 
   return (
     <Box
-      sx={{ 
+      sx={{
         animation: `fadeInUp ${motion.duration.slow}ms ${motion.easing.smooth}`,
         ...keyframes.fadeInUp,
       }}
@@ -103,33 +131,50 @@ export default function TrainingCreatePage() {
         showBack
       />
 
-      <Alert 
-        severity="info" 
-        icon={<InfoOutlinedIcon />}
-        sx={{ 
-          mt: 3, 
-          maxWidth: 1200, 
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 2.5,
+          maxWidth: 1200,
           mx: "auto",
           borderRadius: 3,
-          border: "1px solid #C7D2FE",
-          bgcolor: "#F5F7FF",
+          border: "1px solid #bbf7d0",
+          bgcolor: "#f0fdf4",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 2,
         }}
       >
-        <AlertTitle sx={{ fontWeight: 700 }}>Training Management</AlertTitle>
-        Define the training requirements, select assessment methods, and assign completion deadlines.
-      </Alert>
+        <InfoOutlinedIcon sx={{ color: "#10b981", mt: 0.5 }} />
+        <Box>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600, color: "#0f172a", mb: 0.5 }}
+          >
+            Training Management
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{ color: "#64748b", fontSize: "14px" }}
+          >
+            Define the training requirements, select assessment methods, and
+            assign completion deadlines.
+          </Typography>
+        </Box>
+      </Paper>
 
       <Paper
         elevation={0}
         sx={{
           mt: 3,
-          p: 5,
-          borderRadius: 4,
-          border: "1px solid #E9ECEF",
-          boxShadow: shadows.card,
+          p: 4,
+          borderRadius: 3,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
           maxWidth: 1200,
           mx: "auto",
-          background: "linear-gradient(to bottom, #FFFFFF 0%, #FAFBFC 100%)",
+          bgcolor: "#ffffff",
         }}
       >
         <Box sx={{ mb: 4 }}>
@@ -148,7 +193,10 @@ export default function TrainingCreatePage() {
               <SchoolOutlinedIcon sx={{ color: "#2563EB", fontSize: 22 }} />
             </Box>
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: "#0f172a" }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 800, color: "#0f172a" }}
+              >
                 Plan Configuration
               </Typography>
               <Typography variant="caption" sx={{ color: "#64748b" }}>
@@ -158,12 +206,7 @@ export default function TrainingCreatePage() {
           </Stack>
         </Box>
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit(onSubmitReview)}
-          sx={{ display: "grid", gap: 3 }}
-        >
-          {/* Configuration Section */}
+        <Box component="form" sx={{ display: "grid", gap: 3 }}>
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField
@@ -172,19 +215,21 @@ export default function TrainingCreatePage() {
                 fullWidth
                 {...register("title")}
                 error={!!errors.title}
-                helperText={errors.title?.message || "Describe the training topic clearly"}
+                helperText={
+                  errors.title?.message || "Describe the training topic clearly"
+                }
                 InputProps={{
                   startAdornment: (
-                    <SchoolOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                    <SchoolOutlinedIcon
+                      sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                    />
                   ),
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     bgcolor: "#FFFFFF",
                     transition: transitions.fast,
-                    "&.Mui-focused": {
-                      boxShadow: shadows.subtle,
-                    },
+                    "&.Mui-focused": { boxShadow: shadows.subtle },
                   },
                 }}
               />
@@ -201,6 +246,13 @@ export default function TrainingCreatePage() {
                     label="Target Department"
                     fullWidth
                     error={!!errors.department}
+                    InputProps={{
+                      startAdornment: (
+                        <BusinessOutlinedIcon
+                          sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                        />
+                      ),
+                    }}
                   >
                     <MenuItem value="Production">Production</MenuItem>
                     <MenuItem value="QA">Quality Assurance</MenuItem>
@@ -224,8 +276,12 @@ export default function TrainingCreatePage() {
                     fullWidth
                     error={!!errors.trainingMethod}
                   >
-                    <MenuItem value="Read & Understand">Read & Understand (SOP)</MenuItem>
-                    <MenuItem value="Classroom">Classroom / Instructor Led</MenuItem>
+                    <MenuItem value="Read & Understand">
+                      Read & Understand (SOP)
+                    </MenuItem>
+                    <MenuItem value="Classroom">
+                      Classroom / Instructor Led
+                    </MenuItem>
                     <MenuItem value="OJT">On-the-Job Training (OJT)</MenuItem>
                     <MenuItem value="E-Learning">E-Learning / SCORM</MenuItem>
                   </TextField>
@@ -247,7 +303,9 @@ export default function TrainingCreatePage() {
                   >
                     <MenuItem value="None">Attendance Only</MenuItem>
                     <MenuItem value="Quiz">Written Quiz</MenuItem>
-                    <MenuItem value="Practical">Practical Demonstration</MenuItem>
+                    <MenuItem value="Practical">
+                      Practical Demonstration
+                    </MenuItem>
                   </TextField>
                 )}
               />
@@ -261,65 +319,87 @@ export default function TrainingCreatePage() {
                 {...register("durationMinutes")}
                 error={!!errors.durationMinutes}
                 helperText={errors.durationMinutes?.message}
+                InputProps={{
+                  startAdornment: (
+                    <AccessTimeIcon
+                      sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                    />
+                  ),
+                }}
               />
             </Grid>
           </Grid>
 
           <Divider />
 
-          {/* Logistics Section */}
           <Typography variant="h6" sx={{ fontWeight: 800, mt: 1 }}>
             Logistics & Objectives
           </Typography>
 
           <Grid container spacing={3}>
-             <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  label="Coordinator / Trainer"
-                  fullWidth
-                  placeholder="Who is managing this training?"
-                  {...register("coordinator")}
-                  error={!!errors.coordinator}
-                  helperText={errors.coordinator?.message}
-                />
-             </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Coordinator / Trainer"
+                fullWidth
+                placeholder="Who is managing this training?"
+                {...register("coordinator")}
+                error={!!errors.coordinator}
+                helperText={errors.coordinator?.message}
+                InputProps={{
+                  startAdornment: (
+                    <PersonOutlinedIcon
+                      sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                    />
+                  ),
+                }}
+              />
+            </Grid>
 
-             <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  label="Completion Deadline"
-                  type="date"
-                  fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  {...register("dueDate")}
-                  error={!!errors.dueDate}
-                  helperText={errors.dueDate?.message}
-                />
-             </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Completion Deadline"
+                type="date"
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                {...register("dueDate")}
+                error={!!errors.dueDate}
+                helperText={errors.dueDate?.message}
+                InputProps={{
+                  startAdornment: (
+                    <CalendarTodayOutlinedIcon
+                      sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }}
+                    />
+                  ),
+                }}
+              />
+            </Grid>
 
-             <Grid size={{ xs: 12 }}>
-                <TextField
-                  label="Learning Objectives / Description"
-                  multiline
-                  rows={4}
-                  fullWidth
-                  placeholder="What will trainees learn? e.g. Proper gowning sequence for Zone A entry..."
-                  {...register("description")}
-                  error={!!errors.description}
-                  helperText={errors.description?.message}
-                />
-             </Grid>
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                label="Learning Objectives / Description"
+                multiline
+                rows={4}
+                fullWidth
+                placeholder="What will trainees learn? e.g. Proper gowning sequence for Zone A entry..."
+                {...register("description")}
+                error={!!errors.description}
+                helperText={errors.description?.message}
+              />
+            </Grid>
           </Grid>
 
           <Divider sx={{ my: 1 }} />
-          
+
           <Typography variant="body2" color="text.secondary">
-             Note: You can assign specific employees and upload training materials after creating the plan.
+            Note: You can assign specific employees and upload training
+            materials after creating the plan.
           </Typography>
 
-          <FormActions 
-             onSaveDraft={() => handleSubmit(onSaveDraft)()} 
-             isSubmitting={isSubmitting}
-             labels={{ submit: "Create Plan", draft: "Save Draft" }}
+          <FormActions
+            onSaveDraft={handleSubmit(onSaveDraft)}
+            onSubmit={handleSubmit(onSubmitReview)} 
+            isSubmitting={isSubmitting}
+            labels={{ submit: "Create Plan", draft: "Save Draft" }}
           />
         </Box>
       </Paper>

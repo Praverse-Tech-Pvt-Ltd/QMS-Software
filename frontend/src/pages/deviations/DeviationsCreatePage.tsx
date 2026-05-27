@@ -5,20 +5,16 @@ import {
   MenuItem,
   Typography,
   Divider,
-  Grid,
-  Chip,
   Stack,
-  Alert,
-  AlertTitle,
+   Grid, // ✅ Standardized Grid Import
 } from "@mui/material";
+
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
-import SectionTabs from "../../components/qms/SectionTabs";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import CalendarTodayOutlinedIcon from "@mui/icons-material/CalendarTodayOutlined";
 import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 
 import { useNavigate } from "react-router-dom";
@@ -28,14 +24,11 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-// Architecture Imports
 import { useRole } from "../../app/providers/RoleProvider";
 import { workflowService } from "../../services/workflow.service";
 import { auditService } from "../../services/audit.service";
 
-// Schema Definition
 const schema = z.object({
-  // Basic
   title: z.string().min(5, "Title must describe the event clearly"),
   department: z.string().min(1, "Department is required"),
   reportedBy: z.string().min(2, "Reporter name is required"),
@@ -43,14 +36,10 @@ const schema = z.object({
   severity: z.string().min(1, "Severity is required"),
   classification: z.string().min(1, "Classification is required"),
   description: z.string().min(10, "Description must be detailed"),
-
-  // Containment
   immediateAction: z.string().min(5, "Immediate action taken is required"),
-  batchNo: z.string().optional(), // Optional for some deviations
+  batchNo: z.string().optional(),
   productName: z.string().optional(),
   impactedArea: z.string().min(2, "Impacted area is required"),
-
-  // CAPA Linkage
   capaRequired: z.string().min(1, "CAPA requirement must be selected"),
 });
 
@@ -66,13 +55,12 @@ export default function DeviationsCreatePage() {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
       department: "Production",
-      reportedBy: "", // Could default to current user
+      reportedBy: "", 
       incidentDate: new Date().toISOString().split("T")[0],
       severity: "Medium",
       classification: "Process",
@@ -85,30 +73,25 @@ export default function DeviationsCreatePage() {
     },
   });
 
-  const capaRequiredValue = watch("capaRequired");
-
-  // Reusable Create Logic
   const handleCreate = async (data: FormValues, action: "Draft" | "Submit") => {
     try {
-      // 1. Generate ID (Mock)
       const newId = `DEV-2024-${Math.floor(Math.random() * 1000)}`;
-      const initialStatus = action === "Draft" ? "Draft" : "Investigation"; // Deviations jump to Investigation
+      
+      const initialStatus = action === "Draft" ? "Draft" : "Investigation"; 
+      console.log(`Creating Deviation (${initialStatus}):`, data);
 
-      // 2. Persist Data
       workflowService.getOrCreate(newId, "deviations");
 
-      // 3. Log Audit
       auditService.add("deviations", newId, {
         actionType: "CREATE",
         field: "Record",
         oldValue: "N/A",
         newValue: "Created",
         user: "Current User",
-        role: role,
+        role: role || "Unknown",
         reason: `Initial Deviation Report (${action})`,
       });
 
-      // 4. Redirect
       enqueueSnackbar(`Deviation ${newId} raised successfully`, {
         variant: "success",
       });
@@ -135,33 +118,43 @@ export default function DeviationsCreatePage() {
         showBack
       />
 
-      <Alert 
-        severity="warning" 
-        icon={<WarningAmberIcon />}
-        sx={{ 
-          mt: 3, 
-          maxWidth: 1200, 
+      <Paper
+        elevation={0}
+        sx={{
+          mt: 3,
+          p: 2.5,
+          maxWidth: 1200,
           mx: "auto",
           borderRadius: 3,
-          border: "1px solid #FCD34D",
-          bgcolor: "#FFFBEB",
+          border: "1px solid #fecaca",
+          bgcolor: "#fef2f2",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 2,
         }}
       >
-        <AlertTitle sx={{ fontWeight: 700 }}>Report Quality Events Promptly</AlertTitle>
-        All deviations must be reported within 24 hours of discovery. Complete all required fields accurately.
-      </Alert>
+        <WarningAmberIcon sx={{ color: "#ef4444", mt: 0.5 }} />
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a", mb: 0.5 }}>
+            Report Quality Events Promptly
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#64748b", fontSize: "14px" }}>
+            All deviations must be reported within 24 hours of discovery. Complete all required fields accurately.
+          </Typography>
+        </Box>
+      </Paper>
 
       <Paper
         elevation={0}
         sx={{
           mt: 3,
-          p: 5,
-          borderRadius: 4,
-          border: "1px solid #E9ECEF",
-          boxShadow: shadows.card,
+          p: 4,
+          borderRadius: 3,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
           maxWidth: 1200,
           mx: "auto",
-          background: "linear-gradient(to bottom, #FFFFFF 0%, #FAFBFC 100%)",
+          bgcolor: "#ffffff",
         }}
       >
         <Box sx={{ mb: 4 }}>
@@ -205,10 +198,12 @@ export default function DeviationsCreatePage() {
                 {...register("title")}
                 error={!!errors.title}
                 helperText={errors.title?.message || "Provide a clear, concise description"}
-                InputProps={{
-                  startAdornment: (
-                    <ReportProblemOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                  ),
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <PersonOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                    ),
+                  }
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -233,10 +228,12 @@ export default function DeviationsCreatePage() {
                     label="Department *"
                     fullWidth
                     error={!!errors.department}
-                    InputProps={{
-                      startAdornment: (
-                        <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
-                      ),
+                    slotProps={{
+                        input: {
+                            startAdornment: (
+                                <BusinessOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 20 }} />
+                            ),
+                        }
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -263,15 +260,17 @@ export default function DeviationsCreatePage() {
                 label="Date of Incident *"
                 type="date"
                 fullWidth
-                InputLabelProps={{ shrink: true }}
+                slotProps={{ 
+                    inputLabel: { shrink: true },
+                    input: {
+                        startAdornment: (
+                            <CalendarTodayOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 18 }} />
+                        ),
+                    }
+                }}
                 {...register("incidentDate")}
                 error={!!errors.incidentDate}
                 helperText={errors.incidentDate?.message}
-                InputProps={{
-                  startAdornment: (
-                    <CalendarTodayOutlinedIcon sx={{ color: "#94a3b8", mr: 1, fontSize: 18 }} />
-                  ),
-                }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     bgcolor: "#FFFFFF",

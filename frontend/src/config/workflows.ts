@@ -1,192 +1,84 @@
-import type { WorkflowDefinition, WorkflowModuleKey } from '../types/workflow.types';
+import type {
+  WorkflowDefinition,
+  WorkflowModuleKey,
+} from "../services/workflow.service";
 
 export const WORKFLOWS: Record<WorkflowModuleKey, WorkflowDefinition> = {
-  // ---------------------------------------------------------------------------
-  // 1. DMS (Document Management)
-  // ---------------------------------------------------------------------------
   dms: {
     label: "SOP Workflow",
     steps: [
-      { id: '1', label: 'Draft', status: 'Draft', order: 1 },
-      { id: '2', label: 'Review', status: 'In Review', order: 2 },
-      { id: '3', label: 'Approved', status: 'Approved', order: 3 },
-      { id: '4', label: 'Effective', status: 'Effective', order: 4 },
+      { id: "1", label: "Draft", status: "DRAFT", order: 1 },
+      { id: "2", label: "Review", status: "REVIEW", order: 2 },
+      { id: "3", label: "Approved", status: "APPROVED", order: 3 },
+      { id: "4", label: "Effective", status: "EFFECTIVE", order: 4 },
     ],
     transitions: {
-      'Draft': [
-        { 
-          to: 'In Review', 
-          label: 'Submit for Review', 
-          action: 'SUBMIT', 
-          requiredRole: ['Admin', 'QA', 'Production'], // Authors
-          variant: 'primary' 
-        }
+      DRAFT: [{ to: "REVIEW", label: "Submit for Review", action: "SUBMIT", requiredRole: ["Admin", "QA"], variant: "primary" }],
+      REVIEW: [
+        { to: "APPROVED", label: "Approve Document", action: "APPROVE", requiredRole: ["QA"], requiresEsig: true, variant: "success" },
+        { to: "DRAFT", label: "Request Changes", action: "REJECT", requiredRole: ["QA"], requiresComment: true, variant: "error" },
       ],
-      'In Review': [
-        { 
-          to: 'Approved', 
-          label: 'Approve Document', 
-          action: 'APPROVE', 
-          requiredRole: ['QA', 'Admin'], 
-          requiresEsig: true, 
-          variant: 'success' 
-        },
-        { 
-          to: 'Draft', 
-          label: 'Request Changes', 
-          action: 'REJECT', 
-          requiredRole: ['QA', 'Admin'], 
-          requiresComment: true, 
-          variant: 'error' 
-        }
-      ],
-      'Approved': [
-        { 
-          to: 'Effective', 
-          label: 'Make Effective (Publish)', 
-          action: 'PUBLISH', 
-          requiredRole: ['QA'], 
-          requiresEsig: true, 
-          variant: 'primary' 
-        }
-      ],
-      'Effective': [
-        {
-          to: 'Obsolete',
-          label: 'Retire Document',
-          action: 'RETIRE',
-          requiredRole: ['QA'],
-          requiresEsig: true,
-          requiresComment: true,
-          variant: 'error'
-        }
-      ]
-    }
+      APPROVED: [{ to: "EFFECTIVE", label: "Publish", action: "PUBLISH", requiredRole: ["QA"], requiresEsig: true, variant: "primary" }],
+    },
   },
 
-  // ---------------------------------------------------------------------------
-  // 2. CAPA (Corrective & Preventive Action)
-  // ---------------------------------------------------------------------------
   capa: {
     label: "CAPA Workflow",
     steps: [
-      { id: '1', label: 'Draft', status: 'Draft', order: 1 },
-      { id: '2', label: 'Investigation', status: 'Investigation', order: 2 },
-      { id: '3', label: 'Implementation', status: 'Implementation', order: 3 },
-      { id: '4', label: 'Eff. Check', status: 'Effectiveness Check', order: 4 },
-      { id: '5', label: 'Closed', status: 'Closed', order: 5 },
+      { id: "1", label: "Plan", status: "PLANNING", order: 1 },
+      { id: "2", label: "Execution", status: "PENDING", order: 2 },
+      { id: "3", label: "Verification", status: "VERIFICATION", order: 3 },
+      { id: "4", label: "Closed", status: "CLOSED", order: 4 },
     ],
     transitions: {
-      'Draft': [
-        { 
-          to: 'Investigation', 
-          label: 'Initiate CAPA', 
-          action: 'START_INVESTIGATION', 
-          requiredRole: ['QA', 'Admin'], 
-          variant: 'primary' 
-        }
-      ],
-      'Investigation': [
-        { 
-          to: 'Implementation', 
-          label: 'Approve Investigation & Plan', 
-          action: 'APPROVE', 
-          requiredRole: ['QA'], 
-          requiresEsig: true, 
-          variant: 'primary' 
-        },
-        { 
-          to: 'Draft', 
-          label: 'Reject Investigation', 
-          action: 'REJECT', 
-          requiredRole: ['QA'], 
-          requiresComment: true, 
-          variant: 'error' 
-        }
-      ],
-      'Implementation': [
-        { 
-          to: 'Effectiveness Check', 
-          label: 'Complete Implementation', 
-          action: 'SUBMIT', 
-          requiredRole: ['Production', 'QA'], 
-          requiresEsig: true, 
-          variant: 'primary' 
-        }
-      ],
-      'Effectiveness Check': [
-        { 
-          to: 'Closed', 
-          label: 'Verify & Close CAPA', 
-          action: 'CLOSE', 
-          requiredRole: ['QA'], 
-          requiresEsig: true, 
-          variant: 'success' 
-        },
-        { 
-          to: 'Implementation', 
-          label: 'Failed - Re-open Implementation', 
-          action: 'REJECT', 
-          requiredRole: ['QA'], 
-          requiresComment: true, 
-          variant: 'error' 
-        }
-      ]
-    }
+      PLANNING: [{ to: "PENDING", label: "Approve Plan", action: "SUBMIT", requiredRole: ["QA"], requiresEsig: true, variant: "primary" }],
+      PENDING: [{ to: "VERIFICATION", label: "Complete Execution", action: "SUBMIT", requiredRole: ["Production", "QA"], variant: "primary" }],
+      VERIFICATION: [{ to: "CLOSED", label: "Verify & Close", action: "CLOSE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
+    },
   },
 
-  // ---------------------------------------------------------------------------
-  // 3. Deviations
-  // ---------------------------------------------------------------------------
   deviations: {
     label: "Deviation Workflow",
     steps: [
-      { id: '1', label: 'Initiation', status: 'Draft', order: 1 },
-      { id: '2', label: 'Investigation', status: 'Investigation', order: 2 },
-      { id: '3', label: 'QA Review', status: 'QA Review', order: 3 },
-      { id: '4', label: 'Closed', status: 'Closed', order: 4 },
+      { id: "1", label: "Initiation", status: "DRAFT", order: 1 },
+      { id: "2", label: "Investigation", status: "INVESTIGATION", order: 2 },
+      { id: "3", label: "QA Review", status: "QA_REVIEW", order: 3 },
+      { id: "4", label: "Closed", status: "CLOSED", order: 4 },
     ],
     transitions: {
-      'Draft': [
-        { to: 'Investigation', label: 'Submit Event', action: 'SUBMIT', requiredRole: ['Production', 'QA'], variant: 'primary' }
-      ],
-      'Investigation': [
-        { to: 'QA Review', label: 'Submit Investigation', action: 'SUBMIT', requiredRole: ['QA', 'Production'], variant: 'primary' }
-      ],
-      'QA Review': [
-        { to: 'Closed', label: 'Approve & Close', action: 'CLOSE', requiredRole: ['QA'], requiresEsig: true, variant: 'success' },
-        { to: 'Investigation', label: 'Reject / More Info', action: 'REJECT', requiredRole: ['QA'], requiresComment: true, variant: 'error' }
-      ]
-    }
+      DRAFT: [{ to: "INVESTIGATION", label: "Submit Event", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      INVESTIGATION: [{ to: "QA_REVIEW", label: "Submit Investigation", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      QA_REVIEW: [{ to: "CLOSED", label: "Approve & Close", action: "CLOSE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
+    },
   },
 
-  // ---------------------------------------------------------------------------
-  // 4. Change Control
-  // ---------------------------------------------------------------------------
-  change: {
-    label: "Change Control",
-    steps: [
-       { id: '1', label: 'Draft', status: 'Draft', order: 1 },
-       { id: '2', label: 'In Review', status: 'In Review', order: 2 },
-       { id: '3', label: 'Closed', status: 'Closed', order: 3 },
-    ],
-    transitions: {
-       'Draft': [{ to: 'In Review', label: 'Submit', action: 'SUBMIT', requiredRole: ['QA'], variant: 'primary' }],
-       'In Review': [{ to: 'Closed', label: 'Approve', action: 'APPROVE', requiredRole: ['QA'], variant: 'success' }]
-    }
-  },
-
-  // ---------------------------------------------------------------------------
-  // 5. Training
-  // ---------------------------------------------------------------------------
   training: {
     label: "Training Plan",
     steps: [
-       { id: '1', label: 'Draft', status: 'Draft', order: 1 },
-       { id: '2', label: 'Effective', status: 'Effective', order: 2 },
+      { id: "1", label: "Draft", status: "DRAFT", order: 1 },
+      { id: "2", label: "Active", status: "ACTIVE", order: 2 },
     ],
     transitions: {
-       'Draft': [{ to: 'Effective', label: 'Publish Plan', action: 'PUBLISH', requiredRole: ['QA'], variant: 'primary' }]
-    }
-  }
+      DRAFT: [{ to: "ACTIVE", label: "Publish Plan", action: "PUBLISH", requiredRole: ["QA"], variant: "primary" }],
+    },
+  },
+
+  change: {
+    label: "Change Control",
+    steps: [
+      { id: "1", label: "Draft", status: "DRAFT", order: 1 },
+      { id: "2", label: "Evaluation", status: "EVALUATION", order: 2 },
+      { id: "3", label: "Approval", status: "APPROVAL", order: 3 }, // ✅ Added missing step
+      { id: "4", label: "Implementation", status: "IMPLEMENTATION", order: 4 },
+      { id: "5", label: "QA Review", status: "QA_REVIEW", order: 5 }, // ✅ Added to match STATE_MACHINE
+      { id: "6", label: "Closed", status: "CLOSED", order: 6 },
+    ],
+    transitions: {
+      DRAFT: [{ to: "EVALUATION", label: "Submit for Evaluation", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      EVALUATION: [{ to: "APPROVAL", label: "Submit for Approval", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      APPROVAL: [{ to: "IMPLEMENTATION", label: "Approve Implementation", action: "APPROVE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
+      IMPLEMENTATION: [{ to: "QA_REVIEW", label: "Submit for Closure", action: "SUBMIT", requiredRole: ["QA"], variant: "primary" }],
+      QA_REVIEW: [{ to: "CLOSED", label: "Close CC", action: "CLOSE", requiredRole: ["QA"], requiresEsig: true, variant: "success" }],
+    },
+  },
 };

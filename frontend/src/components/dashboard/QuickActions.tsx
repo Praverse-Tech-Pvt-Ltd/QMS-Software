@@ -1,4 +1,4 @@
-import { Box, Card, Grid, Typography, useTheme, alpha } from "@mui/material";
+import { Box, Card, Grid, Typography, alpha } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
@@ -51,7 +51,6 @@ const quickActions = [
 
 export default function QuickActions() {
   const navigate = useNavigate();
-  const theme = useTheme();
 
   return (
     <Box>
@@ -86,9 +85,8 @@ export default function QuickActions() {
       </Box>
 
       <Grid container spacing={2.5}>
-        {quickActions.map((action, index) => (
-          <Grid item xs={12} sm={6} md={3} key={action.id}>
-            <Card
+        {quickActions.map((action) => (
+<Grid size={{ xs: 12, sm: 6, md: 3 }} key={action.id}>            <Card
               elevation={0}
               onClick={() => navigate(action.path)}
               sx={{
@@ -160,9 +158,9 @@ export default function QuickActions() {
                   },
                 }}
               >
-                <Box 
-                  sx={{ 
-                    color: action.color, 
+                <Box
+                  sx={{
+                    color: action.color,
                     fontSize: 28,
                     display: "flex",
                     alignItems: "center",
@@ -176,7 +174,14 @@ export default function QuickActions() {
 
               {/* Content */}
               <Box sx={{ position: "relative" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 0.5,
+                  }}
+                >
                   <Typography
                     variant="subtitle1"
                     sx={{

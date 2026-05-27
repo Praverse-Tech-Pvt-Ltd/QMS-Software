@@ -1,139 +1,306 @@
-import type {
-  WorkflowAction,
-  WorkflowMeta,
-  WorkflowModuleKey,
-  WorkflowStatus,
-} from "../types/workflow.types";
+// ==========================================
+// 🎯 CONSOLIDATED WORKFLOW ENGINE V2.3 (SYNCED)
+// ==========================================
 
-const getKey = (moduleKey: WorkflowModuleKey) => `qms_workflow_${moduleKey}`;
+export type WorkflowModuleKey =
+  | "dms"
+  | "training"
+  | "deviations"
+  | "capa"
+  | "change";
 
-const now = () => new Date().toISOString();
+export type WorkflowStatus =
+  | "DRAFT"
+  | "REVIEW"
+  | "APPROVED"
+  | "REJECTED"
+  | "PENDING"
+  | "CLOSED"
+  | "CANCELLED"
+  | "IN_PROGRESS"
+  | "EFFECTIVE"
+  | "OBSOLETE"
+  | "SUPERSEDED"
+  | "ACTIVE"
+  | "INVESTIGATION"
+  | "QA_REVIEW"
+  | "VERIFICATION"
+  | "EVALUATION"
+  | "APPROVAL"
+  | "IMPLEMENTATION"
+  | "PLANNING";
 
-function seedMeta(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
-  return {
-    id,
-    moduleKey,
-    status: "Draft",
-    reviewers: [],
-    approvers: [],
-    dueDate: "",
-    approvalsLog: [
-      {
-        id: crypto.randomUUID(),
-        action: "SUBMIT_QA_REVIEW",
-        statusAfter: "Draft",
-        comment: "Record created (mock).",
-        user: "System",
-        role: "System",
-        timestamp: now(),
-      },
-      ],
-    signatureLog: [],
-  };
+export type SignatureMeaning =
+  | "Review"
+  | "Approval"
+  | "Execution"
+  | "Authorship"
+  | "Verification"
+  | "Technical Review";
+
+export interface WorkflowStep {
+  id: string;
+  label: string;
+  status: WorkflowStatus;
+  order: number;
 }
 
-export const workflowService = {
+export interface WorkflowDefinition {
+  // ✅ Added 'export'
+  label: string;
+  steps: WorkflowStep[];
+  transitions: Record<string, WorkflowTransition[]>;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  user_id: number | string;
+  username: string;
+  role: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  requested_at: string;
+}
+
+export interface SignatureEntry {
+  id: string;
+  user: string;
+  role: string;
+  action: string;
+  timestamp: string;
+  meaning: SignatureMeaning;
+  comment?: string;
+}
+
+export interface WorkflowTransition {
+  to: WorkflowStatus;
+  label: string;
+  action: WorkflowAction;
+  requiredRole: string[];
+  variant: "primary" | "success" | "error" | "warning" | "default";
+  requiresEsig?: boolean;
+  requiresComment?: boolean;
+}
+
+export type WorkflowAction =
+  | "SUBMIT"
+  | "APPROVE"
+  | "REJECT"
+  | "CLOSE"
+  | "PUBLISH"
+  | "RETIRE"
+  | "START_INVESTIGATION"
+  | "SUBMIT_RCA"
+  | "VERIFY_EFFECTIVENESS";
+
+export interface WorkflowMeta {
+  id: string;
+  moduleKey: WorkflowModuleKey;
+  status: WorkflowStatus;
+  approvalRequests: ApprovalRequest[]; // ✅ Fixed types
+  approvalsLog: any[];
+  signatureLog: SignatureEntry[]; // ✅ Fixed types
+}
+
+// ✅ SYNCED STATE MACHINE: Standardized for all modules
+const STATE_MACHINE: {
+  from: WorkflowStatus[];
+  to: WorkflowStatus;
+  action: WorkflowAction;
+  allowedRoles: string[];
+}[] = [
+  // --- DMS / Documents ---
+  {
+    from: ["DRAFT"],
+    to: "REVIEW",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA", "Production"],
+  },
+  {
+    from: ["REVIEW"],
+    to: "APPROVED",
+    action: "APPROVE",
+    allowedRoles: ["Admin", "QA"],
+  },
+  {
+    from: ["APPROVED"],
+    to: "EFFECTIVE",
+    action: "PUBLISH",
+    allowedRoles: ["Admin", "QA"],
+  },
+
+  // --- Deviations ---
+  {
+    from: ["DRAFT"],
+    to: "INVESTIGATION",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA", "Production"],
+  },
+  {
+    from: ["INVESTIGATION"],
+    to: "QA_REVIEW",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA"],
+  },
+  {
+    from: ["QA_REVIEW"],
+    to: "CLOSED",
+    action: "CLOSE",
+    allowedRoles: ["Admin", "QA"],
+  },
+
+  // --- CAPA Flow ---
+  {
+    from: ["PLANNING"],
+    to: "PENDING",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA", "Production"],
+  },
+  {
+    from: ["PENDING"],
+    to: "VERIFICATION",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA"],
+  },
+  {
+    from: ["VERIFICATION"],
+    to: "CLOSED",
+    action: "CLOSE",
+    allowedRoles: ["Admin", "QA"],
+  },
+
+  // --- Change Control Flow ---
+  {
+    from: ["EVALUATION"],
+    to: "APPROVAL",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA"],
+  },
+  {
+    from: ["APPROVAL"],
+    to: "IMPLEMENTATION",
+    action: "APPROVE",
+    allowedRoles: ["Admin", "QA"],
+  },
+  {
+    from: ["IMPLEMENTATION"],
+    to: "QA_REVIEW",
+    action: "SUBMIT",
+    allowedRoles: ["Admin", "QA", "Production"],
+  },
+  {
+    from: ["QA_REVIEW"],
+    to: "CLOSED",
+    action: "CLOSE",
+    allowedRoles: ["Admin", "QA"],
+  },
+
+  // --- Global Rejections ---
+  {
+    from: ["REVIEW", "QA_REVIEW", "APPROVAL", "VERIFICATION", "INVESTIGATION"],
+    to: "REJECTED",
+    action: "REJECT",
+    allowedRoles: ["Admin", "QA"],
+  },
+];
+
+export class WorkflowEngine {
+  private getKey = (moduleKey: WorkflowModuleKey) =>
+    `qms_workflow_${moduleKey}`;
+
   getOrCreate(id: string, moduleKey: WorkflowModuleKey): WorkflowMeta {
-    const key = getKey(moduleKey);
-    const map = JSON.parse(localStorage.getItem(key) || "{}") as Record<string, WorkflowMeta>;
-
+    const data = localStorage.getItem(this.getKey(moduleKey));
+    const map = data ? JSON.parse(data) : {};
     if (!map[id]) {
-      map[id] = seedMeta(id, moduleKey);
-      localStorage.setItem(key, JSON.stringify(map));
+      map[id] = {
+        id,
+        moduleKey,
+        status: "DRAFT",
+        approvalRequests: [],
+        approvalsLog: [],
+        signatureLog: [],
+      };
+      localStorage.setItem(this.getKey(moduleKey), JSON.stringify(map));
     }
-
     return map[id];
-  },
+  }
 
-  updateMeta(id: string, moduleKey: WorkflowModuleKey, patch: Partial<WorkflowMeta>) {
-    const key = getKey(moduleKey);
-    const map = JSON.parse(localStorage.getItem(key) || "{}") as Record<string, WorkflowMeta>;
-    const prev = map[id] ?? seedMeta(id, moduleKey);
-
-    map[id] = { ...prev, ...patch };
-    localStorage.setItem(key, JSON.stringify(map));
-    return map[id];
-  },
-
-  addSignature(
-    id: string,
-    moduleKey: WorkflowModuleKey,
-    entry: {
-        meaning: "Review" | "Approval" | "Execution";
-        statusBefore: WorkflowStatus;
-        statusAfter: WorkflowStatus;
-        signedBy: string;
-        role: string;
-        comment?: string;
-    }
-    ) {
-    const meta = this.getOrCreate(id, moduleKey);
-
-    const updated = {
-        ...meta,
-        signatureLog: [
-        {
-            id: crypto.randomUUID(),
-            meaning: entry.meaning,
-            statusBefore: entry.statusBefore,
-            statusAfter: entry.statusAfter,
-            signedBy: entry.signedBy,
-            role: entry.role,
-            comment: entry.comment || "",
-            timestamp: now(),
-        },
-        ...meta.signatureLog,
-        ],
-    };
-
-    return this.updateMeta(id, moduleKey, updated);
-    },
-
+  // ✅ TRANSITION: Now returns specific data for UI updates
   transition(
     id: string,
     moduleKey: WorkflowModuleKey,
     action: WorkflowAction,
     actor: { user: string; role: string },
     comment?: string,
-    rejectionReason?: string
-  ) {
+  ): WorkflowMeta | { error: string } {
     const meta = this.getOrCreate(id, moduleKey);
 
-    const statusAfter: WorkflowStatus = (() => {
-      switch (action) {
-        case "SUBMIT_QA_REVIEW":
-          return "QA Review";
-        case "APPROVE":
-          return "Approved";
-        case "MARK_EFFECTIVE":
-          return "Effective";
-        case "CLOSE":
-          return "Closed";
-        case "REJECT":
-          return "Rejected";
-        default:
-          return meta.status;
-      }
-    })();
+    const transition = STATE_MACHINE.find(
+      (t) => t.action === action && t.from.includes(meta.status),
+    );
+
+    if (!transition) {
+      return {
+        error: `Action "${action}" is not allowed for status ${meta.status}`,
+      };
+    }
+
+    if (
+      !transition.allowedRoles.includes(actor.role) &&
+      actor.role !== "Admin"
+    ) {
+      return { error: `Role ${actor.role} is not authorized for this action.` };
+    }
 
     const updated: WorkflowMeta = {
       ...meta,
-      status: statusAfter,
-      rejectionReason: action === "REJECT" ? rejectionReason : meta.rejectionReason,
+      status: transition.to,
       approvalsLog: [
         {
           id: crypto.randomUUID(),
           action,
-          statusAfter,
+          statusAfter: transition.to,
           comment: comment || "",
           user: actor.user,
           role: actor.role,
-          timestamp: now(),
+          timestamp: new Date().toISOString(),
         },
         ...meta.approvalsLog,
       ],
     };
 
-    return this.updateMeta(id, moduleKey, updated);
-  },
-};
+    this.save(id, moduleKey, updated);
+    return updated;
+  }
+
+  // ✅ ADD SIGNATURE: Specifically for 21 CFR Part 11 compliance
+  addSignature(
+    id: string,
+    moduleKey: WorkflowModuleKey,
+    entry: Omit<SignatureEntry, "id" | "timestamp">,
+  ): WorkflowMeta {
+    const meta = this.getOrCreate(id, moduleKey);
+    const newSignature: SignatureEntry = {
+      ...entry,
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+    };
+
+    const updated = {
+      ...meta,
+      signatureLog: [newSignature, ...meta.signatureLog],
+    };
+
+    this.save(id, moduleKey, updated);
+    return updated;
+  }
+
+  private save(id: string, moduleKey: WorkflowModuleKey, meta: WorkflowMeta) {
+    const map = JSON.parse(
+      localStorage.getItem(this.getKey(moduleKey)) || "{}",
+    );
+    map[id] = meta;
+    localStorage.setItem(this.getKey(moduleKey), JSON.stringify(map));
+  }
+}
+
+export const workflowService = new WorkflowEngine();

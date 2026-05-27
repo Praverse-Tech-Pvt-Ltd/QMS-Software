@@ -5,19 +5,36 @@ import MenuIcon from "@mui/icons-material/Menu";
 
 import Sidebar from "./Sidebar";
 import HeaderActions from "./HeaderActions";
+import CommandPalette from "../common/CommandPalette";
+import LoadingBar, { useLoadingBar } from "../common/LoadingBar";
+import ClickSpark from "../common/ClickSpark";
 
 const DRAWER_WIDTH = 280;
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const loadingBar = useLoadingBar();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F7F8FA" }}>
-      <CssBaseline />
+    <ClickSpark
+      sparkColor="#667eea"
+      sparkSize={12}
+      sparkRadius={20}
+      sparkCount={8}
+      duration={500}
+      easing="ease-out"
+      extraScale={1.2}
+    >
+      <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F7F8FA" }}>
+        <CssBaseline />
+
+        {/* Global Components */}
+        <LoadingBar isLoading={loadingBar.isLoading} />
+        <CommandPalette />
 
       {/* --- SIDEBAR NAVIGATION --- */}
       <Box
@@ -121,5 +138,6 @@ export default function AppLayout() {
         </Box>
       </Box>
     </Box>
+    </ClickSpark>
   );
 }

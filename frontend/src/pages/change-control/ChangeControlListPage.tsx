@@ -1,227 +1,282 @@
-import { Box, Button, TextField, Typography, Chip, InputAdornment } from "@mui/material";
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Chip,
+  InputAdornment,
+  Alert,
+  CircularProgress,
+  Stack,
+  Paper,
+} from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import AddIcon from "@mui/icons-material/Add";
 import { useNavigate } from "react-router-dom";
 
-// Standard Imports
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
-import ModuleTable, { type ColumnDef } from "../../components/common/ModuleTable";
-import { changeService } from "../../services/change.service";
-import {type ChangeRecord } from "../../types/change.types";
+import ModuleTable, {
+  type ColumnDef,
+} from "../../components/common/ModuleTable";
+import {
+  changeService,
+  type ChangeRecord,
+} from "../../services/change.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 
-// Filter Options matching your image
-const STATUS_FILTERS = ["All", "Draft", "QA Review", "Approved", "In Progress", "Effective"];
+const STATUS_FILTERS = ["All", "Draft", "Review", "Approved", "Closed"];
 
 export default function ChangeControlListPage() {
   const navigate = useNavigate();
   const { role } = useRole();
+
   const [rows, setRows] = useState<ChangeRecord[]>([]);
-  const [permissionDenied, setPermissionDenied] = useState<{ open: boolean; message: string }>({ open: false, message: "" });
-  
-  // Filter States
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [permissionDenied, setPermissionDenied] = useState<{
+    open: boolean;
+    message: string;
+  }>({ open: false, message: "" });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const data = await changeService.list();
+      setRows(data);
+    } catch (err) {
+      setError("Failed to connect to the server.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateNew = () => {
-    if (!permissionService.can(role, "change", "create")) {
+    const canCreate = role ? permissionService.can(role, "change", "create") : false;
+
+    if (!canCreate) {
       setPermissionDenied({
         open: true,
-        message: `You don't have permission to initiate change control. Your current role (${role}) does not allow this action.`,
+        message: `You don't have permission to initiate change control. Role: ${role || "Unknown"}`,
       });
       return;
     }
     navigate("/change-control/new");
   };
 
-  useEffect(() => {
-    changeService.list().then((data) => {
-      setRows(data);
-    });
-  }, []);
-
-  // Filter Logic
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
-      const matchesSearch =
-        r.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.id.toLowerCase().includes(searchTerm.toLowerCase());
+      const changeId = String(r.cc_id || r.id || "");
+      const searchString = searchTerm.toLowerCase();
 
-      // Helper to match UI status label back to backend status
+      const matchesSearch =
+        r.title.toLowerCase().includes(searchString) ||
+        changeId.toLowerCase().includes(searchString);
+
       let matchesStatus = true;
       if (statusFilter !== "All") {
-          if (statusFilter === "QA Review") matchesStatus = r.status === "Review";
-          else if (statusFilter === "In Progress") matchesStatus = r.status === "Implementation";
-          else matchesStatus = r.status === statusFilter;
-      }
+        const currentStatus = String(r.status).toUpperCase();
+        const targetFilter = statusFilter.toUpperCase();
 
+        if (targetFilter === "REVIEW") {
+          matchesStatus = currentStatus === "EVALUATION" || currentStatus === "APPROVAL";
+        } else {
+          matchesStatus = currentStatus === targetFilter;
+        }
+      }
       return matchesSearch && matchesStatus;
     });
   }, [rows, searchTerm, statusFilter]);
 
-  // Helper for Change Type Colors
-  const getTypeColor = (type: string) => {
-      switch(type) {
-          case "Critical": return { bg: "#fee2e2", color: "#991b1b" }; // Red
-          case "Major": return { bg: "#ffedd5", color: "#9a3412" };    // Orange
-          case "Minor": return { bg: "#EEF2FF", color: "#4F46E5" };    // Blue
-          default: return { bg: "#f3f4f6", color: "#374151" };
-      }
-  };
-
-  // ✅ COLUMN DEFINITIONS
   const columns: ColumnDef<ChangeRecord>[] = [
-    { 
-      field: "id", 
-      headerName: "CHANGE ID", 
+    {
+      field: "cc_id",
+      headerName: "CHANGE ID",
       width: 140,
       renderCell: (row) => (
-        <Typography 
-          variant="body2" 
-          sx={{ color: "#6366F1", fontWeight: 700, cursor: "pointer", fontSize: "0.875rem" }}
-          onClick={() => navigate(`/change-control/${row.id}`)}
+        <Typography
+          variant="body2"
+          sx={{
+            color: "#4f46e5",
+            fontWeight: 800,
+            cursor: "pointer",
+            fontSize: "0.85rem",
+            "&:hover": { textDecoration: "underline" }
+          }}
+          // ✅ Standardized Navigation: Use Business ID (cc_id)
+          onClick={() => navigate(`/change-control/${row.cc_id || row.id}`)}
         >
-          {row.id}
+          {row.cc_id || row.id}
         </Typography>
-      ) 
+      ),
     },
     { field: "title", headerName: "TITLE", width: "30%" },
-    { field: "initiator", headerName: "INITIATOR" },
-    { field: "department", headerName: "DEPARTMENT" },
     { 
-        field: "changeType", 
-        headerName: "CHANGE TYPE",
-        renderCell: (row) => {
-            const style = getTypeColor(row.changeType);
-            return (
-                <Chip 
-                    label={row.changeType}
-                    size="small"
-                    sx={{ 
-                        bgcolor: style.bg, 
-                        color: style.color, 
-                        fontWeight: 700, 
-                        fontSize: "0.75rem",
-                        borderRadius: 1,
-                        height: 24
-                    }}
-                />
-            )
-        }
+        field: "department", 
+        headerName: "DEPARTMENT",
+        renderCell: (row) => (
+            <Typography variant="body2" sx={{ fontWeight: 500, color: "#475569" }}>
+                {row.department}
+            </Typography>
+        )
     },
-    { field: "status", headerName: "STATUS" }, // Handled automatically by ModuleTable (Pills)
-    { field: "submittedDate", headerName: "SUBMITTED" },
-    { field: "targetDate", headerName: "TARGET DATE" },
+    {
+      field: "change_type",
+      headerName: "TYPE",
+      renderCell: (row) => (
+        <Chip
+          label={row.change_type}
+          size="small"
+          sx={{
+            bgcolor: row.change_type === 'EMERGENCY' ? '#fee2e2' : '#f1f5f9',
+            color: row.change_type === 'EMERGENCY' ? '#991b1b' : '#475569',
+            fontWeight: 700,
+            fontSize: "0.7rem",
+            borderRadius: 1,
+          }}
+        />
+      ),
+    },
+    { 
+        field: "status", 
+        headerName: "STATUS",
+        renderCell: (row) => (
+            <Chip 
+                label={row.status} 
+                size="small" 
+                variant="outlined"
+                sx={{ fontWeight: 700, fontSize: '0.65rem', borderRadius: 1.5 }}
+            />
+        )
+    },
+    {
+      field: "target_date",
+      headerName: "TARGET DATE",
+      renderCell: (row) => row.target_date || "-",
+    },
   ];
+
+  if (loading) return <Box sx={{ p: 10, textAlign: "center" }}><CircularProgress /></Box>;
+  if (error) return <Box sx={{ p: 5 }}><Alert severity="error">{error}</Alert></Box>;
 
   return (
     <Box sx={{ p: 3, bgcolor: "#f8fafc", minHeight: "100vh" }}>
-      {/* 1. Header Section */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 3 }}>
+      {/* Page Header */}
+      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 4 }}>
         <Box>
-            <Typography variant="h5" sx={{ fontWeight: 800, color: "#0f172a" }}>
+          <Typography variant="h4" sx={{ fontWeight: 900, color: "#0f172a", letterSpacing: "-0.02em" }}>
             Change Control Management
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5, color: "#64748b" }}>
-            Control and document all changes to processes, equipment, and documentation
-            </Typography>
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5, color: "#64748b", fontWeight: 500 }}>
+            Formalized lifecycle management for GxP-critical modifications
+          </Typography>
         </Box>
-        <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={handleCreateNew}
-            sx={{ 
-                bgcolor: "#4F46E5", 
-                textTransform: "none",
-                fontWeight: 600,
-                borderRadius: 2,
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
-            }}
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleCreateNew}
+          sx={{
+            bgcolor: "#4f46e5",
+            textTransform: "none",
+            fontWeight: 700,
+            borderRadius: 2.5,
+            px: 3,
+            py: 1,
+            boxShadow: "0 10px 15px -3px rgba(79, 70, 229, 0.3)",
+            "&:hover": { bgcolor: "#4338ca" }
+          }}
         >
-          Create New
+          Initiate CC
         </Button>
-      </Box>
+      </Stack>
 
-      {/* 2. Search & Filter Bar */}
-      <Box sx={{ 
-          bgcolor: "#fff", 
-          p: 2, 
-          borderRadius: 3, 
-          boxShadow: "0px 1px 3px rgba(0,0,0,0.05)",
-          mb: 3,
-          border: "1px solid #e2e8f0"
-      }}>
-        <TextField
+      {/* Filters Area */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          borderRadius: 4,
+          mb: 4,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+        }}
+      >
+        <Stack spacing={2.5}>
+          <TextField
             fullWidth
-            placeholder="Search change control records..."
+            placeholder="Search by ID or Title..."
             size="small"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
+            slotProps={{
+              input: {
                 startAdornment: (
-                    <InputAdornment position="start">
-                        <SearchIcon sx={{ color: "#94a3b8" }} />
-                    </InputAdornment>
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: "#94a3b8" }} />
+                  </InputAdornment>
                 ),
-                endAdornment: (
-                    <Button 
-                        startIcon={<FilterListIcon />}
-                        sx={{ textTransform: "none", color: "#475569", fontWeight: 600 }}
-                    >
-                        Filters
-                    </Button>
-                )
+              },
             }}
-            sx={{ 
-                mb: 2,
-                "& .MuiOutlinedInput-root": {
-                    bgcolor: "#f8fafc",
-                    borderRadius: 2,
-                    "& fieldset": { borderColor: "#e2e8f0" },
-                }
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                bgcolor: "#fcfcfc",
+                borderRadius: 3,
+              },
             }}
-        />
+          />
 
-        {/* Status Pills */}
-        <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: "#475569", mr: 1, fontSize: "0.85rem" }}>
-                Status:
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <FilterListIcon sx={{ color: "#94a3b8", fontSize: 20 }} />
+            <Typography variant="caption" sx={{ fontWeight: 800, color: "#475569", textTransform: 'uppercase' }}>
+              Filter Status:
             </Typography>
-            {STATUS_FILTERS.map((status) => (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {STATUS_FILTERS.map((status) => (
                 <Chip
-                    key={status}
-                    label={status}
-                    onClick={() => setStatusFilter(status)}
-                    sx={{ 
-                        borderRadius: 2,
-                        height: 28,
-                        bgcolor: statusFilter === status ? "#0f172a" : "#f1f5f9",
-                        color: statusFilter === status ? "#fff" : "#64748b",
-                        fontWeight: 600,
-                        fontSize: "0.8rem",
-                        cursor: "pointer",
-                        border: "1px solid",
-                        borderColor: statusFilter === status ? "#0f172a" : "transparent",
-                        "&:hover": {
-                            bgcolor: statusFilter === status ? "#1e293b" : "#e2e8f0"
-                        }
-                    }}
+                  key={status}
+                  label={status}
+                  onClick={() => setStatusFilter(status)}
+                  sx={{
+                    borderRadius: 2,
+                    height: 28,
+                    bgcolor: statusFilter === status ? "#0f172a" : "#fff",
+                    color: statusFilter === status ? "#fff" : "#64748b",
+                    fontWeight: 700,
+                    fontSize: "0.75rem",
+                    border: "1px solid",
+                    borderColor: statusFilter === status ? "#0f172a" : "#e2e8f0",
+                    "&:hover": { bgcolor: statusFilter === status ? "#0f172a" : "#f1f5f9" }
+                  }}
                 />
-            ))}
-        </Box>
-      </Box>
+              ))}
+            </Stack>
+          </Stack>
+        </Stack>
+      </Paper>
 
-      {/* 3. Data Table */}
-      <ModuleTable
-        columns={columns}
-        rows={filteredRows}
-        onView={role !== "Viewer" ? (id) => navigate(`/change-control/${id}`) : undefined}
-      />
+      {/* Main Table */}
+      <Paper elevation={0} sx={{ borderRadius: 4, border: "1px solid #e2e8f0", overflow: 'hidden' }}>
+        <ModuleTable
+          columns={columns}
+          rows={filteredRows}
+          onView={(id) => {
+            // ✅ FIX: Match the row by ID but navigate using its cc_id
+            const record = rows.find((r) => String(r.id) === String(id));
+            navigate(`/change-control/${record?.cc_id || id}`);
+          }}
+        />
+      </Paper>
 
-      {/* Permission Denied Dialog */}
       <PermissionDeniedDialog
         open={permissionDenied.open}
         onClose={() => setPermissionDenied({ open: false, message: "" })}

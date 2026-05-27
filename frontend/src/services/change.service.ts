@@ -1,52 +1,62 @@
-import { changeMock } from "../mock/change.mock";
-import type { ChangeRecord } from "../types/change.types";
+import api from "./api";
+import type { WorkflowMeta } from "./workflow.service";
+import { type AuditTrailEntry } from "./audit.service";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export interface ChangeRecord extends Omit<
+  Partial<WorkflowMeta>,
+  "id" | "status"
+> {
+  id: number;
+  cc_id: string;
+  title: string;
+  department: string;
+  description: string;
+  justification: string;
+  change_type: "STANDARD" | "PERMANENT" | "TEMPORARY" | "EMERGENCY";
+  status: "DRAFT" | "EVALUATION" | "APPROVAL" | "IMPLEMENTATION" | "CLOSED";
+  target_date: string;
+  audit_trail?: AuditTrailEntry[];
+  change_reason?: string;
+  signatureLog?: any[];
+  initiator_details?: { username: string; role: string };
+  impact_data?: {
+    areas: Record<string, boolean>;
+    risk_level: string;
+    risk_notes: string;
+    mitigation: string;
+  };
+}
 
 export const changeService = {
-  // List
   async list(): Promise<ChangeRecord[]> {
-    await delay(800);
-    return changeMock;
+    const response = await api.get<ChangeRecord[]>("/quality/change-control/");
+    return response.data;
   },
 
-  // Get Single
-  async getById(id: string): Promise<ChangeRecord> {
-    await delay(600);
-    const item = changeMock.find((c) => c.id === id);
-
-    if (!item) {
-      // ✅ Fallback matching updated interface
-      const fallback: ChangeRecord = {
-        id,
-        title: "New Change Request",
-        status: "Draft",
-        moduleKey: "change",
-        
-        initiator: "Current User",
-        department: "Production",
-        changeType: "Minor",
-        submittedDate: new Date().toISOString().split('T')[0],
-        targetDate: "2026-12-31",
-
-        type: "Minor",
-        priority: "Low",
-        description: "Description of change.",
-        owner: "Change Owner",
-        
-        approvalRequests: [],
-        signatureLog: [],
-        approvalsLog: []
-      };
-      return fallback;
-    }
-    return item;
+  async getById(id: string | number): Promise<ChangeRecord> {
+    const response = await api.get<ChangeRecord>(
+      `/quality/change-control/${id}/`,
+    );
+    return response.data;
   },
 
-  // Update
-  async update(id: string, data: any) {
-    await delay(1000);
-    console.log(`Updating Change Control (${id}):`, data);
-    return { id, ...data };
-  }
+  async create(data: Partial<ChangeRecord>) {
+    const response = await api.post<ChangeRecord>(
+      "/quality/change-control/",
+      data,
+    );
+    return response.data;
+  },
+
+  async update(id: string | number, data: Partial<ChangeRecord>) {
+    const payload = {
+      ...data,
+      change_reason: (data as any).change_reason || "Metadata update",
+    };
+    const response = await api.patch<ChangeRecord>(
+      `/quality/change-control/${id}/`,
+      payload,
+    );
+    return response.data;
+  },
 };

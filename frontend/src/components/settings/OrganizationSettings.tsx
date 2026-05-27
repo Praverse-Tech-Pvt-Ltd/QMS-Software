@@ -2,10 +2,11 @@ import {
   Box,
   Typography,
   TextField,
-  Grid,
+   Grid,
   Button,
   Alert,
   Divider,
+  Paper,
 } from "@mui/material";
 import { useState } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
@@ -50,137 +51,116 @@ export default function OrganizationSettings() {
       </Box>
 
       {!canEdit && (
-        <Alert severity="info" sx={{ mb: 3 }}>
-          <strong>Read-Only Access:</strong> Only Administrators can modify organization settings.
+        <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
+          <strong>Read-Only Access:</strong> Only Administrators can modify organization-wide parameters.
         </Alert>
       )}
 
       <Divider sx={{ my: 3 }} />
 
-      {/* Company Information */}
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-        Company Information
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{xs: 12, md: 6}}>
-          <TextField
-            label="Company Name"
-            value={settings.companyName}
-            onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="Legal entity name as registered"
-          />
+      <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 3, bgcolor: '#fafbfc' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 3, color: 'primary.main' }}>
+          Company Information
+        </Typography>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              label="Company Name"
+              value={settings.companyName}
+              onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
+              fullWidth
+              size="small"
+              disabled={!canEdit}
+              helperText="Legal entity name for document headers"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              label="Site / Plant Name"
+              value={settings.siteName}
+              onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
+              fullWidth
+              size="small"
+              disabled={!canEdit}
+              helperText="Specific manufacturing or laboratory site"
+            />
+          </Grid>
         </Grid>
-        <Grid size={{xs: 12, md: 6}}>
-          <TextField
-            label="Site / Plant Name"
-            value={settings.siteName}
-            onChange={(e) => setSettings({ ...settings, siteName: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="Physical location identifier"
-          />
-        </Grid>
-      </Grid>
+      </Paper>
 
-      {/* Regional Settings */}
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-        Regional Settings
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{xs: 12, md: 6}}>
-          <TextField
-            label="Timezone"
-            value={settings.timezone}
-            onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="System-wide default timezone"
-          />
+      <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 3, bgcolor: '#fafbfc' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 3, color: 'primary.main' }}>
+          System Prefixes (ID Generation)
+        </Typography>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              label="Document"
+              value={settings.docPrefix}
+              onChange={(e) => setSettings({ ...settings, docPrefix: e.target.value })}
+              fullWidth
+              size="small"
+              disabled={!canEdit}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              label="Deviation"
+              value={settings.devPrefix}
+              onChange={(e) => setSettings({ ...settings, devPrefix: e.target.value })}
+              fullWidth
+              size="small"
+              disabled={!canEdit}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              label="CAPA"
+              value={settings.capaPrefix}
+              onChange={(e) => setSettings({ ...settings, capaPrefix: e.target.value })}
+              fullWidth
+              size="small"
+              disabled={!canEdit}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              label="Change Control"
+              value={settings.changePrefix}
+              onChange={(e) => setSettings({ ...settings, changePrefix: e.target.value })}
+              fullWidth
+              size="small"
+              disabled={!canEdit}
+            />
+          </Grid>
         </Grid>
-        <Grid size={{xs: 12, md: 6}}>
-          <TextField
-            label="Date Format"
-            value={settings.dateFormat}
-            onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="Display format for dates"
-          />
-        </Grid>
-      </Grid>
+      </Paper>
 
-      {/* Document Prefixes */}
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-        System Prefixes (ID Generation)
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{xs: 12, sm: 6, md: 3}}>
-          <TextField
-            label="Document Prefix"
-            value={settings.docPrefix}
-            onChange={(e) => setSettings({ ...settings, docPrefix: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="e.g., DOC-2024-001"
-          />
-        </Grid>
-        <Grid size={{xs: 12, sm: 6, md: 3}}>
-          <TextField
-            label="Deviation Prefix"
-            value={settings.devPrefix}
-            onChange={(e) => setSettings({ ...settings, devPrefix: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="e.g., DEV-2024-001"
-          />
-        </Grid>
-        <Grid size={{xs: 12, sm: 6, md: 3}}>
-          <TextField
-            label="CAPA Prefix"
-            value={settings.capaPrefix}
-            onChange={(e) => setSettings({ ...settings, capaPrefix: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="e.g., CAPA-2024-001"
-          />
-        </Grid>
-        <Grid size={{xs: 12, sm: 6, md: 3}}>
-          <TextField
-            label="Change Control Prefix"
-            value={settings.changePrefix}
-            onChange={(e) => setSettings({ ...settings, changePrefix: e.target.value })}
-            fullWidth
-            disabled={!canEdit}
-            helperText="e.g., CC-2024-001"
-          />
-        </Grid>
-      </Grid>
-
-      {/* Actions */}
       {canEdit && (
-        <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 2, borderTop: "1px solid #e2e8f0" }}>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", pt: 2 }}>
           <Button
             variant="contained"
             startIcon={<SaveIcon />}
             onClick={() => setSaveDialogOpen(true)}
             sx={{
               bgcolor: "#6366f1",
+              fontWeight: 700,
+              px: 4,
               "&:hover": { bgcolor: "#4f46e5" },
             }}
           >
-            Save Changes
+            Save Configuration
           </Button>
         </Box>
       )}
 
+      {/* ✅ FIXED: Changed 'onCancel' to 'onClose' to match ConfirmDialog interface */}
       <ConfirmDialog
         open={saveDialogOpen}
         title="Save Organization Settings?"
         message="Changes to organization settings will affect the entire system. This action will be logged in the audit trail."
         onConfirm={handleSave}
-        onCancel={() => setSaveDialogOpen(false)}
+        onClose={() => setSaveDialogOpen(false)}
       />
     </Box>
   );

@@ -51,6 +51,7 @@ export const motion = {
 export const transitions = {
   // Card interactions
   card: {
+    default: `all ${motion.duration.normal}ms ${motion.easing.smooth}`,
     hover: `all ${motion.duration.fast}ms ${motion.easing.smooth}`,
     press: `all ${motion.duration.instant}ms ${motion.easing.sharp}`,
   },
@@ -59,6 +60,16 @@ export const transitions = {
   button: {
     default: `all ${motion.duration.fast}ms ${motion.easing.smooth}`,
     press: `transform ${motion.duration.instant}ms ${motion.easing.sharp}`,
+  },
+
+  // Input interactions
+  input: {
+    focus: `all ${motion.duration.normal}ms ${motion.easing.smooth}`,
+  },
+
+  // Chip interactions
+  chip: {
+    default: `all ${motion.duration.fast}ms ${motion.easing.smooth}`,
   },
 
   // Table rows

@@ -8,10 +8,9 @@ const api = axios.create({
   },
 });
 
-// Interceptor: Attach Token to every request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('qms_token'); // Get token saved during Login
+    const token = localStorage.getItem('qms_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -19,5 +18,15 @@ api.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+export const fetchDashboardStats = async () => {
+  const response = await api.get('/dashboard/stats/');
+  return response.data;
+};
+
+export const fetchMyTasks = async () => {
+  const response = await api.get('/dashboard/tasks/');
+  return response.data;
+};
 
 export default api;

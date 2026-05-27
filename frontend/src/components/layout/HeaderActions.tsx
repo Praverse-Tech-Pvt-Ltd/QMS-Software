@@ -12,7 +12,6 @@ import {
   Avatar,
   Divider,
   List,
-  
 } from "@mui/material";
 
 // Icons
@@ -20,23 +19,22 @@ import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
-import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 import { transitions, shadows, motion } from "../../theme/motion";
+import CreateDocumentModal from "../common/CreateDocumentModal";
+import UserProfileCard from "../common/UserProfileCard";
 
 const ROLES = ["Admin", "QA", "QC", "Production", "Warehouse", "Viewer"] as const;
 
-export default function HeaderActions() {
-  const navigate = useNavigate();
+function HeaderActions() {
   const { role, setRole } = useRole();
   const [scrolled, setScrolled] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   
   // Detect scroll for elevation effect
   useEffect(() => {
@@ -47,24 +45,24 @@ export default function HeaderActions() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   
-  // --- User Menu State ---
+  // --- Menu States ---
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const userOpen = Boolean(anchorEl);
 
-  // --- Notification Menu State ---
   const [notifyAnchorEl, setNotifyAnchorEl] = useState<null | HTMLElement>(null);
   const notifyOpen = Boolean(notifyAnchorEl);
 
   // --- Handlers ---
-  const handleUserMenuClose = () => setAnchorEl(null);
-  const handleNotifyMenuClose = () => setNotifyAnchorEl(null);
+  const handleUserMenuClose = useCallback(() => setAnchorEl(null), []);
+  const handleNotifyMenuClose = useCallback(() => setNotifyAnchorEl(null), []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("qms_token");
-    navigate("/login", { replace: true });
-  };
+  const canCreateDocument = useMemo(
+    () => (role ? permissionService.can(role, "dms", "create") : false),
+    [role]
+  );
 
-  const canCreateDocument = permissionService.can(role, "dms", "create");
+  const handleOpenCreateModal = useCallback(() => setCreateModalOpen(true), []);
+  const handleCloseCreateModal = useCallback(() => setCreateModalOpen(false), []);
 
   return (
     <Box 
@@ -97,7 +95,7 @@ export default function HeaderActions() {
                 "&:hover fieldset": { borderColor: "#858D96" }, 
                 "&.Mui-focused fieldset": { 
                   borderColor: "#6366F1", 
-                  borderWidth: 2,
+                  borderWidth: 2, 
                 },
                 "&.Mui-focused": {
                   bgcolor: "#FFFFFF",
@@ -147,17 +145,13 @@ export default function HeaderActions() {
             ))}
           </Box>
 
-          {/* ✅ NOTIFICATIONS ICON (Now Functional) */}
           <IconButton 
             size="small" 
             sx={{ 
               color: notifyOpen ? "#6366F1" : "#5C6370", 
               bgcolor: notifyOpen ? "#EEF2FF" : "transparent",
               transition: transitions.fast,
-              "&:hover": {
-                bgcolor: "#F3F4F6",
-                transform: `translateY(-${motion.distance.micro}px)`,
-              },
+              "&:hover": { bgcolor: "#F3F4F6" },
             }}
             onClick={(e) => setNotifyAnchorEl(e.currentTarget)}
           >
@@ -166,37 +160,31 @@ export default function HeaderActions() {
             </Badge>
           </IconButton>
           
-          {/* Messages Icon */}
           <IconButton 
             size="small" 
-            sx={{ 
-              color: "#5C6370",
-              "&:hover": {
-                bgcolor: "#F3F4F6",
-              }
-            }}
+            sx={{ color: "#5C6370", "&:hover": { bgcolor: "#F3F4F6" }}}
           >
             <Badge badgeContent={3} color="primary" overlap="circular">
               <ChatBubbleOutlineOutlinedIcon fontSize="small" />
             </Badge>
           </IconButton>
 
-          {/* Create Button */}
           {canCreateDocument && (
             <Button
               variant="contained"
               startIcon={<AddOutlinedIcon />}
-              onClick={() => navigate("/dms/new")}
+              onClick={handleOpenCreateModal}
               sx={{ 
-                bgcolor: "#6366F1", 
+                bgcolor: "#667eea", 
                 borderRadius: 2, 
                 textTransform: "none", 
                 fontWeight: 600, 
                 display: { xs: "none", md: "flex" }, 
-                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)", 
+                boxShadow: "0 2px 8px rgba(102, 126, 234, 0.25)", 
+                transition: "all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)",
                 "&:hover": { 
-                  bgcolor: "#4F46E5",
-                  boxShadow: "0 4px 8px rgba(31, 111, 235, 0.25)",
+                  bgcolor: "#764ba2",
+                  transform: "translateY(-2px)",
                 } 
               }}
             >
@@ -204,144 +192,109 @@ export default function HeaderActions() {
             </Button>
           )}
 
-           {/* User Profile */}
-           <IconButton 
-             onClick={(e) => setAnchorEl(e.currentTarget)} 
-             sx={{ 
-               ml: 0.5, 
-               color: "#5C6370",
-               "&:hover": {
-                 bgcolor: "#F3F4F6",
-               }
+           {/* User Profile Trigger */}
+           <Box
+             onClick={(e) => setAnchorEl(e.currentTarget)}
+             sx={{
+               display: "flex",
+               alignItems: "center",
+               gap: 1.5,
+               ml: 1,
+               px: 1.5,
+               py: 0.75,
+               borderRadius: 2,
+               cursor: "pointer",
+               border: "1px solid",
+               borderColor: userOpen ? "#6366F1" : "#e2e8f0",
+               bgcolor: userOpen ? "#f0f4ff" : "transparent",
+               transition: transitions.fast,
+               "&:hover": { bgcolor: "#f8fafc", borderColor: "#cbd5e1" },
              }}
            >
-             <AccountCircleOutlinedIcon />
-           </IconButton>
+             <Avatar
+               sx={{
+                 width: 36,
+                 height: 36,
+                 bgcolor: "#667eea",
+                 fontSize: "14px",
+                 fontWeight: 600,
+               }}
+             >
+               AP
+             </Avatar>
+             <Box sx={{ display: { xs: "none", lg: "block" } }}>
+               <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a", lineHeight: 1.2 }}>
+                 Alexander Pierce
+               </Typography>
+               <Typography variant="caption" sx={{ color: "#64748b", display: "block", lineHeight: 1 }}>
+                 Chief Quality Officer
+               </Typography>
+             </Box>
+           </Box>
 
-           {/* --- USER MENU --- */}
            <Menu
             anchorEl={anchorEl}
             open={userOpen}
             onClose={handleUserMenuClose}
-            onClick={handleUserMenuClose}
             PaperProps={{ 
-              elevation: 16, 
-              sx: { 
-                overflow: 'visible', 
-                mt: 1.5, 
-                borderRadius: 3, 
-                minWidth: 200, 
-                border: "1px solid #E9ECEF",
-                boxShadow: "0 16px 32px -8px rgba(0, 0, 0, 0.2)",
-              } 
+              elevation: 0, 
+              sx: { overflow: 'visible', mt: 2, borderRadius: 3, background: 'transparent' } 
             }}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
-            <Box sx={{ px: 2.5, py: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} color="#2D3339">Alexander Pierce</Typography>
-              <Typography variant="caption" color="#858D96">Chief Quality Officer</Typography>
-            </Box>
-            <Divider sx={{ borderColor: "#E9ECEF" }} />
-            <MenuItem 
-              onClick={() => navigate("/settings")} 
-              sx={{ 
-                py: 1.5, 
-                px: 2.5,
-                "&:hover": { bgcolor: "#F3F4F6" }
-              }}
-            >
-              <Avatar sx={{ width: 24, height: 24, mr: 1.5, bgcolor: "transparent", color: "#5C6370" }} /> 
-              Profile
-            </MenuItem>
-            <MenuItem 
-              onClick={handleLogout} 
-              sx={{ 
-                color: "#DC2626", 
-                py: 1.5, 
-                px: 2.5,
-                "&:hover": { bgcolor: "#FEE2E2" }
-              }}
-            >
-              <LogoutOutlinedIcon fontSize="small" sx={{ mr: 1.5 }} /> 
-              Sign Out
-            </MenuItem>
+            <UserProfileCard
+              userName="Alexander Pierce"
+              userRole="Chief Quality Officer"
+              userInitials="AP"
+              tasksCount={12}
+              pendingCount={8}
+              approvedCount={32}
+              onClose={handleUserMenuClose}
+            />
           </Menu>
 
-          {/* --- ✅ NOTIFICATION MENU --- */}
+          {/* Notification Menu */}
           <Menu
             anchorEl={notifyAnchorEl}
             open={notifyOpen}
             onClose={handleNotifyMenuClose}
-            onClick={handleNotifyMenuClose}
             PaperProps={{ 
               elevation: 16, 
-              sx: { 
-                width: 360, 
-                maxHeight: 480, 
-                overflowY: 'auto', 
-                mt: 1.5, 
-                borderRadius: 3, 
-                border: "1px solid #E9ECEF",
-                boxShadow: "0 16px 32px -8px rgba(0, 0, 0, 0.2)",
-              } 
+              sx: { width: 360, maxHeight: 480, mt: 1.5, borderRadius: 3, border: "1px solid #E9ECEF" } 
             }}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
             <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid #E9ECEF", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="subtitle2" fontWeight={600} color="#2D3339">Notifications</Typography>
-              <Chip 
-                label="2 New" 
-                size="small" 
-                sx={{ 
-                  height: 22, 
-                  fontSize: "0.7rem", 
-                  fontWeight: 600,
-                  bgcolor: "#FEE2E2",
-                  color: "#DC2626",
-                  border: "1px solid #FCA5A5",
-                }} 
-              />
+              <Typography variant="subtitle2" fontWeight={600}>Notifications</Typography>
+              <Chip label="2 New" size="small" sx={{ bgcolor: "#FEE2E2", color: "#DC2626", fontWeight: 600 }} />
             </Box>
 
             <List disablePadding>
-              <MenuItem sx={{ py: 2.5, px: 3, alignItems: "flex-start", gap: 1.5, whiteSpace: "normal", "&:hover": { bgcolor: "#FAFBFC" } }}>
+              <MenuItem sx={{ py: 2, px: 3, gap: 1.5, whiteSpace: "normal" }}>
                  <Avatar sx={{ bgcolor: "#EEF2FF", color: "#6366F1", width: 36, height: 36 }}>
                    <AssignmentIndOutlinedIcon fontSize="small" />
                  </Avatar>
                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={600} color="#2D3339" sx={{ mb: 0.5 }}>New SOP Assigned</Typography>
-                    <Typography variant="body2" color="#5C6370" sx={{ fontSize: "0.813rem" }}>SOP-QA-001 requires your review.</Typography>
-                    <Typography variant="caption" display="block" color="#858D96" sx={{ mt: 0.75 }}>2 hours ago</Typography>
+                    <Typography variant="body2" fontWeight={600}>New SOP Assigned</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.8rem" }}>SOP-QA-001 requires review.</Typography>
                  </Box>
               </MenuItem>
-              <Divider component="li" sx={{ borderColor: "#F3F4F6" }} />
-              <MenuItem sx={{ py: 2.5, px: 3, alignItems: "flex-start", gap: 1.5, whiteSpace: "normal", "&:hover": { bgcolor: "#FAFBFC" } }}>
+              <Divider component="li" />
+              <MenuItem sx={{ py: 2, px: 3, gap: 1.5, whiteSpace: "normal" }}>
                  <Avatar sx={{ bgcolor: "#FEF3C7", color: "#B45309", width: 36, height: 36 }}>
                    <WarningAmberRoundedIcon fontSize="small" />
                  </Avatar>
                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={600} color="#2D3339" sx={{ mb: 0.5 }}>Audit Reminder</Typography>
-                    <Typography variant="body2" color="#5C6370" sx={{ fontSize: "0.813rem" }}>Quarterly internal audit starts in 3 days.</Typography>
-                    <Typography variant="caption" display="block" color="#858D96" sx={{ mt: 0.75 }}>5 hours ago</Typography>
+                    <Typography variant="body2" fontWeight={600}>Audit Reminder</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.8rem" }}>Internal audit starts in 3 days.</Typography>
                  </Box>
               </MenuItem>
             </List>
             
-            <Box sx={{ p: 2, borderTop: "1px solid #E9ECEF", textAlign: "center", bgcolor: "#FAFBFC" }}>
-              <Button 
-                size="small" 
-                fullWidth 
-                sx={{ 
-                  textTransform: "none", 
-                  fontWeight: 600,
-                  color: "#6366F1",
-                  "&:hover": {
-                    bgcolor: "#EEF2FF",
-                  }
-                }}
-              >
+            <Box sx={{ p: 2, borderTop: "1px solid #E9ECEF", textAlign: "center" }}>
+              <Button size="small" fullWidth sx={{ textTransform: "none", fontWeight: 600 }}>
                 View All Notifications
               </Button>
             </Box>
@@ -349,6 +302,10 @@ export default function HeaderActions() {
 
         </Box>
       </Box>
+
+      <CreateDocumentModal open={createModalOpen} onClose={handleCloseCreateModal} />
     </Box>
   );
 }
+
+export default React.memo(HeaderActions);

@@ -15,7 +15,7 @@ import { useState } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
 
 // Types
-import type { SignatureMeaning } from "../../types/workflow.types";
+import  {type SignatureMeaning } from "../../services/workflow.service";
 
 interface ESignModalProps {
   open: boolean;
@@ -26,11 +26,11 @@ interface ESignModalProps {
     meaning: SignatureMeaning; 
     comment: string 
   }) => void;
-  actionLabel: string; // e.g., "Approve", "Review"
-  forcedMeaning?: SignatureMeaning; // If action implies meaning (e.g. Approve -> Approval)
+  actionLabel: string;
+  forcedMeaning?: SignatureMeaning;
 }
 
-const MEANINGS: SignatureMeaning[] = ["Review", "Approval", "Execution", "Authorship"];
+const MEANINGS: SignatureMeaning[] = ["Review", "Approval", "Execution", "Authorship", "Verification"];
 
 export default function ESignModal({ 
   open, 
