@@ -1,6 +1,6 @@
 import type { TrainingPlan } from "../services/training.service";
 
-export const trainingMock: TrainingPlan[] = [
+export const trainingMock: TrainingPlan[] = ([] as any[]).concat([
   {
     id: 1045, // ✅ Numeric ID for Database PK
     title: "Good Documentation Practices (GDP) 2026",
@@ -66,4 +66,4 @@ export const trainingMock: TrainingPlan[] = [
     signatureLog: [],
     approvalsLog: []
   }
-];
+]) as TrainingPlan[];

@@ -4,9 +4,11 @@ Django settings for config project.
 
 import os
 from pathlib import Path
-from datetime import timedelta 
+from datetime import timedelta
 import dj_database_url
 from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -36,12 +38,27 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt', # Explicitly adding this is good practice
     'corsheaders', 
 
+    # Third-party apps
+    'simple_history',
+
     # Local Apps (Your Modules)
-    'core',       # Shared logic & Audit Logs
-    'accounts',   # Users & Roles
-    'dms',        # Document Management
-    'quality',    # QMS Workflows
-    'training',   # LMS
+    'core',              # Shared logic & Audit Logs
+    'accounts',          # Users & Roles
+    'shared',            # BaseModel, ESignature, AI algorithms
+    'dms',               # Document Management
+    'quality',           # QMS Workflows (Deviation, CAPA, CC, OOS)
+    'training',          # LMS
+    # Phase 1 modules
+    'audits',
+    'complaints',
+    'risk',
+    'suppliers',
+    'nonconformance',
+    'knowledge',
+    # Phase 2 modules
+    'laboratory',
+    'batch_records',
+    'reports',
 ]
 
 MIDDLEWARE = [
@@ -86,11 +103,28 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
-# Using PostgreSQL via Docker
-load_dotenv()   
 DATABASES = {
     'default': dj_database_url.config(default=os.environ.get('DATABASE_URL'))
 }
+
+# Redis & Celery
+REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', REDIS_URL)
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Kolkata'
+# Run tasks synchronously in dev so no worker is needed
+if DEBUG:
+    CELERY_TASK_ALWAYS_EAGER = True
+
+# AI API keys (loaded from .env)
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# django-simple-history
+SIMPLE_HISTORY_REVERT_DISABLED = True
 
 
 # Password validation

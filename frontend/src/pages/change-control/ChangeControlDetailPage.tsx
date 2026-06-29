@@ -40,6 +40,8 @@ import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import SignatureLogTable from "../../components/qms/SignatureLogTable";
 import ActivityLog from "../../components/qms/ActivityLog";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import ActionMatrix, { type ActionItem } from "../../components/common/ActionMatrix";
+import { aiService, toActionMatrixItems } from "../../services/ai.service";
 
 // const mapStatusToWorkflow = (backendStatus: string): any => {
 //   switch (backendStatus) {
@@ -70,6 +72,9 @@ export default function ChangeControlDetailPage() {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [actions, setActions] = useState<ActionItem[]>([]);
+  const [actionsLoading, setActionsLoading] = useState(false);
+  const [actionsLoaded, setActionsLoaded] = useState(false);
 
   const loadData = async () => {
     if (!id) return;
@@ -87,6 +92,16 @@ export default function ChangeControlDetailPage() {
   useEffect(() => {
     loadData();
   }, [id]);
+
+  useEffect(() => {
+    if (actionsLoaded || !record) return;
+    setActionsLoading(true);
+    setActionsLoaded(true);
+    aiService.extractActions([record.description || ""], "ChangeControl", record.id.toString())
+      .then((results) => setActions(toActionMatrixItems(results)))
+      .catch(() => setActions([]))
+      .finally(() => setActionsLoading(false));
+  }, [actionsLoaded, record]);
 
   const canEdit =
     role && record
@@ -307,6 +322,18 @@ export default function ChangeControlDetailPage() {
           </Box>
         }
         attachments={<AttachmentsUploader readOnly={!canEdit} />}
+        actions={
+          <Box sx={{ p: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>
+              AI-Extracted Action Items
+            </Typography>
+            {actionsLoading ? (
+              <Box sx={{ textAlign: "center", py: 4 }}><CircularProgress size={24} /></Box>
+            ) : (
+              <ActionMatrix actions={actions} onChange={setActions} recordType="ChangeControl" recordId={record.id.toString()} />
+            )}
+          </Box>
+        }
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
             <ApprovalsPanel

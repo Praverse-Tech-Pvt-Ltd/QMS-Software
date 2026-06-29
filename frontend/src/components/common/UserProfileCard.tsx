@@ -5,6 +5,7 @@ import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
 import { styled, keyframes } from '@mui/material/styles';
+import { authService } from '../../services/auth.service';
 
 interface UserProfileCardProps {
   userName?: string;
@@ -67,9 +68,8 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem('qms_token');
     if (onClose) onClose();
-    navigate('/login', { replace: true });
+    authService.logout();
   };
 
   const handleNavigation = (path: string) => {

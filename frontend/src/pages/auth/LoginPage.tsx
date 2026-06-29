@@ -21,9 +21,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 // Architecture Imports
-import api from "../../services/api";
+import { authService } from "../../services/auth.service";
 import { useRole } from "../../app/providers/RoleProvider";
-import {type  UserRole } from "../../services/permission.service";
+import { type UserRole } from "../../services/permission.service";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -41,22 +41,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // 1. Send Login Request
-      const response = await api.post("/auth/login/", { username, password });
-      
-      // 2. Extract Token & Role
-      const { access, role } = response.data;
-
-      // 3. ✅ Save Token to Storage FIRST
-      localStorage.setItem("qms_token", access);
-      
-      // 4. ✅ Update Context (Triggers AuthGuard)
-      setRole(role as UserRole); 
-
-      // 5. ✅ Redirect (Replace prevents going back to login)
+      const user = await authService.login(username, password);
+      setRole(user.role as UserRole);
       navigate("/", { replace: true });
-
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       setError("Invalid username or password");
     } finally {

@@ -1,0 +1,99 @@
+{
+  "module": "change_control",
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "What type of change is being proposed?",
+      "field": "change_type",
+      "type": "choice",
+      "options": ["Equipment / Instrument", "Manufacturing Process", "Supplier / Raw Material", "Document / SOP / Specification", "Software / IT System", "Facility / Utility"],
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "Briefly describe the current state (A) and the proposed change (B).",
+      "field": "description",
+      "type": "text",
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "Does this change affect any product that comes into direct contact with patients or is used in a clinical trial?",
+      "field": "patient_contact",
+      "type": "choice",
+      "options": ["Yes — direct patient contact", "Yes — indirect (cleaning, utilities)", "No"],
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "Are there any ongoing stability studies, clinical trials, or regulatory dossiers that reference the current state?",
+      "field": "ongoing_studies",
+      "type": "choice",
+      "options": ["Yes — regulatory dossier impacted", "Yes — ongoing stability study", "No"],
+      "required": true,
+      "branches": {
+        "Yes — regulatory dossier impacted": "q4b"
+      },
+      "next": "q5"
+    },
+    {
+      "id": "q4b",
+      "text": "What type of regulatory filing will this change require?",
+      "field": "regulatory_filing",
+      "type": "choice",
+      "options": ["Prior Approval Supplement (PAS)", "CBE-30 Supplement", "Annual Report", "Type II Variation", "Type IB Variation", "No filing required"],
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "Which departments and SOPs will be impacted by this change? (select all that apply)",
+      "field": "scope_departments",
+      "type": "multi_select",
+      "options": ["Production", "Quality Assurance", "Quality Control", "Warehouse", "Engineering", "Regulatory Affairs", "IT"],
+      "required": true,
+      "next": "q6"
+    },
+    {
+      "id": "q6",
+      "text": "What validation or qualification activities are required for this change?",
+      "field": "qualification_plan",
+      "type": "multi_select",
+      "options": ["Installation Qualification (IQ)", "Operational Qualification (OQ)", "Performance Qualification (PQ)", "Process Validation", "Cleaning Validation", "Method Validation", "Computer System Validation", "None required"],
+      "required": true,
+      "next": "q7"
+    },
+    {
+      "id": "q7",
+      "text": "Will any personnel require training before the change is implemented?",
+      "field": "training_required",
+      "type": "choice",
+      "options": ["Yes", "No"],
+      "required": true,
+      "next": "q8"
+    },
+    {
+      "id": "q8",
+      "text": "What is the proposed implementation date?",
+      "field": "target_date",
+      "type": "date",
+      "required": true,
+      "next": null
+    }
+  ],
+  "prefill_map": {
+    "patient_contact": {
+      "Yes — direct patient contact": {"risk_level": "High"},
+      "Yes — indirect (cleaning, utilities)": {"risk_level": "Medium"},
+      "No": {"risk_level": "Low"}
+    },
+    "regulatory_filing": {
+      "Prior Approval Supplement (PAS)": {"risk_level": "Critical"},
+      "CBE-30 Supplement": {"risk_level": "High"}
+    }
+  }
+}

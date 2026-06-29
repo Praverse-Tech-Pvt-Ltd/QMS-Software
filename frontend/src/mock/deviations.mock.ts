@@ -1,6 +1,6 @@
 import type { DeviationRecord } from "../services/deviations.service";
 
-export const deviationsMock: DeviationRecord[] = [
+export const deviationsMock: DeviationRecord[] = ([] as any[]).concat([
   {
     id: "DEV-2024-098",
     title: "Out of Specification Result - Tablet Hardness Test",
@@ -92,4 +92,4 @@ export const deviationsMock: DeviationRecord[] = [
     signatureLog: [],
     approvalsLog: []
   }
-];
+]) as DeviationRecord[];

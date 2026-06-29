@@ -35,6 +35,9 @@ class TrainingAssignment(TimeStampedModel):
     completion_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     score = models.PositiveIntegerField(null=True, blank=True)
+    # AI-generated quiz: [{question, options: [str], correct_index: int}]
+    quiz_questions = models.JSONField(default=list, blank=True)
+    quiz_passed = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username} - {self.plan.title}"

@@ -7,28 +7,16 @@ export type WorkflowModuleKey =
   | "training"
   | "deviations"
   | "capa"
-  | "change";
+  | "change"
+  | "audits"
+  | "complaints"
+  | "risks"
+  | "suppliers"
+  | "nonconformance"
+  | "oos"
+  | "batch_records";
 
-export type WorkflowStatus =
-  | "DRAFT"
-  | "REVIEW"
-  | "APPROVED"
-  | "REJECTED"
-  | "PENDING"
-  | "CLOSED"
-  | "CANCELLED"
-  | "IN_PROGRESS"
-  | "EFFECTIVE"
-  | "OBSOLETE"
-  | "SUPERSEDED"
-  | "ACTIVE"
-  | "INVESTIGATION"
-  | "QA_REVIEW"
-  | "VERIFICATION"
-  | "EVALUATION"
-  | "APPROVAL"
-  | "IMPLEMENTATION"
-  | "PLANNING";
+export type WorkflowStatus = string;
 
 export type SignatureMeaning =
   | "Review"
@@ -81,16 +69,7 @@ export interface WorkflowTransition {
   requiresComment?: boolean;
 }
 
-export type WorkflowAction =
-  | "SUBMIT"
-  | "APPROVE"
-  | "REJECT"
-  | "CLOSE"
-  | "PUBLISH"
-  | "RETIRE"
-  | "START_INVESTIGATION"
-  | "SUBMIT_RCA"
-  | "VERIFY_EFFECTIVENESS";
+export type WorkflowAction = string;
 
 export interface WorkflowMeta {
   id: string;

@@ -1,0 +1,79 @@
+{
+  "module": "supplier",
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "What category best describes this supplier?",
+      "field": "category",
+      "type": "choice",
+      "options": ["Raw Material / API", "Excipient", "Packaging Material", "Contract Manufacturer (CMO)", "Contract Laboratory (CRO)", "Service Provider"],
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "What materials or services does this supplier provide?",
+      "field": "approved_materials",
+      "type": "text",
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "What is the intended qualification type for this supplier?",
+      "field": "qualification_type",
+      "type": "choice",
+      "options": ["On-site audit", "Questionnaire / paper-based", "Third-party audit certificate", "Reference check only", "Re-qualification (existing supplier)"],
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "Does the supplier hold any relevant GMP or ISO certifications?",
+      "field": "certifications",
+      "type": "multi_select",
+      "options": ["FDA-registered", "EU GMP (EudraGMP)", "ISO 9001", "ISO 13485", "WHO GMP", "ANVISA approved", "No certifications"],
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "Has this supplier been used by any other regulated pharmaceutical company?",
+      "field": "reference_customers",
+      "type": "choice",
+      "options": ["Yes — with verifiable references", "Yes — without verifiable references", "Unknown", "No"],
+      "required": true,
+      "next": "q6"
+    },
+    {
+      "id": "q6",
+      "text": "What is the supply criticality? (What happens if this supplier fails?)",
+      "field": "supply_criticality",
+      "type": "choice",
+      "options": ["Critical — no alternate source exists", "High — limited alternates, >3 month lead time", "Medium — alternates exist within 3 months", "Low — easily replaceable"],
+      "required": true,
+      "next": "q7"
+    },
+    {
+      "id": "q7",
+      "text": "When is the proposed qualification completion target date?",
+      "field": "target_qualification_date",
+      "type": "date",
+      "required": true,
+      "next": null
+    }
+  ],
+  "prefill_map": {
+    "supply_criticality": {
+      "Critical — no alternate source exists": {"risk_level": "Critical"},
+      "High — limited alternates, >3 month lead time": {"risk_level": "High"},
+      "Medium — alternates exist within 3 months": {"risk_level": "Medium"},
+      "Low — easily replaceable": {"risk_level": "Low"}
+    },
+    "qualification_type": {
+      "On-site audit": {"qualification_type": "on_site_audit"},
+      "Third-party audit certificate": {"qualification_type": "third_party_cert"}
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "module": "capa",
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "What type of CAPA is this?",
+      "field": "action_type",
+      "type": "choice",
+      "options": ["Corrective Action (fix a known problem)", "Preventive Action (prevent a potential problem)"],
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "What triggered this CAPA?",
+      "field": "trigger",
+      "type": "choice",
+      "options": ["Deviation / Non-conformance", "Audit finding (internal)", "Audit finding (external / regulatory)", "Customer complaint", "OOS / OOT investigation", "Management review output", "Trend analysis", "Self-identified improvement"],
+      "required": true,
+      "branches": {
+        "Audit finding (external / regulatory)": "q2b"
+      },
+      "next": "q3"
+    },
+    {
+      "id": "q2b",
+      "text": "Was this finding from an FDA 483, Warning Letter, or EMA inspection?",
+      "field": "regulatory_finding_type",
+      "type": "choice",
+      "options": ["FDA 483 Observation", "Warning Letter", "EMA / MHRA inspection finding", "Other regulatory body"],
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "Describe the root cause (or suspected root cause if investigation is ongoing).",
+      "field": "root_cause",
+      "type": "text",
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "What root cause analysis (RCA) method was or will be used?",
+      "field": "rca_method",
+      "type": "choice",
+      "options": ["5 Whys", "Fishbone / Ishikawa", "Fault Tree Analysis (FTA)", "Failure Mode Effect Analysis (FMEA)", "No formal RCA (low complexity)", "Other"],
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "Is this a repeat occurrence (same root cause seen before within 24 months)?",
+      "field": "is_repeat",
+      "type": "choice",
+      "options": ["Yes — exact same root cause", "Yes — similar but not identical", "No — first occurrence"],
+      "required": true,
+      "next": "q6"
+    },
+    {
+      "id": "q6",
+      "text": "Which departments / processes are involved in the corrective / preventive actions?",
+      "field": "impacted_departments",
+      "type": "multi_select",
+      "options": ["Production", "Quality Assurance", "Quality Control", "Warehouse", "Engineering", "Regulatory Affairs", "Training", "IT"],
+      "required": true,
+      "next": "q7"
+    },
+    {
+      "id": "q7",
+      "text": "What is the target completion date for all CAPA actions?",
+      "field": "due_date",
+      "type": "date",
+      "required": true,
+      "next": null
+    }
+  ],
+  "prefill_map": {
+    "is_repeat": {
+      "Yes — exact same root cause": {"risk_level": "Critical"},
+      "Yes — similar but not identical": {"risk_level": "High"}
+    },
+    "trigger": {
+      "Audit finding (external / regulatory)": {"risk_level": "High"},
+      "Customer complaint": {"risk_level": "High"}
+    }
+  }
+}

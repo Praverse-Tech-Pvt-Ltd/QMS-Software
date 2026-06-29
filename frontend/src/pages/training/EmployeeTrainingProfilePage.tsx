@@ -26,6 +26,7 @@ import { useSnackbar } from "notistack";
 import {
   trainingService,
   type TrainingAssignment,
+  type QuizQuestion,
 } from "../../services/training.service";
 import PageHeader from "../../components/common/PageHeader";
 
@@ -35,32 +36,95 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import QuizIcon from "@mui/icons-material/Quiz";
 import HistoryIcon from "@mui/icons-material/History";
 
-// --- SUB-COMPONENT: QUIZ MODAL ---
-function QuizModal({ open, onClose, title, onPass, isSubmitting }: any) {
-  const [answer, setAnswer] = useState("");
-  const [password, setPassword] = useState("");
-  const [step, setStep] = useState(1); // 1: Quiz, 2: E-Sign
+type QuizStep = "generate" | "quiz" | "result" | "esign";
 
-  // Reset local state when modal opens/closes
+interface QuizModalProps {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  assignmentId: number | undefined;
+  onPass: (score: number, password: string) => void;
+  isSubmitting: boolean;
+}
+
+// --- SUB-COMPONENT: QUIZ MODAL ---
+function QuizModal({ open, onClose, title, assignmentId, onPass, isSubmitting }: QuizModalProps) {
+  const [step, setStep] = useState<QuizStep>("generate");
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [currentQ, setCurrentQ] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<number[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<{ score_percent: number; passed: boolean } | null>(null);
+  const [password, setPassword] = useState("");
+
   useEffect(() => {
     if (open) {
-      setStep(1);
-      setAnswer("");
+      setStep("generate");
+      setGenerating(false);
+      setGenerateError(null);
+      setQuestions([]);
+      setCurrentQ(0);
+      setSelectedAnswers([]);
+      setResult(null);
       setPassword("");
     }
   }, [open]);
 
-  const handleNext = () => setStep(2);
+  const handleGenerateQuiz = async () => {
+    if (!assignmentId) return;
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const res = await trainingService.generateQuiz(assignmentId);
+      setQuestions(res.quiz_questions);
+      setSelectedAnswers(new Array(res.quiz_questions.length).fill(-1));
+      setStep("quiz");
+    } catch (err: any) {
+      setGenerateError(err.response?.data?.error || "Quiz generation failed. Try again.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleSelectAnswer = (index: number) => {
+    const next = [...selectedAnswers];
+    next[currentQ] = index;
+    setSelectedAnswers(next);
+  };
+
+  const handleSubmitQuiz = async () => {
+    if (!assignmentId) return;
+    setSubmitting(true);
+    try {
+      const res = await trainingService.submitQuiz(assignmentId, selectedAnswers);
+      setResult(res);
+      setStep("result");
+    } catch {
+      setGenerateError("Quiz submission failed. Try again.");
+      setStep("generate");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRetry = () => {
+    setStep("generate");
+    setQuestions([]);
+    setCurrentQ(0);
+    setSelectedAnswers([]);
+    setResult(null);
+  };
 
   const handleSign = () => {
-    // Passing 100 score (placeholder for actual quiz logic) and the signature password
-    onPass(100, password);
+    onPass(result?.score_percent ?? 0, password);
   };
 
   return (
     <Dialog
       open={open}
-      onClose={!isSubmitting ? onClose : undefined}
+      onClose={!isSubmitting && !submitting ? onClose : undefined}
       fullWidth
       maxWidth="sm"
       PaperProps={{ sx: { borderRadius: 3 } }}
@@ -75,43 +139,70 @@ function QuizModal({ open, onClose, title, onPass, isSubmitting }: any) {
         }}
       >
         <QuizIcon color="primary" />
-        {step === 1 ? `Effectiveness Check: ${title}` : "Legal Certification"}
+        {step === "esign" ? "Legal Certification" : `Effectiveness Check: ${title}`}
       </DialogTitle>
 
       <DialogContent sx={{ mt: 1 }}>
-        {step === 1 ? (
+        {step === "generate" && (
+          <Box sx={{ textAlign: "center", py: 2 }}>
+            {generateError && (
+              <Typography color="error" sx={{ mb: 2 }}>{generateError}</Typography>
+            )}
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Generate a comprehension quiz from the SOP content for this training.
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={handleGenerateQuiz}
+              disabled={generating}
+              startIcon={generating && <CircularProgress size={16} color="inherit" />}
+            >
+              {generating ? "Generating..." : "Generate Quiz"}
+            </Button>
+          </Box>
+        )}
+
+        {step === "quiz" && questions.length > 0 && (
           <Box>
+            <Typography variant="caption" color="text.secondary">
+              Question {currentQ + 1} of {questions.length}
+            </Typography>
             <Typography
               variant="subtitle1"
-              sx={{ mb: 2, fontWeight: 700, color: "text.primary" }}
+              sx={{ mt: 1, mb: 2, fontWeight: 700, color: "text.primary" }}
             >
-              What is the required sanitation contact time for critical surfaces
-              per the current SOP revision?
+              {questions[currentQ].question}
             </Typography>
-            <FormControl component="fieldset">
+            <FormControl component="fieldset" fullWidth>
               <RadioGroup
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
+                value={selectedAnswers[currentQ] >= 0 ? String(selectedAnswers[currentQ]) : ""}
+                onChange={(e) => handleSelectAnswer(Number(e.target.value))}
               >
-                <FormControlLabel
-                  value="A"
-                  control={<Radio />}
-                  label="Minimum 30 Seconds"
-                />
-                <FormControlLabel
-                  value="B"
-                  control={<Radio />}
-                  label="Minimum 2 Minutes (Wet Contact)"
-                />
-                <FormControlLabel
-                  value="C"
-                  control={<Radio />}
-                  label="Dry wipe immediately after application"
-                />
+                {questions[currentQ].options.map((opt, i) => (
+                  <FormControlLabel key={i} value={String(i)} control={<Radio />} label={opt} />
+                ))}
               </RadioGroup>
             </FormControl>
           </Box>
-        ) : (
+        )}
+
+        {step === "result" && result && (
+          <Box sx={{ textAlign: "center", py: 2 }}>
+            <Typography variant="h5" fontWeight={800} color={result.passed ? "success.main" : "error.main"}>
+              {result.passed ? "Quiz Passed" : "Quiz Failed"}
+            </Typography>
+            <Typography sx={{ mt: 1 }}>
+              Score: {result.score_percent}% ({result.passed ? "≥" : "<"} 80% required)
+            </Typography>
+            {!result.passed && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                You need 80% to pass. Try again.
+              </Typography>
+            )}
+          </Box>
+        )}
+
+        {step === "esign" && (
           <Box sx={{ textAlign: "center", py: 1 }}>
             <Box
               sx={{
@@ -150,21 +241,43 @@ function QuizModal({ open, onClose, title, onPass, isSubmitting }: any) {
         <Button
           onClick={onClose}
           color="inherit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || submitting}
           sx={{ fontWeight: 700 }}
         >
           Cancel
         </Button>
-        {step === 1 ? (
+        {step === "quiz" && currentQ < questions.length - 1 && (
           <Button
             variant="contained"
-            onClick={handleNext}
-            disabled={!answer}
+            onClick={() => setCurrentQ(currentQ + 1)}
+            disabled={selectedAnswers[currentQ] < 0}
             sx={{ fontWeight: 700, px: 4 }}
           >
+            Next Question
+          </Button>
+        )}
+        {step === "quiz" && currentQ === questions.length - 1 && (
+          <Button
+            variant="contained"
+            onClick={handleSubmitQuiz}
+            disabled={selectedAnswers[currentQ] < 0 || submitting}
+            startIcon={submitting && <CircularProgress size={16} color="inherit" />}
+            sx={{ fontWeight: 700, px: 4 }}
+          >
+            {submitting ? "Submitting..." : "Submit Quiz"}
+          </Button>
+        )}
+        {step === "result" && !result?.passed && (
+          <Button variant="contained" onClick={handleRetry} sx={{ fontWeight: 700, px: 4 }}>
+            Retry
+          </Button>
+        )}
+        {step === "result" && result?.passed && (
+          <Button variant="contained" color="success" onClick={() => setStep("esign")} sx={{ fontWeight: 700, px: 4 }}>
             Next: E-Sign
           </Button>
-        ) : (
+        )}
+        {step === "esign" && (
           <Button
             variant="contained"
             color="success"
@@ -398,6 +511,7 @@ export default function EmployeeTrainingProfilePage() {
         open={quizOpen}
         onClose={() => !submitting && setQuizOpen(false)}
         title={activeAssignment?.user_details?.first_name || "Required SOP"}
+        assignmentId={activeAssignment?.id}
         onPass={handleQuizPass}
         isSubmitting={submitting}
       />

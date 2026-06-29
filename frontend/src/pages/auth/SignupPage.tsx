@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 
 // Architecture Imports
 import api from "../../services/api";
+import { setAccessToken } from "../../services/tokenStore";
 import { useRole } from "../../app/providers/RoleProvider";
 import { type UserRole } from "../../services/permission.service"; // Assuming you have this type defined
 
@@ -97,8 +98,8 @@ export default function SignupPage() {
       // 3. Extract Token & Role
       const { access, role } = loginResponse.data;
 
-      // 4. ✅ Save to LocalStorage & Context
-      localStorage.setItem("qms_token", access);
+      // 4. Access token kept in memory only (never localStorage) — 21 CFR Part 11 requirement
+      setAccessToken(access);
       setRole(role as UserRole); // Cast to your strict Role type
 
       // 5. ✅ Force Redirect to Dashboard (Bypassing Login Page)

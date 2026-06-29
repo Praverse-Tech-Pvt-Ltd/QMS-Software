@@ -18,6 +18,7 @@ interface DetailTabsLayoutProps {
   impact?: ReactNode;
   plan?: ReactNode;
   trainees?: ReactNode;
+  actions?: ReactNode;
 }
 
 export default function DetailTabsLayout({
@@ -34,6 +35,7 @@ export default function DetailTabsLayout({
   impact,
   plan,
   trainees,
+  actions,
 }: DetailTabsLayoutProps) {
   const [tabIndex, setTabIndex] = useState(0);
   const navigate = useNavigate();
@@ -45,6 +47,7 @@ export default function DetailTabsLayout({
     ...(trainees ? [{ label: "Trainee Tracking", content: trainees }] : []),
     ...(impact ? [{ label: "Impact Assessment", content: impact }] : []),
     ...(plan ? [{ label: "Implementation Plan", content: plan }] : []),
+    ...(actions ? [{ label: "Actions", content: actions }] : []),
     { label: "Attachments", content: attachments },
     { label: "Activity", content: activity },
     { label: "Approvals", content: approvals },

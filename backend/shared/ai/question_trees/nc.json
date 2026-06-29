@@ -1,0 +1,49 @@
+{
+  "module": "nc",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "At which stage was the nonconformance detected?",
+      "field": "detection_stage",
+      "type": "choice",
+      "options": ["Incoming material inspection", "In-process check", "Final QC release testing", "Customer / field", "Stability testing"],
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "What type of defect was observed?",
+      "field": "defect_type",
+      "type": "choice",
+      "options": ["Physical defect (crack, chip, deformation)", "Contamination / foreign matter", "Label / documentation error", "Out-of-specification result", "Packaging failure"],
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "What quantity is affected (units, kg, litres)?",
+      "field": "quantity_description",
+      "type": "text",
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "Has the affected material been quarantined / placed on hold?",
+      "field": "quarantined",
+      "type": "choice",
+      "options": ["Yes", "No"],
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "Is rework a possibility for this nonconformance?",
+      "field": "rework_possible",
+      "type": "choice",
+      "options": ["Yes", "No", "Needs investigation"],
+      "required": true,
+      "next": null
+    }
+  ]
+}

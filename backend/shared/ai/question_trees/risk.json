@@ -1,0 +1,61 @@
+{
+  "module": "risk",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "What category does this risk belong to?",
+      "field": "category",
+      "type": "choice",
+      "options": ["Process", "Product", "Supplier", "Regulatory / Compliance", "IT / Data Integrity"],
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "Describe the potential effect if this risk occurs.",
+      "field": "potential_effect",
+      "type": "text",
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "How severe would the impact be if this risk materialises? (1=Negligible, 5=Catastrophic)",
+      "field": "severity",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "How likely is this risk to occur? (1=Rare, 5=Almost certain)",
+      "field": "occurrence",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "How easily can this risk be detected before it causes harm? (1=Always detected, 5=Undetectable)",
+      "field": "detection",
+      "type": "scale",
+      "min": 1,
+      "max": 5,
+      "required": true,
+      "next": "q6"
+    },
+    {
+      "id": "q6",
+      "text": "Is there an existing control in place for this risk?",
+      "field": "existing_control",
+      "type": "choice",
+      "options": ["Yes - fully effective", "Yes - partially effective", "No"],
+      "required": true,
+      "next": null
+    }
+  ]
+}

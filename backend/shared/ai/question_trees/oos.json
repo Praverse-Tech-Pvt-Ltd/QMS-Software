@@ -1,0 +1,89 @@
+{
+  "module": "oos",
+  "version": "1.0",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "What product and batch number is this OOS result associated with?",
+      "field": "product_batch",
+      "type": "text",
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "What test failed, and what was the result obtained vs. the specification?",
+      "field": "test_details",
+      "type": "text",
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "What type of test is this?",
+      "field": "test_type",
+      "type": "choice",
+      "options": ["Assay / Potency", "Dissolution", "Content Uniformity", "Microbial / Sterility", "Impurity / Related Substance", "Physical (hardness, weight, appearance)", "Other"],
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "Phase I — Immediate Lab Investigation: Was the instrument calibration verified at the time of testing?",
+      "field": "instrument_calibration",
+      "type": "choice",
+      "options": ["Yes — calibration current", "No — calibration was overdue", "Unknown at this time"],
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "Was the sample preparation and calculation reviewed for errors?",
+      "field": "calculation_review",
+      "type": "choice",
+      "options": ["Yes — no errors found", "Yes — error found (calculation)", "Yes — error found (sample prep)", "Not yet reviewed"],
+      "required": true,
+      "branches": {
+        "Yes — error found (calculation)": "q5b",
+        "Yes — error found (sample prep)": "q5b"
+      },
+      "next": "q6"
+    },
+    {
+      "id": "q5b",
+      "text": "Describe the error found. This result may be eligible for Phase I invalidation.",
+      "field": "error_description",
+      "type": "text",
+      "required": true,
+      "next": "q6"
+    },
+    {
+      "id": "q6",
+      "text": "Has this product/batch failed the same test before (repeat OOS)?",
+      "field": "repeat_oos",
+      "type": "choice",
+      "options": ["Yes — same test, same product", "Yes — same test, different batch", "No — first occurrence"],
+      "required": true,
+      "next": "q7"
+    },
+    {
+      "id": "q7",
+      "text": "What is the disposition status of the batch at this time?",
+      "field": "batch_disposition",
+      "type": "choice",
+      "options": ["Quarantined — not released", "Released to market", "Partially distributed", "Stability sample only (not for sale)"],
+      "required": true,
+      "next": null
+    }
+  ],
+  "prefill_map": {
+    "repeat_oos": {
+      "Yes — same test, same product": {"risk_level": "Critical"},
+      "Yes — same test, different batch": {"risk_level": "High"}
+    },
+    "batch_disposition": {
+      "Released to market": {"risk_level": "Critical"},
+      "Partially distributed": {"risk_level": "High"}
+    }
+  }
+}

@@ -62,3 +62,14 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.user} {self.action} {self.content_type} ({self.timestamp.strftime('%Y-%m-%d %H:%M')})"
+
+    def delete(self, *args, **kwargs):
+        raise NotImplementedError(
+            "AuditLog records are immutable and cannot be deleted by any means. "
+            "This is a 21 CFR Part 11 requirement."
+        )
+
+    def soft_delete(self, user):
+        raise NotImplementedError(
+            "AuditLog records cannot be deactivated. They are permanent."
+        )

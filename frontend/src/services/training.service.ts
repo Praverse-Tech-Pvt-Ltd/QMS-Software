@@ -7,6 +7,12 @@ import type {
 } from "./workflow.service";
 import { type AuditTrailEntry } from "./audit.service";
 
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correct_index: number;
+}
+
 export interface TrainingAssignment {
   id: number;
   status: string;
@@ -23,6 +29,8 @@ export interface TrainingAssignment {
     department?: string;
   };
   plan: number;
+  quiz_questions?: QuizQuestion[];
+  quiz_passed?: boolean;
 }
 
 export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
@@ -136,4 +144,17 @@ async completeTraining(
       );
       return response.data;
     },
+
+  async generateQuiz(assignmentId: number): Promise<{ quiz_questions: QuizQuestion[] }> {
+    const response = await api.post(`/training/assignments/${assignmentId}/generate-quiz/`);
+    return response.data;
+  },
+
+  async submitQuiz(
+    assignmentId: number,
+    answers: number[]
+  ): Promise<{ score_percent: number; passed: boolean; correct: boolean[] }> {
+    const response = await api.post(`/training/assignments/${assignmentId}/submit-quiz/`, { answers });
+    return response.data;
+  },
 };

@@ -7,6 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from .models import Deviation, Capa, ChangeControl
 from .serializers import DeviationSerializer, CapaSerializer, ChangeControlSerializer
 from core.models import AuditLog
+from shared.workflow import transition as workflow_transition
 
 class BaseQualityViewSet(viewsets.ModelViewSet):
     """
@@ -145,13 +146,13 @@ class CapaViewSet(BaseQualityViewSet):
     @action(detail=True, methods=['post'], url_path='verify')
     def verify_capa(self, request, capa_id=None):
         capa = self.get_object()
-        if request.user.role not in ['QA', 'Admin']:
-            return Response({"error": "Only QA can verify CAPAs."}, status=403)
+        if request.user.role not in ['QA', 'Admin', 'QA Head', 'QA Manager']:
+            return Response({"error": "Only QA / QA Manager / QA Head can verify CAPAs."}, status=403)
 
         old_status = capa.status
         capa.status = 'VERIFIED'
         capa.save()
-        
+
         AuditLog.objects.create(
             user=request.user,
             content_object=capa,
@@ -166,12 +167,30 @@ class CapaViewSet(BaseQualityViewSet):
             deviation.status = 'CLOSED'
             deviation.save()
             AuditLog.objects.create(
-                user=None, # System action
+                user=None,
                 content_object=deviation,
                 action='STATUS_CHANGE',
                 reason=f"Automatically closed because CAPA {capa.capa_id} was verified."
             )
         return Response({"message": "CAPA Verified and logged."})
+
+    @action(detail=True, methods=['post'], url_path='transition')
+    def do_transition(self, request, capa_id=None):
+        """Workflow transition endpoint — uses shared.workflow for e-sig enforcement."""
+        capa = self.get_object()
+        action_name = request.data.get('action')
+        reason = request.data.get('reason', '')
+        esig_password = request.data.get('esig_password')
+
+        if not action_name:
+            return Response({'error': 'action is required'}, status=400)
+
+        try:
+            workflow_transition(capa, action_name, request.user, reason, esig_password)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+        return Response(CapaSerializer(capa).data)
 
 class ChangeControlViewSet(BaseQualityViewSet):
     queryset = ChangeControl.objects.all().order_by('-created_at')
@@ -225,14 +244,13 @@ class ChangeControlViewSet(BaseQualityViewSet):
     @action(detail=True, methods=['post'], url_path='approve')
     def approve_cc(self, request, cc_id=None):
         cc = self.get_object()
-        # GxP Rule: Only QA or Admin can approve Changes
-        if request.user.role not in ['QA', 'Admin']:
+        if request.user.role not in ['QA', 'Admin', 'QA Head', 'QA Manager']:
             return Response({"error": "QA approval required for this transition."}, status=403)
 
         old_status = cc.status
         cc.status = 'IMPLEMENTATION'
         cc.save()
-        
+
         AuditLog.objects.create(
             user=request.user,
             content_object=cc,
@@ -241,3 +259,21 @@ class ChangeControlViewSet(BaseQualityViewSet):
             reason=request.data.get('change_reason', 'Approved for implementation')
         )
         return Response({"message": f"Change Control {cc.cc_id} approved."})
+
+    @action(detail=True, methods=['post'], url_path='transition')
+    def do_transition(self, request, cc_id=None):
+        """Workflow transition endpoint — uses shared.workflow for e-sig enforcement."""
+        cc = self.get_object()
+        action_name = request.data.get('action')
+        reason = request.data.get('reason', '')
+        esig_password = request.data.get('esig_password')
+
+        if not action_name:
+            return Response({'error': 'action is required'}, status=400)
+
+        try:
+            workflow_transition(cc, action_name, request.user, reason, esig_password)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+        return Response(ChangeControlSerializer(cc).data)

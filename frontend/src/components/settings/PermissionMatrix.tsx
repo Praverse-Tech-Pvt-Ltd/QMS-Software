@@ -76,7 +76,7 @@ export default function PermissionMatrix() {
                         <Chip label={roleItem} size="small" sx={{ fontWeight: 600 }} />
                       </TableCell>
                       {actions.map((action) => {
-                        const hasPermission = permissions.includes(action as any);
+                        const hasPermission = (permissions as string[]).includes(action);
                         return (
                           <TableCell key={action} align="center">
                             {hasPermission ? (

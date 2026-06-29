@@ -1,0 +1,69 @@
+{
+  "module": "deviation",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "In which area did the deviation occur?",
+      "field": "area",
+      "type": "choice",
+      "options": ["Manufacturing", "Quality Control Lab", "Warehouse / Storage", "Utilities / Engineering", "Documentation"],
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "Which product or batch was affected?",
+      "field": "product_batch",
+      "type": "text",
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "Was a GMP batch record or SOP not followed?",
+      "field": "sop_breach",
+      "type": "choice",
+      "options": ["Yes", "No", "Partially"],
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "Was patient safety or product quality potentially impacted?",
+      "field": "patient_impact",
+      "type": "choice",
+      "options": ["Yes - direct impact possible", "Possible - needs investigation", "No - contained"],
+      "required": true,
+      "branches": {
+        "Yes - direct impact possible": "q4b"
+      },
+      "next": "q5"
+    },
+    {
+      "id": "q4b",
+      "text": "Has the affected product been placed on hold?",
+      "field": "product_hold",
+      "type": "choice",
+      "options": ["Yes", "No"],
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "What immediate containment action was taken?",
+      "field": "immediate_action",
+      "type": "text",
+      "required": true,
+      "next": "q6"
+    },
+    {
+      "id": "q6",
+      "text": "Has a similar deviation occurred in the last 12 months?",
+      "field": "repeat_deviation",
+      "type": "choice",
+      "options": ["Yes", "No", "Unknown"],
+      "required": true,
+      "next": null
+    }
+  ]
+}

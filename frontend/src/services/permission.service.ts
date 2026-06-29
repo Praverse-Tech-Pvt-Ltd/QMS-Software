@@ -32,6 +32,9 @@ export type Department =
 
 export type UserRole =
   | "Admin"
+  | "QA Head"
+  | "QA Manager"
+  | "QA Executive"
   | "QA"
   | "QC"
   | "Production"
@@ -47,7 +50,16 @@ export type ModuleKey =
   | "capa"
   | "change"
   | "settings"
-  | "reports";
+  | "reports"
+  | "audits"
+  | "complaints"
+  | "risks"
+  | "suppliers"
+  | "nonconformance"
+  | "oos"
+  | "laboratory"
+  | "batch_records"
+  | "knowledge";
 
 export type PermissionAction =
   | "view"
@@ -59,10 +71,10 @@ export type PermissionAction =
   | "close"
   | "reopen";
 
-export type PermissionMatrix = Record<
+export type PermissionMatrix = Partial<Record<
   UserRole,
   Partial<Record<ModuleKey, PermissionAction[]>>
->;
+>>;
 
 // --- SERVICE LOGIC ---
 
@@ -124,6 +136,9 @@ export const permissionService = new PermissionService();
 // --- CONSTANTS ---
 export const roles: UserRole[] = [
   "Admin",
+  "QA Head",
+  "QA Manager",
+  "QA Executive",
   "QA",
   "QC",
   "Production",

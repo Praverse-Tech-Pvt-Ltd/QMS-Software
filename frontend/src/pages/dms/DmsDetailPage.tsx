@@ -40,6 +40,9 @@ import AuditTrailTable from "../../components/qms/AuditTrailTable";
 import WorkflowTimeline from "../../components/qms/WorkflowTimeline";
 import WorkflowActionsPanel from "../../components/qms/WorkflowActionsPanel";
 import ActivityLog from "../../components/qms/ActivityLog";
+import AIRemarkField from "../../components/common/AIRemarkField";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
 import { WORKFLOWS } from "../../config/workflows";
 
 export default function DmsDetailPage() {
@@ -56,6 +59,8 @@ export default function DmsDetailPage() {
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [compareVersions, setCompareVersions] = useState({ old: "", new: "" });
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [aiRemark, setAiRemark] = useState("");
+  const [aiRemarkConfirmed, setAiRemarkConfirmed] = useState(false);
 
   const loadData = async () => {
     if (!id) return;
@@ -334,6 +339,32 @@ export default function DmsDetailPage() {
         attachments={<AttachmentsUploader readOnly={!canEdit} />}
         approvals={
           <Box sx={{ display: "grid", gap: 3 }}>
+            {(record.status === "REVIEW" || record.status === "DRAFT") && (
+              <Card sx={{ borderRadius: 3 }}>
+                <CardContent>
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
+                    AI-Drafted Review Remark
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1.5 }}>
+                    Use this as a starting point for your comment in the workflow action panel.
+                  </Typography>
+                  <AIRemarkField
+                    module="dms"
+                    recordId={id ?? ""}
+                    approverRole={record.status === "REVIEW" ? "document_approver" : "document_reviewer"}
+                    stage={record.status === "REVIEW" ? "approval" : "review"}
+                    value={aiRemark}
+                    onRemarkChange={setAiRemark}
+                    onConfirmChange={setAiRemarkConfirmed}
+                  />
+                  {aiRemarkConfirmed && (
+                    <Typography variant="caption" color="success.main" sx={{ display: "block", mt: 1 }}>
+                      ✓ Remark confirmed — copy it into the workflow action comment box below.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             <ApprovalsPanel
               requests={record.approvalRequests || []}
               canAddReviewer={canEdit}

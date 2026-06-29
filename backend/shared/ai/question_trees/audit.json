@@ -1,0 +1,76 @@
+{
+  "module": "audit",
+  "questions": [
+    {
+      "id": "q1",
+      "text": "What area or process is the subject of this audit?",
+      "field": "scope",
+      "type": "text",
+      "required": true,
+      "next": "q2"
+    },
+    {
+      "id": "q2",
+      "text": "What regulatory standard or requirement does this audit assess?",
+      "field": "criteria",
+      "type": "choice",
+      "options": ["21 CFR Part 211", "21 CFR Part 820", "EU GMP Annex 11", "ICH Q10", "ISO 13485", "Internal SOP Compliance", "Other"],
+      "required": true,
+      "next": "q3"
+    },
+    {
+      "id": "q3",
+      "text": "Who is the auditee (department or company)?",
+      "field": "auditee_department",
+      "type": "text",
+      "required": true,
+      "next": "q4"
+    },
+    {
+      "id": "q4",
+      "text": "What triggered this audit?",
+      "field": "trigger",
+      "type": "choice",
+      "options": ["Scheduled (annual plan)", "Regulatory requirement", "Customer request", "Complaint or deviation", "New supplier qualification", "Post-change verification"],
+      "required": true,
+      "branches": {
+        "Complaint or deviation": "q4b",
+        "New supplier qualification": "q4c"
+      },
+      "next": "q5"
+    },
+    {
+      "id": "q4b",
+      "text": "Please provide the reference number of the linked complaint or deviation.",
+      "field": "linked_record",
+      "type": "text",
+      "required": false,
+      "next": "q5"
+    },
+    {
+      "id": "q4c",
+      "text": "Is this supplier audit for initial qualification or re-qualification?",
+      "field": "supplier_audit_type",
+      "type": "choice",
+      "options": ["Initial qualification", "Re-qualification", "For-cause"],
+      "required": true,
+      "next": "q5"
+    },
+    {
+      "id": "q5",
+      "text": "What is the planned date range for this audit?",
+      "field": "date_range",
+      "type": "date_range",
+      "required": true,
+      "next": "q6"
+    },
+    {
+      "id": "q6",
+      "text": "How many audit days are planned?",
+      "field": "audit_days",
+      "type": "number",
+      "required": true,
+      "next": null
+    }
+  ]
+}

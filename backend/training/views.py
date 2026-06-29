@@ -73,6 +73,19 @@ class TrainingAssignmentViewSet(viewsets.ModelViewSet):
             return TrainingAssignment.objects.all()
         return TrainingAssignment.objects.filter(user=user)
 
+    @action(detail=False, methods=['get'], url_path='my-tasks')
+    def my_tasks(self, request):
+        """
+        Pending (not yet COMPLETED) training assignments for the current user,
+        most urgent first. Matches the flat-array contract already expected by
+        trainingService.getMyAssignments() on the frontend.
+        """
+        qs = TrainingAssignment.objects.filter(
+            user=request.user,
+        ).exclude(status='COMPLETED').select_related('plan').order_by('due_date')
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         assignment = self.get_object()
@@ -81,6 +94,56 @@ class TrainingAssignmentViewSet(viewsets.ModelViewSet):
         assignment.score = request.data.get('score', 100)
         assignment.save()
         return Response({'status': 'Training Completed'})
+
+    @action(detail=True, methods=['post'], url_path='generate-quiz')
+    def generate_quiz(self, request, pk=None):
+        from knowledge.sop_ingestion import query_sops
+        from shared.ai.remark_generator import generate_quiz_from_sop
+
+        assignment = self.get_object()
+        sop_name = assignment.plan.title
+
+        sop_chunks = query_sops(sop_name)
+        if not sop_chunks:
+            return Response({'error': 'SOP not indexed. Upload this SOP first.'}, status=400)
+
+        questions = generate_quiz_from_sop(sop_name, sop_chunks)
+        if not questions:
+            return Response({'error': 'Quiz generation failed or AI is unavailable. Try again later.'}, status=503)
+
+        assignment.quiz_questions = questions
+        assignment.quiz_passed = False
+        assignment.save(update_fields=['quiz_questions', 'quiz_passed', 'updated_at'])
+        return Response({'quiz_questions': questions})
+
+    @action(detail=True, methods=['post'], url_path='submit-quiz')
+    def submit_quiz(self, request, pk=None):
+        assignment = self.get_object()
+        questions = assignment.quiz_questions or []
+        if not questions:
+            return Response({'error': 'No quiz generated for this assignment yet.'}, status=400)
+
+        answers = request.data.get('answers', [])
+        if not isinstance(answers, list):
+            return Response({'error': 'answers must be a list of selected option indices'}, status=400)
+
+        correct = []
+        for i, q in enumerate(questions):
+            selected = answers[i] if i < len(answers) else None
+            correct.append(selected == q.get('correct_index'))
+
+        score_percent = round((sum(correct) / len(questions)) * 100, 1) if questions else 0.0
+        passed = score_percent >= 80.0
+
+        assignment.quiz_passed = passed
+        assignment.score = int(score_percent)
+        assignment.save(update_fields=['quiz_passed', 'score', 'updated_at'])
+
+        return Response({
+            'score_percent': score_percent,
+            'passed': passed,
+            'correct': correct,
+        })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
