@@ -1,5 +1,119 @@
 # NexGen QMS — Build Overview
 
+## Phase 6 Changes (2026-07-13)
+
+11 new/extended features plus local AI model infrastructure. 104 → 185 backend
+tests, 87% coverage on the new apps (logbooks/stability/environmental/recall/
+laboratory, `--fail-under=80`), 0 TypeScript errors, 0 `localStorage` token
+references, zero regressions. The build prompt (`CLAUDE_CODE_PHASE6_FINAL.md`)
+assumed some code shapes that didn't match reality post-Phase-5 — each block
+below notes what was actually read and adapted rather than applied blindly.
+
+### AI Model Provision
+- Local embedding: replaced OpenAI `text-embedding-3-small` with
+  `sentence-transformers/all-MiniLM-L6-v2` (384 dim, CPU, no API cost) —
+  `knowledge/sop_ingestion.py` never actually embedded SOP chunks before this
+  (Phase 1 stub, text-search only); this closes that gap, and also switches
+  the FDA 483 observation embedding task (`knowledge/tasks.py`) off OpenAI.
+- Local LLM adapter: `shared/ai/remark_generator.py` now checks
+  `LOCAL_LLM_URL` before `ANTHROPIC_API_KEY`, falling through to the
+  template stub — matched to the real `generate_remark()` signature and
+  `{remark_draft, sop_citations, risk_flags}` contract, not the shape the
+  build prompt assumed.
+- Classifier hook: `shared/ai/classifier.py` loads a fine-tuned model from
+  `ml/models/classifier/` if present; falls back to the keyword map
+  transparently if not. No model exists yet — provisioning only.
+- Set `LOCAL_LLM_URL` in `.env` when a local model is trained; no code
+  changes required to switch over.
+
+### New Modules
+- **Electronic Logbooks** (`/logbooks`) — equipment/area/instrument usage
+  logs, e-signed at creation (every entry, not just abnormal ones — GMP
+  logbooks require per-entry attestation), AI advisory hook on
+  abnormal/out-of-service conditions.
+- **Instrument Calibration Tracking** (Instruments tab on `/laboratory`) —
+  `Instrument`/`CalibrationRecord`, auto-derived `next_calibration_date`,
+  daily `alert_calibration_due` Celery task.
+- **Stability Management** (`/stability`) — ICH Q1A(R2) protocols, pull
+  points auto-generated per real sampling intervals by study type
+  (long term/accelerated/intermediate/stress), OOT flagging with AI
+  advisory hook.
+- **Environmental Monitoring** (`/environmental`) — sampling plans, results
+  with auto-derived status against alert/action limits, action-limit
+  breaches auto-create a linked `quality.Deviation` (a legacy
+  `TimeStampedModel`, not `BaseModel` — read first, adapted accordingly).
+- **Recall Management** (`/recall`) — Class I/II/III, e-signed
+  initiated→active→completed/closed workflow, links to Complaint/NC.
+
+### Feature Completions
+- **Multi-site UI**: `User.site` FK, site selector in the nav header
+  (state lives in `RoleProvider`, the closest thing this app has to an
+  AuthProvider), an `api.ts` interceptor that auto-injects `?site=<id>` on
+  GET calls, and a `SiteScopedQuerysetMixin` applied to every ViewSet whose
+  model actually has BaseModel's `site` field (11 apps) — skipped
+  `quality.OOSInvestigation` and `training.TrainingAssignment`, both legacy
+  `TimeStampedModel` with no site field. `/admin/sites` management page.
+  Known limitation: create flows across the app don't set `site=` on new
+  records (pre-existing gap), so filtering only affects records that
+  already have a site set via the admin panel.
+- **DMS Periodic Review**: `review_frequency_months`/`next_review_date`/
+  `last_review_date` on `Document`, auto-set once a document goes
+  `EFFECTIVE`, `mark_reviewed()` to reset the cycle, daily alert task,
+  "Review Due" filter chip + sidebar badge.
+- **Training Completion Certificates**: PDF via reportlab (pattern copied
+  from `laboratory.views.generate_coa_pdf`), download button on completed
+  training history.
+- **Training Calendar**: month grid of due assignments, independent of the
+  Plans tab's loading state.
+- **SPC Charts**: `deviation_rate`/`oos_rate`/`complaint_rate` (real
+  monthly counts) and `capa_cycle_time` (approximated from `Capa.updated_at`
+  on `VERIFIED` records — the legacy `Capa` model has no dedicated closed
+  date). Mean ± 3σ UCL/LCL, out-of-control points highlighted red. Added
+  `chart.js`/`react-chartjs-2` — no charting library existed in the project.
+- **Change Control CCF Templates**: `CCFTemplate` matched against
+  `ChangeControl.change_type`, rendered against the record's own fields
+  (this app has no separate "questionnaire answers" object — the AI
+  questionnaire writes directly into the create payload) and previewed in
+  a dialog before the user proceeds to the detail page.
+- **Sample Result Entry UI**: closes the last Phase 5 frontend gap. Also
+  fixed a page-wide bug found while building it — every `laboratoryService`
+  call used `/laboratory/...` instead of `/v1/laboratory/...`, so every
+  action on `SampleDetailPage` (not just result entry) was silently 404ing
+  before this fix.
+
+### Real bugs found and fixed during this phase
+- `dms.DocumentViewSet` uses `lookup_field='document_id'`; a new detail
+  action needed a `document_id=` kwarg, not `pk=`.
+- `recall.RecallRecord.initiated_date` defaulted to `timezone.now` (a
+  datetime) instead of `date.today`, which DRF's DateField serializer
+  rejected on the freshly-created (not re-fetched) instance.
+- `environmental.EMResultViewSet` required the client to supply
+  `sampled_by` instead of setting it server-side, unlike every other
+  "performed by" field in this codebase.
+- `reports.SPCView` compared `DateTimeField` columns against naive date
+  bounds (`RuntimeWarning` under `USE_TZ=True`, silently wrong on
+  Postgres) — fixed to timezone-aware bounds.
+- `laboratoryService`'s `/laboratory/...` vs. real `/v1/laboratory/...`
+  mount point (see Sample Result Entry UI above).
+
+### Remaining (Phase 7)
+- ERP Integration (SAP/Oracle hooks)
+- Analyst Qualification (CaliberLIMS parity)
+- Inventory Management (reagents, reference standards)
+- Mobile PWA
+- SCORM e-learning embed in Training
+- AI model training (separate workstream — infrastructure ready since
+  Phase 6 Block 1)
+- Retrofit `site=` assignment into create flows so multi-site filtering
+  is meaningful beyond admin-edited records (see Multi-site UI above)
+- Reconcile the pre-existing frontend/backend field-name and endpoint-path
+  mismatches surfaced during Phase 6 (Laboratory Sample/TestRequest,
+  Management Review KPI shape, `reportsService`'s missing `/v1/` prefix on
+  the calls Block 10 didn't touch) — none block Phase 6 functionality, but
+  they mean those existing pages don't actually work yet
+
+---
+
 ## Phase 5 Changes (2026-06-22)
 
 Final hardening and completion pass. All modules now have Backend ✅,
