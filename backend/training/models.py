@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from core.models import TimeStampedModel
+from shared.models import BaseModel
+from simple_history.models import HistoricalRecords
 
 class TrainingPlan(TimeStampedModel):
     class Status(models.TextChoices):
@@ -41,3 +43,52 @@ class TrainingAssignment(TimeStampedModel):
 
     def __str__(self):
         return f"{self.user.username} - {self.plan.title}"
+
+
+class SCORMModule(BaseModel):
+    """
+    Phase 7 — SCORM e-learning package metadata attached to a TrainingPlan.
+    Data-model/API stub only; no in-browser SCORM player this phase.
+    """
+    class Version(models.TextChoices):
+        SCORM_12 = "1.2", "SCORM 1.2"
+        SCORM_2004 = "2004", "SCORM 2004"
+
+    training_plan = models.OneToOneField(
+        TrainingPlan, on_delete=models.CASCADE, related_name="scorm_module",
+        null=True, blank=True,
+    )
+    title = models.CharField(max_length=200)
+    version = models.CharField(max_length=10, choices=Version.choices)
+    package_file = models.FileField(upload_to="scorm_packages/%Y/")
+    launch_url = models.CharField(max_length=500, blank=True)
+    completion_threshold = models.DecimalField(max_digits=5, decimal_places=2, default=80.0)
+
+    history = HistoricalRecords()
+
+    def __str__(self):
+        return self.title
+
+
+class SCORMResult(BaseModel):
+    """
+    Phase 7 — a single SCORM completion/score record for a TrainingAssignment.
+    """
+    class CompletionStatus(models.TextChoices):
+        PASSED = "passed", "Passed"
+        FAILED = "failed", "Failed"
+        INCOMPLETE = "incomplete", "Incomplete"
+        NOT_ATTEMPTED = "not_attempted", "Not Attempted"
+
+    scorm_module = models.ForeignKey(SCORMModule, on_delete=models.PROTECT, related_name="results")
+    assignment = models.ForeignKey(TrainingAssignment, on_delete=models.CASCADE, related_name="scorm_results")
+    score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    completion_status = models.CharField(
+        max_length=20, choices=CompletionStatus.choices, default=CompletionStatus.NOT_ATTEMPTED,
+    )
+    raw_data = models.JSONField(default=dict)
+
+    history = HistoricalRecords()
+
+    def __str__(self):
+        return f"{self.assignment} - {self.scorm_module.title} ({self.completion_status})"

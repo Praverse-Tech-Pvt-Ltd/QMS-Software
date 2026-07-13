@@ -25,6 +25,9 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create", "edit", "delete"],
     stability: ["view", "create", "edit", "approve", "close"],
     environmental: ["view", "create", "edit", "approve", "close"],
+    analyst_qualification: ["view", "create", "edit", "approve"],
+    inventory: ["view", "create", "edit", "approve"],
+    integrations: ["view", "edit"],
   },
 
   "QA Head": {
@@ -51,6 +54,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create", "edit"],
     stability: ["view", "create", "edit", "approve", "close"],
     environmental: ["view", "create", "edit", "approve", "close"],
+    analyst_qualification: ["view", "create", "edit", "approve"],
+    inventory: ["view", "create", "edit", "approve"],
   },
 
   "QA Manager": {
@@ -77,6 +82,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create", "edit"],
     stability: ["view", "create", "edit"],
     environmental: ["view", "create", "edit"],
+    analyst_qualification: ["view", "create", "edit", "approve"],
+    inventory: ["view", "create", "edit"],
   },
 
   "QA Executive": {
@@ -103,6 +110,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create"],
     stability: ["view", "create"],
     environmental: ["view", "create"],
+    analyst_qualification: ["view", "create"],
+    inventory: ["view", "create"],
   },
 
   QA: {
@@ -129,6 +138,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create", "edit"],
     stability: ["view", "create", "edit"],
     environmental: ["view", "create", "edit"],
+    analyst_qualification: ["view", "create", "edit"],
+    inventory: ["view", "create", "edit"],
   },
 
   QC: {
@@ -155,6 +166,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create"],
     stability: ["view", "create", "edit"],
     environmental: ["view", "create", "edit"],
+    analyst_qualification: ["view", "create"],
+    inventory: ["view", "create", "edit"],
   },
 
   Production: {
@@ -181,6 +194,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create"],
     stability: ["view"],
     environmental: ["view"],
+    analyst_qualification: ["view"],
+    inventory: ["view"],
   },
 
   Warehouse: {
@@ -207,6 +222,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view", "create"],
     stability: ["view"],
     environmental: ["view"],
+    analyst_qualification: ["view"],
+    inventory: ["view", "create", "edit"],
   },
 
   Viewer: {
@@ -233,5 +250,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     logbooks: ["view"],
     stability: ["view"],
     environmental: ["view"],
+    analyst_qualification: ["view"],
+    inventory: ["view"],
   },
 };

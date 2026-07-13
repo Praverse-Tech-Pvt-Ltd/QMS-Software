@@ -63,6 +63,11 @@ urlpatterns = [
     path('api/v1/stability/', include('stability.urls')),
     path('api/v1/environmental/', include('environmental.urls')),
     path('api/v1/recall/', include('recall.urls')),
+
+    # Phase 7 modules
+    path('api/v1/analyst-qualification/', include('analyst_qualification.urls')),
+    path('api/v1/inventory/', include('inventory.urls')),
+    path('api/v1/integrations/', include('integrations.urls')),
 ]
 
 if settings.DEBUG:

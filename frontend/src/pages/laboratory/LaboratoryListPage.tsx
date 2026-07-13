@@ -34,9 +34,9 @@ const INSTRUMENT_COLUMNS: ColumnDef<Instrument>[] = [
 
 const SAMPLE_COLUMNS: ColumnDef<Sample>[] = [
   { field: "sample_number", headerName: "Sample #", width: 140 },
-  { field: "product_name", headerName: "Product", width: 220 },
+  { field: "product", headerName: "Product", width: 220 },
   { field: "sample_type", headerName: "Type", width: 120 },
-  { field: "batch_number", headerName: "Batch", width: 130 },
+  { field: "batch_lot", headerName: "Batch", width: 130 },
   { field: "received_date", headerName: "Received", width: 130 },
   {
     field: "status",
@@ -47,7 +47,7 @@ const SAMPLE_COLUMNS: ColumnDef<Sample>[] = [
 ];
 
 const TEST_COLUMNS: ColumnDef<TestRequest>[] = [
-  { field: "request_number", headerName: "Request #", width: 140 },
+  { field: "id", headerName: "Request #", width: 140 },
   { field: "test_name", headerName: "Test", width: 260 },
   { field: "due_date", headerName: "Due Date", width: 130 },
   {

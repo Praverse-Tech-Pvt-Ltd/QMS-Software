@@ -16,6 +16,7 @@ from .serializers import (
 from shared.workflow import transition, verify_esignature
 from shared.models import ESignature
 from shared.site_scoping import SiteScopedQuerysetMixin
+from integrations.adapters.factory import get_erp_adapter
 
 
 def generate_coa_pdf(sample, test_results, template=None, site=None) -> io.BytesIO:
@@ -145,7 +146,8 @@ class SampleViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
         return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
 
     def perform_update(self, serializer):
         serializer.save(modified_by=self.request.user)
@@ -205,6 +207,20 @@ class SampleViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="COA-{sample.sample_number}-{sample.batch_lot}.pdf"'
         return response
 
+    @action(detail=False, methods=['get'], url_path='erp-prefill')
+    def erp_prefill(self, request):
+        """
+        Best-effort ERP lookup the frontend can call before submitting the
+        create form. Never raises — ERP connectivity must never block record
+        creation, so any adapter failure just yields an empty result.
+        """
+        material_code = request.query_params.get('material_code', '')
+        try:
+            data = get_erp_adapter().get_material_master(material_code)
+        except Exception:
+            data = {}
+        return Response(data)
+
 
 class TestRequestViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -215,7 +231,8 @@ class TestRequestViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
         return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
 
 
 class InstrumentViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -227,7 +244,8 @@ class InstrumentViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
         return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
 
     def perform_update(self, serializer):
         serializer.save(modified_by=self.request.user)

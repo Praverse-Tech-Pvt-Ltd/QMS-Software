@@ -1,5 +1,96 @@
 # NexGen QMS — Build Overview
 
+## Phase 7 Changes (2026-07-13)
+
+3 new Django apps (`analyst_qualification`, `inventory`, `integrations`), PWA
+groundwork, a SCORM data-model stub on `training`, plus the 4 pre-existing
+broken-page fixes carried over from Phase 6's "Remaining" list. The build
+prompt (`CLAUDE_CODE_PHASE7.md`) assumed a `training.TrainingItem` model that
+doesn't exist — training only has `TrainingPlan`/`TrainingAssignment` (legacy
+`TimeStampedModel`); the SCORM block below was adapted to attach to
+`TrainingPlan` instead. Built with 5 parallel workstreams (one per new
+module/groundwork item), each restricted to its own files; shared integration
+points (routing, permissions, sidebar, Celery beat schedule) were wired up as
+a single pass afterward to avoid conflicting edits.
+
+### Bug Fixes (pre-existing broken pages carried over from Phase 6)
+- **Management Review KPI shape**: `ManagementReviewView` returned a flat
+  6-counter `{'kpis': {...}}` dict, but `ManagementReviewPage.tsx` was
+  already a fully-built dashboard expecting a nested per-module shape
+  (`deviations{total,open,overdue}`, `capas`, `audits`, `complaints`,
+  `risks`, `training`, `suppliers`). Rewrote the backend to match the
+  frontend (already the richer, real UI) rather than the reverse;
+  `generate_management_review_pdf()` updated to flatten the new nested
+  shape into its metric table instead of iterating the old flat `kpis` dict.
+- **`reportsService` missing `/v1/` prefix**: added to `getManagementReview`,
+  `listAPQR`, `getAPQR`, `generateAPQR`, `exportAPQR`, `exportManagementReview`,
+  `exportAuditTrail` — `getSPC` already had it.
+- **Laboratory Sample/TestRequest field-name mismatches**: frontend
+  interfaces (`Sample`, `TestRequest`, `TestResult`) and `SampleDetailPage.tsx`
+  aligned to the real DRF serializer output (`product`/`batch_lot` not
+  `product_name`/`batch_number`, no `expiry_date` field, singular `result`
+  not a `results` array, `specification_lower`/`specification_upper` not a
+  single `specification` string).
+- **Multi-site `site=` gap on create flows**: `site=getattr(self.request.user,
+  'site', None)` added to `perform_create()` across every `BaseModel`-backed
+  ViewSet (laboratory, batch_records, audits, risk, suppliers,
+  nonconformance, logbooks, stability, environmental, recall, complaints,
+  quality's `CCFTemplateViewSet`) — skipped legacy `TimeStampedModel` apps
+  with no `site` field (`quality.Deviation/CAPA/ChangeControl/OOSInvestigation`,
+  `training.*`, and `dms.Document` — confirmed `Document` is also legacy
+  `TimeStampedModel`, not `BaseModel`, despite earlier assumptions).
+
+### New Modules
+- **Analyst Qualification** (`/analyst-qualification`) — `AnalyticalTechnique`
+  + `AnalystQualificationRecord` (e-signed approve/reject/revoke, 1-year
+  auto-expiry via `qualification_date`, `unique_together` on
+  analyst/technique/instrument), qualification matrix + records tabs, daily
+  `alert_qualifications_expiring` Celery task, AI remark hook on
+  `under_review`.
+- **Inventory Management** (`/inventory`) — reagents/reference
+  standards/media/columns/consumables, lot tracking with auto quantity
+  deduction on usage (status flips to `consumed` at zero, never negative),
+  expiry + low-stock daily alerts (`alert_inventory_expiring`,
+  `alert_low_stock`), Items/Lots/Usage Log tabs with a "Use Item" workflow.
+- **ERP Integration hooks** (`/admin/integrations`, admin-only) — adapter
+  pattern (`ERPAdapter` ABC → `StubERPAdapter` default, `SAPAdapter` stub
+  that raises `ImportError` with install instructions until `pyrfc` is
+  present), `get_erp_adapter()` factory picks the active `IntegrationConfig`
+  or falls back to the stub. Non-blocking `erp-prefill` lookups wired into
+  BPR creation (`batch_records`) and sample creation (`laboratory`) — ERP
+  failures never block record creation. `IntegrationSyncLog` is append-only
+  (`delete()` raises `NotImplementedError`, matching `AuditLog`'s pattern).
+
+### Feature Completions
+- **Mobile PWA groundwork** — `manifest.json`, placeholder icons (192/512),
+  `sw.js` (cache-first static, network-first-with-cache-fallback for
+  `/api/`), service worker registration in `main.tsx`. App is
+  installable; no offline-first architecture yet.
+- **SCORM data model** — `SCORMModule` (attached to `TrainingPlan` via
+  `OneToOneField`, not the spec's nonexistent `TrainingItem`) + `SCORMResult`
+  (linked to `TrainingAssignment`), API under the existing `/api/training/`
+  prefix. "Launch E-Learning" column on the Training list opens a
+  placeholder pointing at `launch_url` — no SCORM player yet.
+
+### Remaining (Phase 8+)
+- ERP live connection (`pyrfc` + SAP NWRFC SDK)
+- SCORM player (iframe + SCORM API shim)
+- Full mobile-responsive layout (PWA groundwork only, not a responsive redesign)
+- AI model training (separate workstream — infrastructure ready since Phase 6)
+- Password complexity + expiry enforcement
+- Record retention policy
+- Coverage on the 3 new Phase 7 apps was not measurable in this build
+  environment — no live Postgres (Docker Desktop couldn't start in this
+  sandbox; the `knowledge` app's `CREATE EXTENSION vector` migration also
+  needs `pgvector`, not present in a stock `postgres:15-alpine`). All static
+  checks pass (`manage.py check`, `makemigrations --check`, `tsc --noEmit`,
+  `npm run build`, localStorage grep); `manage.py test` and the
+  `coverage report --fail-under=80` gate need to be run against a real
+  Postgres+pgvector instance (e.g. Neon, per the existing dev setup) before
+  merging.
+
+---
+
 ## Phase 6 Changes (2026-07-13)
 
 11 new/extended features plus local AI model infrastructure. 104 → 185 backend

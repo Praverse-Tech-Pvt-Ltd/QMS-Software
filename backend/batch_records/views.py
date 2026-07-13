@@ -7,6 +7,7 @@ from .models import MasterBatchRecord, BatchProductionRecord
 from .serializers import MasterBatchRecordSerializer, BatchProductionRecordSerializer
 from shared.workflow import transition
 from shared.site_scoping import SiteScopedQuerysetMixin
+from integrations.adapters.factory import get_erp_adapter
 
 
 class MasterBatchRecordViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
@@ -18,7 +19,8 @@ class MasterBatchRecordViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
         return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
 
     @action(detail=True, methods=['post'], url_path='transition')
     def do_transition(self, request, pk=None):
@@ -42,7 +44,8 @@ class BatchProductionRecordViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSe
         return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
 
     @action(detail=True, methods=['post'], url_path='transition')
     def do_transition(self, request, pk=None):
@@ -55,3 +58,17 @@ class BatchProductionRecordViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSe
         except Exception as e:
             return Response({'error': str(e)}, status=400)
         return Response(BatchProductionRecordSerializer(bpr).data)
+
+    @action(detail=False, methods=['get'], url_path='erp-prefill')
+    def erp_prefill(self, request):
+        """
+        Best-effort ERP lookup the frontend can call before submitting the
+        create form. Never raises — ERP connectivity must never block record
+        creation, so any adapter failure just yields an empty result.
+        """
+        batch = request.query_params.get('batch', '')
+        try:
+            data = get_erp_adapter().get_batch_info(batch)
+        except Exception:
+            data = {}
+        return Response(data)

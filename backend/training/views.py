@@ -2,14 +2,19 @@ import io
 
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.http import HttpResponse
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from .models import TrainingPlan, TrainingAssignment
-from .serializers import TrainingPlanSerializer, TrainingAssignmentSerializer
+from .models import TrainingPlan, TrainingAssignment, SCORMModule, SCORMResult
+from .serializers import (
+    TrainingPlanSerializer, TrainingAssignmentSerializer,
+    SCORMModuleSerializer, SCORMResultSerializer,
+)
 from django.contrib.auth import get_user_model
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
 def generate_certificate_pdf(assignment) -> io.BytesIO:
@@ -230,6 +235,62 @@ class TrainingAssignmentViewSet(viewsets.ModelViewSet):
             f'attachment; filename="Certificate-{assignment.user.username}-{assignment.plan.id}.pdf"'
         )
         return response
+
+    @action(detail=True, methods=['get'], url_path='scorm-result')
+    def scorm_result(self, request, pk=None):
+        """GET /api/training/assignments/{id}/scorm-result/ — the SCORMResult linked to this assignment, if any."""
+        assignment = self.get_object()
+        result = SCORMResult.objects.filter(assignment=assignment).order_by('-created_at').first()
+        if not result:
+            return Response({'error': 'No SCORM result found for this assignment.'}, status=404)
+        return Response(SCORMResultSerializer(result).data)
+
+
+class SCORMModuleViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
+    """Phase 7 — SCORM package metadata. Data-model/API stub, no player this phase."""
+    queryset = SCORMModule.objects.filter(is_active=True).order_by('-created_at')
+    serializer_class = SCORMModuleSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.scope_by_site(super().get_queryset())
+
+    def perform_create(self, serializer):
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
+
+    def perform_update(self, serializer):
+        serializer.save(modified_by=self.request.user)
+
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser])
+    def upload(self, request, pk=None):
+        """POST /api/training/scorm-modules/{id}/upload/ — attach/replace the SCORM package file."""
+        scorm_module = self.get_object()
+        package_file = request.FILES.get('package_file')
+        if not package_file:
+            return Response({'error': 'package_file is required'}, status=400)
+
+        scorm_module.package_file = package_file
+        scorm_module.modified_by = request.user
+        scorm_module.save(update_fields=['package_file', 'modified_by', 'updated_at'])
+        return Response(SCORMModuleSerializer(scorm_module).data)
+
+
+class SCORMResultViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
+    """Phase 7 — records a SCORM completion/score for a TrainingAssignment."""
+    queryset = SCORMResult.objects.filter(is_active=True).order_by('-created_at')
+    serializer_class = SCORMResultSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return self.scope_by_site(super().get_queryset())
+
+    def perform_create(self, serializer):
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
+
+    def perform_update(self, serializer):
+        serializer.save(modified_by=self.request.user)
 
 
 @api_view(['GET'])

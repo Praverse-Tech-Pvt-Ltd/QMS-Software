@@ -159,9 +159,12 @@ export default function SampleDetailPage() {
   };
   const available = nextActions[sample.status] || [];
 
-  const allResults: TestResult[] = tests.flatMap((t) => t.results || (t.result ? [t.result] : []));
+  const resultRows: { test: TestRequest; result: TestResult }[] = tests
+    .filter((t) => t.result)
+    .map((t) => ({ test: t, result: t.result as TestResult }));
+  const allResults = resultRows.map((row) => row.result);
   const failCount = allResults.filter((r) => r.pass_fail === "fail").length;
-  const pendingTests = tests.filter((t) => !t.result && (!t.results || t.results.length === 0));
+  const pendingTests = tests.filter((t) => !t.result);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -177,7 +180,7 @@ export default function SampleDetailPage() {
         <Box sx={{ flex: 1 }}>
           <Typography variant="h5" fontWeight={700}>{sample.sample_number}</Typography>
           <Typography variant="body2" color="text.secondary">
-            {sample.product_name} · {sample.sample_type} · Received: {sample.received_date}
+            {sample.product} · {sample.sample_type} · Received: {sample.received_date}
           </Typography>
         </Box>
         <Chip label={STATUS_LABELS[sample.status]} sx={{ bgcolor: statusStyle.bg, color: statusStyle.color, fontWeight: 700 }} />
@@ -213,11 +216,11 @@ export default function SampleDetailPage() {
                 <Divider sx={{ mb: 2 }} />
                 {[
                   { label: "Sample Number", value: sample.sample_number },
-                  { label: "Product", value: sample.product_name },
-                  { label: "Batch/Lot", value: sample.batch_number },
-                  { label: "Sample Type", value: sample.sample_type },
+                  { label: "Product", value: sample.product },
+                  { label: "Batch/Lot", value: sample.batch_lot },
+                  { label: "Sample Type", value: sample.sample_type_display || sample.sample_type },
                   { label: "Received Date", value: sample.received_date },
-                  { label: "Expiry Date", value: sample.expiry_date },
+                  { label: "Received By", value: sample.received_by },
                   { label: "Status", value: STATUS_LABELS[sample.status] },
                   { label: "Test Requests", value: tests.length },
                 ].map(({ label, value }) => value !== undefined && (
@@ -282,21 +285,24 @@ export default function SampleDetailPage() {
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                  <TableCell sx={{ fontWeight: 700 }}>Parameter</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Test</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Result</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Unit</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Specification</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>Pass/Fail</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>OOS</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {allResults.map((r) => (
+                {resultRows.map(({ test, result: r }) => (
                   <TableRow key={r.id} hover sx={{ bgcolor: r.pass_fail === "fail" ? "#FFF5F5" : "inherit" }}>
-                    <TableCell>{r.parameter}</TableCell>
+                    <TableCell>{test.test_name}</TableCell>
                     <TableCell sx={{ fontWeight: 500 }}>{r.result_value}</TableCell>
                     <TableCell>{r.unit || "—"}</TableCell>
-                    <TableCell>{r.specification || "—"}</TableCell>
+                    <TableCell>
+                      {r.specification_lower != null || r.specification_upper != null
+                        ? `${r.specification_lower ?? "—"} – ${r.specification_upper ?? "—"}`
+                        : "—"}
+                    </TableCell>
                     <TableCell>
                       <Chip
                         label={r.pass_fail.toUpperCase()}
@@ -308,9 +314,6 @@ export default function SampleDetailPage() {
                           fontWeight: 700,
                         }}
                       />
-                    </TableCell>
-                    <TableCell>
-                      {r.oos_triggered && <Chip label="OOS" size="small" sx={{ bgcolor: "#FEE2E2", color: "#991B1B", fontWeight: 700 }} />}
                     </TableCell>
                   </TableRow>
                 ))}

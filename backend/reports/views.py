@@ -18,8 +18,11 @@ def generate_management_review_pdf(data: dict, generated_by, period: str) -> io.
     """
     Render the JSON returned by ManagementReviewView.get() into a PDF.
 
-    `data` has the shape {'kpis': {open_capas: N, overdue_complaints: N, ...}} —
-    the KPI table is built from data['kpis'], not from top-level scalar keys.
+    `data` has the shape {'period_start', 'period_end', 'deviations': {...},
+    'capas': {...}, 'audits': {...}, 'complaints': {...}, 'risks': {...},
+    'training': {...}, 'suppliers': {...}} — each module key maps to a dict of
+    scalar sub-metrics. The KPI table flattens every module's sub-metrics into
+    one row each (skips 'period_start'/'period_end', which aren't metrics).
     """
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
@@ -62,12 +65,15 @@ def generate_management_review_pdf(data: dict, generated_by, period: str) -> io.
                         textColor=colors.HexColor('#1a3a5c'), spaceAfter=3)
     ))
 
-    kpis = data.get('kpis', {})
     kpi_rows = [['Metric', 'Value', 'Status']]
-    for key, value in kpis.items():
-        label = key.replace('_', ' ').title()
-        status = 'OK' if value == 0 else 'Review'
-        kpi_rows.append([label, str(value), status])
+    for module_key, metrics in data.items():
+        if module_key in ('period_start', 'period_end') or not isinstance(metrics, dict):
+            continue
+        module_label = module_key.replace('_', ' ').title()
+        for metric_key, value in metrics.items():
+            label = f"{module_label} — {metric_key.replace('_', ' ').title()}"
+            status = 'OK' if value == 0 else 'Review'
+            kpi_rows.append([label, str(value), status])
 
     kpi_table = Table(kpi_rows, colWidths=[90 * mm, 40 * mm, 30 * mm], repeatRows=1)
     kpi_table.setStyle(TableStyle([
@@ -220,33 +226,101 @@ def generate_apqr_pdf(report: APQRReport) -> io.BytesIO:
 
 
 class ManagementReviewView(APIView):
+    """
+    Returns per-module KPI breakdowns consumed by ManagementReviewPage.tsx's
+    KPICard grid — NOT a flat {'kpis': {...}} dict (that was the Phase 6 shape;
+    the frontend dashboard built against a richer nested shape and was never
+    reconciled with the backend until Phase 7 Block 1.1).
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        from quality.models import Capa, Deviation, OOSInvestigation
+        from quality.models import Capa, Deviation
         from complaints.models import Complaint
         from audits.models import Finding
         from suppliers.models import Supplier
-        from nonconformance.models import NCReport
+        from risk.models import Risk
+        from training.models import TrainingAssignment
         from datetime import date, timedelta
 
         today = date.today()
+        period_start = request.query_params.get('period_start', date(today.year, 1, 1).isoformat())
+        period_end = request.query_params.get('period_end', today.isoformat())
+
+        # Deviation has no due_date field — "overdue" is approximated as open
+        # (non-closed) deviations that have sat open for more than 30 days,
+        # the same 30-day SLA window already used for supplier expiry below.
+        deviations_qs = Deviation.objects.all()
+        deviations_open_qs = deviations_qs.exclude(status=Deviation.Status.CLOSED)
+        deviations = {
+            'total': deviations_qs.count(),
+            'open': deviations_open_qs.count(),
+            'overdue': deviations_open_qs.filter(occurrence_date__lte=today - timedelta(days=30)).count(),
+        }
+
+        capas_qs = Capa.objects.all()
+        capas_open_qs = capas_qs.exclude(status=Capa.Status.VERIFIED)
+        capas = {
+            'total': capas_qs.count(),
+            'open': capas_open_qs.count(),
+            'overdue': capas_open_qs.filter(due_date__lt=today).count(),
+        }
+
+        findings_qs = Finding.objects.filter(is_active=True)
+        audits = {
+            'total': findings_qs.count(),
+            'open_findings': findings_qs.filter(status='open').count(),
+            'critical_findings': findings_qs.filter(severity='critical').count(),
+        }
+
+        complaints_qs = Complaint.objects.filter(is_active=True)
+        complaints = {
+            'total': complaints_qs.count(),
+            'critical': complaints_qs.filter(severity='critical').count(),
+            'overdue': complaints_qs.filter(response_deadline__lt=today).exclude(status='closed').count(),
+        }
+
+        # Risk.risk_level is a Python property (derived from severity/occurrence/
+        # detection), not a queryable field — bucket in Python.
+        risks_qs = Risk.objects.filter(is_active=True)
+        risks_total = risks_qs.count()
+        risks_critical = risks_high = 0
+        for r in risks_qs.only('severity', 'occurrence', 'detection'):
+            level = r.risk_level
+            if level == 'Critical':
+                risks_critical += 1
+            elif level == 'High':
+                risks_high += 1
+        risks = {'total': risks_total, 'critical': risks_critical, 'high': risks_high}
+
+        assignments_qs = TrainingAssignment.objects.all()
+        assignments_total = assignments_qs.count()
+        assignments_completed = assignments_qs.filter(status='COMPLETED').count()
+        training = {
+            'total_assignments': assignments_total,
+            'overdue': assignments_qs.filter(status='OVERDUE').count()
+            + assignments_qs.filter(status='PENDING', due_date__lt=today).count(),
+            'compliance_rate': round((assignments_completed / assignments_total) * 100, 1) if assignments_total else 0,
+        }
+
+        suppliers_qs = Supplier.objects.filter(is_active=True)
+        suppliers = {
+            'total': suppliers_qs.count(),
+            'expiring_soon': suppliers_qs.filter(
+                status='qualified', expiry_date__lte=today + timedelta(days=30)
+            ).count(),
+        }
 
         data = {
-            'kpis': {
-                'open_capas': Capa.objects.filter(status__in=['PLANNING', 'PENDING', 'IMPLEMENTATION']).count(),
-                'overdue_complaints': Complaint.objects.filter(
-                    is_active=True, response_deadline__lt=today
-                ).exclude(status='closed').count(),
-                'open_oos': OOSInvestigation.objects.filter(phase__in=['phase1', 'phase2']).count(),
-                'open_findings': Finding.objects.filter(status='open', is_active=True).count(),
-                'expiring_suppliers': Supplier.objects.filter(
-                    is_active=True,
-                    status='qualified',
-                    expiry_date__lte=today + timedelta(days=30),
-                ).count(),
-                'open_ncs': NCReport.objects.filter(status='open', is_active=True).count(),
-            }
+            'period_start': period_start,
+            'period_end': period_end,
+            'deviations': deviations,
+            'capas': capas,
+            'audits': audits,
+            'complaints': complaints,
+            'risks': risks,
+            'training': training,
+            'suppliers': suppliers,
         }
 
         if request.query_params.get('format') == 'pdf':

@@ -3,41 +3,41 @@ import api from "./api";
 export interface Sample {
   id: string;
   sample_number: string;
+  product: string;
+  batch_lot: string;
   sample_type: string;
-  product_name: string;
-  batch_number?: string;
-  status: string;
+  sample_type_display?: string;
   received_date: string;
-  expiry_date?: string;
+  received_by?: string;
+  status: string;
+  status_display?: string;
+  test_requests?: TestRequest[];
   created_at: string;
+  updated_at: string;
 }
 
 export interface TestRequest {
   id: string;
-  request_number: string;
   sample: string;
-  sample_detail?: Pick<Sample, "sample_number" | "product_name">;
   test_name: string;
+  method?: string;
+  assigned_analyst?: string;
+  due_date?: string;
   status: string;
   status_display?: string;
-  assigned_to?: string;
-  due_date?: string;
-  results?: TestResult[];
   /** Real backend field (TestRequestSerializer.result) — null until a result is entered. */
   result?: TestResult | null;
 }
 
 export interface TestResult {
   id: string;
-  test_request: string;
-  parameter: string;
-  specification?: string;
   result_value: string;
   unit?: string;
-  pass_fail: "pass" | "fail" | "inconclusive";
-  oos_triggered?: boolean;
   specification_lower?: string | null;
   specification_upper?: string | null;
+  pass_fail: "pass" | "fail" | "inconclusive";
+  entered_by?: string;
+  entered_at?: string;
 }
 
 export interface EnterResultResponse {
@@ -89,10 +89,6 @@ export interface NewCalibrationRecord {
   esig_password: string;
 }
 
-// Note: instrument endpoints use the /v1/ prefix — the real backend mount point
-// (config/urls.py registers laboratory.urls under api/v1/laboratory/). The
-// sample/test-request calls above omit it; that's a pre-existing mismatch,
-// out of scope for the Phase 6 Instrument Calibration addition.
 export const instrumentsService = {
   async list(): Promise<Instrument[]> {
     const response = await api.get<Instrument[]>("/v1/laboratory/instruments/");

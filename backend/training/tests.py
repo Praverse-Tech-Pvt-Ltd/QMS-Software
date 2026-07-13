@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.test import APIClient
 
 from knowledge.models import SOPChunk
-from training.models import TrainingAssignment, TrainingPlan
+from training.models import SCORMModule, SCORMResult, TrainingAssignment, TrainingPlan
 
 User = get_user_model()
 
@@ -226,3 +227,71 @@ class TrainingCalendarTests(TestCase):
         self.assertEqual(len(response.data['2026-03-05']), 2)
         self.assertEqual(len(response.data['2026-03-20']), 1)
         self.assertNotIn('2026-04-01', response.data)
+
+
+class SCORMModelTests(TestCase):
+    """
+    Phase 7 Block — SCORM e-learning data-model stub. Covers linkage to
+    TrainingPlan/TrainingAssignment and the BaseModel hard-delete guard
+    (21 CFR Part 11: regulated records cannot be hard-deleted).
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='scormqa', password='Secret123!', role='QA')
+        self.plan = TrainingPlan.objects.create(
+            title='SOP-QA-010 Aseptic Gowning eLearning',
+            description='x', department='QA', trainer='QA', method='Online',
+        )
+
+    def _make_module(self, **overrides):
+        defaults = dict(
+            training_plan=self.plan,
+            title='Aseptic Gowning SCORM Package',
+            version='1.2',
+            package_file=SimpleUploadedFile('package.zip', b'fake-scorm-zip-bytes'),
+            launch_url='index_lms.html',
+            created_by=self.user,
+            modified_by=self.user,
+        )
+        defaults.update(overrides)
+        return SCORMModule.objects.create(**defaults)
+
+    def test_scorm_module_links_to_training_plan(self):
+        module = self._make_module()
+        self.assertEqual(module.training_plan, self.plan)
+        self.plan.refresh_from_db()
+        self.assertEqual(self.plan.scorm_module, module)
+
+    def test_scorm_result_links_to_assignment(self):
+        module = self._make_module()
+        assignment = TrainingAssignment.objects.create(
+            plan=self.plan, user=self.user, due_date='2026-12-01',
+        )
+        result = SCORMResult.objects.create(
+            scorm_module=module,
+            assignment=assignment,
+            score=92.5,
+            completion_status='passed',
+            raw_data={'cmi.core.lesson_status': 'passed'},
+            created_by=self.user,
+            modified_by=self.user,
+        )
+        self.assertEqual(result.assignment, assignment)
+        self.assertIn(result, assignment.scorm_results.all())
+
+    def test_scorm_module_delete_raises_not_implemented_error(self):
+        module = self._make_module()
+        with self.assertRaises(NotImplementedError):
+            module.delete()
+
+    def test_scorm_result_delete_raises_not_implemented_error(self):
+        module = self._make_module()
+        assignment = TrainingAssignment.objects.create(
+            plan=self.plan, user=self.user, due_date='2026-12-01',
+        )
+        result = SCORMResult.objects.create(
+            scorm_module=module, assignment=assignment,
+            created_by=self.user, modified_by=self.user,
+        )
+        with self.assertRaises(NotImplementedError):
+            result.delete()

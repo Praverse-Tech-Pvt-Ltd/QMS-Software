@@ -23,7 +23,8 @@ class NCViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
         return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
-        nc = serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        nc = serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
         # Auto-place on hold when NC is created
         HoldRecord.objects.create(nc=nc, placed_by=self.request.user, reason='Auto-hold on NC creation')
 

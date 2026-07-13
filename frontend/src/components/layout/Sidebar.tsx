@@ -27,6 +27,9 @@ import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 import AirOutlinedIcon from "@mui/icons-material/AirOutlined";
 import ReportGmailerrorredOutlinedIcon from "@mui/icons-material/ReportGmailerrorredOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import SyncAltOutlinedIcon from "@mui/icons-material/SyncAltOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
@@ -336,6 +339,34 @@ export default function Sidebar() {
             </ListItemButton>
           )}
 
+          {/* Analyst Qualification (Phase 7) */}
+          {canView('analyst_qualification') && (
+            <ListItemButton
+              selected={isActive("/analyst-qualification")}
+              onClick={() => navigate("/analyst-qualification")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/analyst-qualification") ? "#6366F1" : "#858D96" }}>
+                <VerifiedUserOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Analyst Qualification" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Inventory Management (Phase 7) */}
+          {canView('inventory') && (
+            <ListItemButton
+              selected={isActive("/inventory")}
+              onClick={() => navigate("/inventory")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/inventory") ? "#6366F1" : "#858D96" }}>
+                <Inventory2OutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Inventory" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
           {/* Reports */}
           {canView('reports') && (
             <ListItemButton
@@ -377,6 +408,20 @@ export default function Sidebar() {
                 <BusinessOutlinedIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Sites" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* ERP Integration hooks (Phase 7, admin only) */}
+          {canView('integrations') && (
+            <ListItemButton
+              selected={isActive("/admin/integrations")}
+              onClick={() => navigate("/admin/integrations")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/admin/integrations") ? "#6366F1" : "#858D96" }}>
+                <SyncAltOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Integrations" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
           )}
         </List>

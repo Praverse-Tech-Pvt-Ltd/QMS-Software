@@ -64,6 +64,10 @@ INSTALLED_APPS = [
     'stability',
     'environmental',
     'recall',
+    # Phase 7 modules
+    'analyst_qualification',
+    'inventory',
+    'integrations',
 ]
 
 MIDDLEWARE = [

@@ -299,7 +299,8 @@ class CCFTemplateViewSet(viewsets.ModelViewSet):
         return CCFTemplate.objects.filter(is_active=True).order_by('change_category', 'name')
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
 
     def perform_update(self, serializer):
         serializer.save(modified_by=self.request.user)

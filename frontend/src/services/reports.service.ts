@@ -36,10 +36,6 @@ export interface SPCData {
 }
 
 export const reportsService = {
-  // Note: this endpoint uses the correct /v1/ prefix — the other calls in this
-  // service (below) omit it, a pre-existing mismatch against the real backend
-  // mount point (config/urls.py registers reports.urls under api/v1/reports/),
-  // left untouched here as out of scope for the Phase 6 SPC addition.
   async getSPC(metric: SPCMetric, months = 12, product?: string): Promise<SPCData> {
     const response = await api.get<SPCData>("/v1/reports/spc/", {
       params: { metric, months, product },
@@ -50,19 +46,19 @@ export const reportsService = {
   async getManagementReview(
     params?: { period_start?: string; period_end?: string; format?: "json" | "pdf" }
   ): Promise<ManagementReviewKPIs> {
-    const response = await api.get<ManagementReviewKPIs>("/reports/management-review/", {
+    const response = await api.get<ManagementReviewKPIs>("/v1/reports/management-review/", {
       params,
     });
     return response.data;
   },
 
   async listAPQR(params?: Record<string, string>): Promise<APQRReport[]> {
-    const response = await api.get<APQRReport[]>("/reports/apqr/", { params });
+    const response = await api.get<APQRReport[]>("/v1/reports/apqr/", { params });
     return response.data;
   },
 
   async getAPQR(id: string): Promise<APQRReport> {
-    const response = await api.get<APQRReport>(`/reports/apqr/${id}/`);
+    const response = await api.get<APQRReport>(`/v1/reports/apqr/${id}/`);
     return response.data;
   },
 
@@ -72,7 +68,7 @@ export const reportsService = {
     period_start: string;
     period_end: string;
   }): Promise<APQRReport> {
-    const response = await api.post<APQRReport>("/reports/apqr/generate/", data);
+    const response = await api.post<APQRReport>("/v1/reports/apqr/generate/", data);
     return response.data;
   },
 
@@ -83,7 +79,7 @@ export const reportsService = {
     date_to?: string;
     format: "pdf" | "excel";
   }): Promise<Blob> {
-    const response = await api.get("/audit-trail/", {
+    const response = await api.get("/v1/audit-trail/", {
       params,
       responseType: "blob",
     });
@@ -91,12 +87,12 @@ export const reportsService = {
   },
 
   async exportAPQR(id: string): Promise<Blob> {
-    const response = await api.get(`/reports/apqr/${id}/export/`, { responseType: "blob" });
+    const response = await api.get(`/v1/reports/apqr/${id}/export/`, { responseType: "blob" });
     return response.data;
   },
 
   async exportManagementReview(period?: string): Promise<Blob> {
-    const response = await api.get("/reports/management-review/", {
+    const response = await api.get("/v1/reports/management-review/", {
       params: { format: "pdf", ...(period ? { period } : {}) },
       responseType: "blob",
     });

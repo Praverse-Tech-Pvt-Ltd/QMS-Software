@@ -45,4 +45,16 @@ app.conf.beat_schedule = {
         'task': 'dms.tasks.alert_document_review_due',
         'schedule': crontab(hour=7, minute=0),
     },
+    'alert-qualifications-expiring': {
+        'task': 'analyst_qualification.tasks.alert_qualifications_expiring',
+        'schedule': crontab(hour=7, minute=45),
+    },
+    'alert-inventory-expiring': {
+        'task': 'inventory.tasks.alert_inventory_expiring',
+        'schedule': crontab(hour=9, minute=15),
+    },
+    'alert-low-stock': {
+        'task': 'inventory.tasks.alert_low_stock',
+        'schedule': crontab(hour=9, minute=30),
+    },
 }

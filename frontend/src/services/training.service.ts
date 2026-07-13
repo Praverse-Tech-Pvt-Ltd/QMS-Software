@@ -33,6 +33,20 @@ export interface TrainingAssignment {
   quiz_passed?: boolean;
 }
 
+// Phase 7 — SCORM e-learning data-model stub (backend/training/models.py: SCORMModule).
+// No SCORM player UI this phase; this is only used to show/hide the "Launch E-Learning"
+// placeholder button on the training list.
+export interface SCORMModule {
+  id: string;
+  training_plan: number | null;
+  title: string;
+  version: "1.2" | "2004" | string;
+  version_display?: string;
+  package_file?: string;
+  launch_url: string;
+  completion_threshold?: number;
+}
+
 export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
   id: number;
   title: string;
@@ -49,10 +63,11 @@ export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
   updated_at?: string;
   totalTrainees?: number;
   audit_trail?: AuditTrailEntry[];
-  due_date: string; 
+  due_date: string;
   signatureLog?: SignatureEntry[];
   completionRate?: number;
   moduleKey?: "training";
+  scorm_module?: SCORMModule | null;
 }
 
 export const trainingService = {

@@ -64,7 +64,10 @@ export type ModuleKey =
   | "stability"
   | "environmental"
   | "recall"
-  | "site_management";
+  | "site_management"
+  | "analyst_qualification"
+  | "inventory"
+  | "integrations";
 
 export type PermissionAction =
   | "view"

@@ -20,7 +20,8 @@ class StabilityProtocolViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
         return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
-        protocol = serializer.save(created_by=self.request.user, modified_by=self.request.user)
+        site = getattr(self.request.user, 'site', None)
+        protocol = serializer.save(created_by=self.request.user, modified_by=self.request.user, site=site)
         protocol.generate_pull_points()
 
     def perform_update(self, serializer):

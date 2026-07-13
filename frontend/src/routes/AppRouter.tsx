@@ -72,6 +72,9 @@ import EnvironmentalPage from "../pages/environmental/EnvironmentalPage";
 import RecallListPage from "../pages/recall/RecallListPage";
 import RecallDetailPage from "../pages/recall/RecallDetailPage";
 import SiteManagementPage from "../pages/admin/SiteManagementPage";
+import AnalystQualificationPage from "../pages/analyst-qualification/AnalystQualificationPage";
+import InventoryPage from "../pages/inventory/InventoryPage";
+import IntegrationsPage from "../pages/admin/IntegrationsPage";
 
 export default function AppRouter() {
   return (
@@ -237,6 +240,15 @@ export default function AppRouter() {
 
           {/* Multi-site UI (Phase 6 Block 7) */}
           <Route path="admin/sites" element={<RequirePermission moduleKey="site_management"><SiteManagementPage /></RequirePermission>} />
+
+          {/* Analyst Qualification (Phase 7) */}
+          <Route path="analyst-qualification" element={<RequirePermission moduleKey="analyst_qualification"><AnalystQualificationPage /></RequirePermission>} />
+
+          {/* Inventory Management (Phase 7) */}
+          <Route path="inventory" element={<RequirePermission moduleKey="inventory"><InventoryPage /></RequirePermission>} />
+
+          {/* ERP Integration hooks (Phase 7, admin only) */}
+          <Route path="admin/integrations" element={<RequirePermission moduleKey="integrations"><IntegrationsPage /></RequirePermission>} />
 
         </Route>
       </Route>

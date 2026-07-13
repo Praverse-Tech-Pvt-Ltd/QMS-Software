@@ -14,7 +14,9 @@ import { useEffect, useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import AddIcon from "@mui/icons-material/Add";
+import SchoolIcon from "@mui/icons-material/School";
 import { useNavigate } from "react-router-dom";
+import { useSnackbar } from "notistack";
 
 // Standard Imports
 import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
@@ -35,6 +37,7 @@ const STATUS_FILTERS = ["All", "Draft", "Active", "Obsolete"];
 export default function TrainingListPage() {
   const navigate = useNavigate();
   const { role } = useRole();
+  const { enqueueSnackbar } = useSnackbar();
 
   // Data State
   const [rows, setRows] = useState<TrainingPlan[]>([]);
@@ -82,6 +85,16 @@ export default function TrainingListPage() {
       return;
     }
     navigate("/training/new");
+  };
+
+  // Phase 7 — SCORM e-learning stub: no in-browser player yet, so launching just
+  // surfaces the package's external launch_url as a placeholder action.
+  const handleLaunchElearning = (plan: TrainingPlan) => {
+    const launchUrl = plan.scorm_module?.launch_url;
+    enqueueSnackbar(
+      `SCORM Player not yet integrated — use external link: ${launchUrl || "(no launch URL set)"}`,
+      { variant: "info" },
+    );
   };
 
   // Filter Logic
@@ -215,6 +228,35 @@ export default function TrainingListPage() {
           </Box>
         );
       },
+    },
+    {
+      field: "scormModule" as any,
+      headerName: "E-LEARNING",
+      renderCell: (row) =>
+        row.scorm_module ? (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<SchoolIcon fontSize="small" />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleLaunchElearning(row);
+            }}
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              borderRadius: 2,
+              borderColor: "#6366F1",
+              color: "#6366F1",
+            }}
+          >
+            Launch E-Learning
+          </Button>
+        ) : (
+          <Typography variant="caption" sx={{ color: "#94a3b8" }}>
+            —
+          </Typography>
+        ),
     },
   ];
 
