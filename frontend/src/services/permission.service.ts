@@ -62,7 +62,8 @@ export type ModuleKey =
   | "knowledge"
   | "logbooks"
   | "stability"
-  | "environmental";
+  | "environmental"
+  | "recall";
 
 export type PermissionAction =
   | "view"

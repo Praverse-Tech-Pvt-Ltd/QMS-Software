@@ -69,6 +69,8 @@ import LogbookDetailPage from "../pages/logbooks/LogbookDetailPage";
 import StabilityListPage from "../pages/stability/StabilityListPage";
 import StabilityDetailPage from "../pages/stability/StabilityDetailPage";
 import EnvironmentalPage from "../pages/environmental/EnvironmentalPage";
+import RecallListPage from "../pages/recall/RecallListPage";
+import RecallDetailPage from "../pages/recall/RecallDetailPage";
 
 export default function AppRouter() {
   return (
@@ -206,6 +208,12 @@ export default function AppRouter() {
 
           {/* Environmental Monitoring */}
           <Route path="environmental" element={<RequirePermission moduleKey="environmental"><EnvironmentalPage /></RequirePermission>} />
+
+          {/* Recall Management */}
+          <Route path="recall">
+            <Route index element={<RequirePermission moduleKey="recall"><RecallListPage /></RequirePermission>} />
+            <Route path=":id" element={<RequirePermission moduleKey="recall"><RecallDetailPage /></RequirePermission>} />
+          </Route>
 
           {/* /quality/* — PRD-specified paths (aliases alongside old paths) */}
           <Route path="quality">

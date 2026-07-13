@@ -72,6 +72,7 @@ MODULE_SOP_MAP = {
     'batch_records': ('SOP-PRD-001', 'Batch Production Record Procedure'),
     'logbook': ('SOP-QA-011', 'Electronic Logbook Procedure'),
     'stability': ('SOP-QC-002', 'Stability Study Procedure'),
+    'recall': ('SOP-QA-012', 'Product Recall Procedure'),
 }
 
 

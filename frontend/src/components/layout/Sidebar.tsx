@@ -24,6 +24,7 @@ import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 import AirOutlinedIcon from "@mui/icons-material/AirOutlined";
+import ReportGmailerrorredOutlinedIcon from "@mui/icons-material/ReportGmailerrorredOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
@@ -304,6 +305,20 @@ export default function Sidebar() {
                 <AirOutlinedIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Environmental" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Recall Management */}
+          {canView('recall') && (
+            <ListItemButton
+              selected={isActive("/recall")}
+              onClick={() => navigate("/recall")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/recall") ? "#6366F1" : "#858D96" }}>
+                <ReportGmailerrorredOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Recall" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
           )}
 
