@@ -3,6 +3,8 @@ from django.db import models
 from django.db.models import Max
 from django.conf import settings
 from core.models import TimeStampedModel
+from core.utils import add_months
+
 
 class Document(TimeStampedModel):
     class DocType(models.TextChoices):
@@ -29,11 +31,29 @@ class Document(TimeStampedModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="owned_documents")
     department = models.CharField(max_length=100)
 
+    # Phase 6 Block 8: periodic review
+    review_frequency_months = models.IntegerField(default=24)  # default 2 years
+    next_review_date = models.DateField(null=True, blank=True)
+    last_review_date = models.DateField(null=True, blank=True)
+
     def save(self, *args, **kwargs):
         # ✅ Auto-generate ID only if it doesn't exist
         if not self.document_id:
             self.document_id = self.generate_sequential_id()
+        self.update_review_dates()
         super().save(*args, **kwargs)
+
+    def update_review_dates(self):
+        """Set the first review due date once a document becomes effective."""
+        if self.next_review_date is None and self.status == self.Status.EFFECTIVE:
+            self.next_review_date = add_months(datetime.date.today(), self.review_frequency_months)
+
+    def mark_reviewed(self):
+        """Record a completed periodic review and schedule the next one."""
+        today = datetime.date.today()
+        self.last_review_date = today
+        self.next_review_date = add_months(today, self.review_frequency_months)
+        self.save(update_fields=['last_review_date', 'next_review_date', 'updated_at'])
 
     def generate_sequential_id(self):
         """

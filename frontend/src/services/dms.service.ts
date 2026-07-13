@@ -33,6 +33,9 @@ export interface DmsDocument {
   description?: string;
   effectiveDate?: string;
   nextReview?: string;
+  review_frequency_months?: number;
+  next_review_date?: string | null;
+  last_review_date?: string | null;
   created_at: string;
   updatedAt?: string;
 
@@ -47,6 +50,16 @@ export interface DmsDocument {
 export const dmsService = {
   async list(): Promise<DmsDocument[]> {
     const response = await api.get<DmsDocument[]>("/dms/documents/");
+    return response.data;
+  },
+
+  async reviewDue(): Promise<DmsDocument[]> {
+    const response = await api.get<DmsDocument[]>("/dms/documents/review-due/");
+    return response.data;
+  },
+
+  async markReviewed(id: string | number): Promise<DmsDocument> {
+    const response = await api.post<DmsDocument>(`/dms/documents/${id}/mark-reviewed/`);
     return response.data;
   },
 

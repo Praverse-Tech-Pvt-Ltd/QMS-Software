@@ -1,19 +1,7 @@
-import calendar
-from datetime import date
-
 from django.db import models
 from simple_history.models import HistoricalRecords
 from shared.models import BaseModel
-from core.utils import generate_qms_id
-
-
-def add_months(start: date, months: int) -> date:
-    """Add calendar months to a date without pulling in a third-party dependency."""
-    month_index = start.month - 1 + months
-    year = start.year + month_index // 12
-    month = month_index % 12 + 1
-    day = min(start.day, calendar.monthrange(year, month)[1])
-    return date(year, month, day)
+from core.utils import generate_qms_id, add_months  # noqa: F401 — re-exported for stability.tests
 
 
 class StabilityProtocol(BaseModel):

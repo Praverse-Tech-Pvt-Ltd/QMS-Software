@@ -7,6 +7,7 @@ import {
   ListItemText,
   Collapse,
   Divider,
+  Badge,
 } from "@mui/material";
 
 // --- Icons ---
@@ -29,10 +30,11 @@ import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 import { transitions, motion } from "../../theme/motion";
+import { dmsService } from "../../services/dms.service";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -51,6 +53,15 @@ export default function Sidebar() {
 
   // Helper to safely check permissions
   const canView = (module: any) => role ? permissionService.can(role, module, 'view') : false;
+
+  // Review-due document count badge (Phase 6 Block 8)
+  const [reviewDueCount, setReviewDueCount] = useState(0);
+  useEffect(() => {
+    if (canView('dms')) {
+      dmsService.reviewDue().then((docs) => setReviewDueCount(docs.length)).catch(() => setReviewDueCount(0));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   return (
     <Box
@@ -174,7 +185,9 @@ export default function Sidebar() {
               }}
             >
               <ListItemIcon sx={{ minWidth: 36, color: isActive("/dms") ? "#6366F1" : "#858D96" }}>
-                <DescriptionOutlinedIcon fontSize="small" />
+                <Badge badgeContent={reviewDueCount} color="warning" max={99}>
+                  <DescriptionOutlinedIcon fontSize="small" />
+                </Badge>
               </ListItemIcon>
               <ListItemText primary="Document Management" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>

@@ -41,4 +41,8 @@ app.conf.beat_schedule = {
         'task': 'laboratory.tasks.alert_calibration_due',
         'schedule': crontab(hour=7, minute=30),
     },
+    'alert-document-review-due': {
+        'task': 'dms.tasks.alert_document_review_due',
+        'schedule': crontab(hour=7, minute=0),
+    },
 }

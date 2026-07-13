@@ -14,8 +14,12 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Document
-        fields = ['id', 'title', 'document_id', 'doc_type', 'status', 'department', 'owner', 'owner_details', 'latest_version', 'created_at', 'updated_at']
-        read_only_fields = ['owner', 'created_at', 'updated_at', 'document_id']
+        fields = [
+            'id', 'title', 'document_id', 'doc_type', 'status', 'department', 'owner', 'owner_details',
+            'latest_version', 'review_frequency_months', 'next_review_date', 'last_review_date',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['owner', 'created_at', 'updated_at', 'document_id', 'next_review_date', 'last_review_date']
 
     def get_latest_version(self, obj):
         latest = obj.versions.order_by('-created_at').first()
