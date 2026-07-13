@@ -1,7 +1,9 @@
 from django.db import models
 from django.conf import settings
+from simple_history.models import HistoricalRecords
 from core.models import TimeStampedModel
 from core.utils import generate_qms_id
+from shared.models import BaseModel
 
 # --- 1. Deviation Model ---
 class Deviation(TimeStampedModel):
@@ -141,6 +143,9 @@ class ChangeControl(TimeStampedModel):
     target_date = models.DateField(null=True, blank=True)
     initiator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="initiated_changes")
 
+    # Phase 6 Block 11: CCF template applied at creation — see CCFTemplate below.
+    filled_ccf = models.JSONField(default=dict, blank=True)
+
     def save(self, *args, **kwargs):
         if not self.cc_id:
             self.cc_id = generate_qms_id(ChangeControl, 'cc_id', 'CC')
@@ -148,6 +153,47 @@ class ChangeControl(TimeStampedModel):
 
     def __str__(self):
         return f"{self.cc_id}: {self.title}"
+
+
+class CCFTemplate(BaseModel):
+    """
+    Configurable Change Control Form template per change category. Matched
+    against ChangeControl.change_type when a Change Control is created; its
+    template_fields are rendered against the record's own fields (which are
+    themselves the AI questionnaire's collected answers — this app has no
+    separate answers object, the questionnaire writes directly into the
+    ChangeControl create payload).
+
+    template_fields format: {"field_name": "Prefilled text: {title}", ...}
+    — {placeholders} are substituted from the ChangeControl instance.
+    """
+    change_category = models.CharField(max_length=50)  # matches ChangeControl.change_type values
+    name = models.CharField(max_length=200)
+    template_fields = models.JSONField(default=dict)
+    is_default = models.BooleanField(default=False)
+
+    history = HistoricalRecords()
+
+    def render(self, change_control: 'ChangeControl') -> dict:
+        context = {
+            'title': change_control.title,
+            'description': change_control.description,
+            'justification': change_control.justification,
+            'change_type': change_control.get_change_type_display(),
+            'department': change_control.department,
+            'target_date': str(change_control.target_date) if change_control.target_date else '',
+            'cc_id': change_control.cc_id,
+        }
+        filled = {}
+        for field_name, template_str in (self.template_fields or {}).items():
+            try:
+                filled[field_name] = str(template_str).format(**context)
+            except (KeyError, IndexError):
+                filled[field_name] = template_str  # leave as-is if a placeholder key is missing
+        return filled
+
+    def __str__(self):
+        return f"{self.name} ({self.change_category})"
 
 
 # --- 5. CAPA Effectiveness Check ---

@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 
-from .models import Deviation, Capa, ChangeControl
-from .serializers import DeviationSerializer, CapaSerializer, ChangeControlSerializer
+from .models import Deviation, Capa, ChangeControl, CCFTemplate
+from .serializers import DeviationSerializer, CapaSerializer, ChangeControlSerializer, CCFTemplateSerializer
 from core.models import AuditLog
 from shared.workflow import transition as workflow_transition
 
@@ -200,7 +200,8 @@ class ChangeControlViewSet(BaseQualityViewSet):
     def perform_create(self, serializer):
         # initiator is a ForeignKey to User
         instance = serializer.save(initiator=self.request.user)
-        
+        self._apply_ccf_template(instance)
+
         # Log the initiation in the Audit Trail
         AuditLog.objects.create(
             user=self.request.user,
@@ -208,7 +209,18 @@ class ChangeControlViewSet(BaseQualityViewSet):
             action='CREATE',
             reason=self.request.data.get('change_reason', "Change Control initiated via Web Form.")
         )
-        
+
+    def _apply_ccf_template(self, instance):
+        """Phase 6 Block 11: pre-fill the CCF from the matching (or default) template."""
+        template = (
+            CCFTemplate.objects.filter(change_category=instance.change_type, is_active=True).first()
+            or CCFTemplate.objects.filter(is_default=True, is_active=True).first()
+        )
+        if not template:
+            return
+        instance.filled_ccf = template.render(instance)
+        instance.save(update_fields=['filled_ccf'])
+
     def perform_update(self, serializer):
         instance = self.get_object()
         
@@ -277,3 +289,17 @@ class ChangeControlViewSet(BaseQualityViewSet):
             return Response({'error': str(e)}, status=400)
 
         return Response(ChangeControlSerializer(cc).data)
+
+
+class CCFTemplateViewSet(viewsets.ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CCFTemplateSerializer
+
+    def get_queryset(self):
+        return CCFTemplate.objects.filter(is_active=True).order_by('change_category', 'name')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(modified_by=self.request.user)

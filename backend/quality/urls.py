@@ -2,11 +2,12 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .stats_views import DashboardStatsView
-from .views import ChangeControlViewSet, DeviationViewSet, CapaViewSet
+from .views import ChangeControlViewSet, DeviationViewSet, CapaViewSet, CCFTemplateViewSet
 
 router = DefaultRouter()
 router.register(r'deviations', DeviationViewSet)
 router.register(r'capa', CapaViewSet)
+router.register(r'ccf-templates', CCFTemplateViewSet, basename='ccf-template')
 router.register(r'change-control', ChangeControlViewSet)
 
 urlpatterns = [

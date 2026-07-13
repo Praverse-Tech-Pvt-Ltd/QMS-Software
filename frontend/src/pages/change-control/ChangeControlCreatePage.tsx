@@ -18,6 +18,7 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PageHeader from "../../components/common/PageHeader";
 import FormActions from "../../components/common/FormActions";
 import ConfirmDialog from "../../components/common/ConfirmDialog";
+import CCFPreviewDialog from "../../components/change-control/CCFPreviewDialog";
 import {
   changeService,
   type ChangeRecord,
@@ -40,6 +41,7 @@ export default function ChangeControlCreatePage() {
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
   const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+  const [ccfPreview, setCcfPreview] = useState<ChangeRecord | null>(null);
 
   const {
     register,
@@ -80,7 +82,10 @@ export default function ChangeControlCreatePage() {
       enqueueSnackbar(`Change Control ${res.cc_id} initiated successfully`, {
         variant: "success",
       });
-      navigate(`/change-control/${res.cc_id}`);
+      // Show the pre-filled CCF before navigating to the detail page —
+      // the record and its filled_ccf are already saved server-side at this
+      // point (CCFTemplate is applied in perform_create), this is a review step.
+      setCcfPreview(res);
     } catch (err) {
       enqueueSnackbar("Validation failed. Please check required fields.", {
         variant: "error",
@@ -238,6 +243,15 @@ export default function ChangeControlCreatePage() {
         onClose={() => setShowDiscardDialog(false)}
         onConfirm={() => navigate("/change-control")}
       />
+
+      {ccfPreview && (
+        <CCFPreviewDialog
+          open={!!ccfPreview}
+          ccId={ccfPreview.cc_id}
+          filledCcf={ccfPreview.filled_ccf}
+          onConfirm={() => navigate(`/change-control/${ccfPreview.cc_id}`)}
+        />
+      )}
     </Box>
   );
 }
