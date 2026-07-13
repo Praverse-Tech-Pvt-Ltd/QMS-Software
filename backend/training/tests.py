@@ -167,3 +167,62 @@ class QuizSubmissionTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['correct'], [True, True, False, True, True])
+
+
+class CertificateTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='certuser', password='Secret123!', role='QA')
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+        self.plan = TrainingPlan.objects.create(
+            title='SOP-QA-004 Deviation Management Training',
+            description='x', department='QA', trainer='QA', method='SOP',
+        )
+
+    def test_certificate_unavailable_for_incomplete_training(self):
+        assignment = TrainingAssignment.objects.create(
+            plan=self.plan, user=self.user, due_date='2026-12-01', status='PENDING',
+        )
+        response = self.client.get(f'/api/training/assignments/{assignment.id}/certificate/')
+        self.assertEqual(response.status_code, 400)
+
+    def test_certificate_pdf_generated_for_completed_training(self):
+        assignment = TrainingAssignment.objects.create(
+            plan=self.plan, user=self.user, due_date='2026-12-01', status='COMPLETED',
+            completion_date='2026-12-01', score=90, quiz_passed=True,
+        )
+        response = self.client.get(f'/api/training/assignments/{assignment.id}/certificate/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF'))
+
+
+class TrainingCalendarTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='caluser', password='Secret123!', role='QA')
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+        self.plan = TrainingPlan.objects.create(
+            title='SOP-QA-004 Deviation Management Training',
+            description='x', department='QA', trainer='QA', method='SOP',
+        )
+
+    def test_calendar_requires_month_param(self):
+        response = self.client.get('/api/training/calendar/')
+        self.assertEqual(response.status_code, 400)
+
+    def test_calendar_rejects_malformed_month(self):
+        response = self.client.get('/api/training/calendar/', {'month': 'not-a-month'})
+        self.assertEqual(response.status_code, 400)
+
+    def test_calendar_groups_assignments_by_due_date(self):
+        TrainingAssignment.objects.create(plan=self.plan, user=self.user, due_date='2026-03-05')
+        TrainingAssignment.objects.create(plan=self.plan, user=self.user, due_date='2026-03-05')
+        TrainingAssignment.objects.create(plan=self.plan, user=self.user, due_date='2026-03-20')
+        TrainingAssignment.objects.create(plan=self.plan, user=self.user, due_date='2026-04-01')  # different month
+
+        response = self.client.get('/api/training/calendar/', {'month': '2026-03'})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['2026-03-05']), 2)
+        self.assertEqual(len(response.data['2026-03-20']), 1)
+        self.assertNotIn('2026-04-01', response.data)

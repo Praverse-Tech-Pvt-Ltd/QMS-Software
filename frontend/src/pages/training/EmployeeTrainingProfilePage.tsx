@@ -17,6 +17,8 @@ import {
   Radio,
   TextField,
   CircularProgress,
+  IconButton,
+  Tooltip,
   alpha,
 } from "@mui/material";
 
@@ -35,6 +37,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import QuizIcon from "@mui/icons-material/Quiz";
 import HistoryIcon from "@mui/icons-material/History";
+import DownloadIcon from "@mui/icons-material/Download";
 
 type QuizStep = "generate" | "quiz" | "result" | "esign";
 
@@ -354,6 +357,20 @@ export default function EmployeeTrainingProfilePage() {
     }
   };
 
+  const handleDownloadCertificate = async (assignmentId: number) => {
+    try {
+      const blob = await trainingService.downloadCertificate(assignmentId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Certificate-${assignmentId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      enqueueSnackbar("Failed to download certificate", { variant: "error" });
+    }
+  };
+
   if (loading)
     return (
       <Box
@@ -498,6 +515,11 @@ export default function EmployeeTrainingProfilePage() {
                       }
                       secondary={`Score: ${a.score}% • ${a.completion_date}`}
                     />
+                    <Tooltip title="Download Certificate">
+                      <IconButton size="small" onClick={() => handleDownloadCertificate(a.id)}>
+                        <DownloadIcon sx={{ fontSize: 18 }} />
+                      </IconButton>
+                    </Tooltip>
                     <CheckCircleIcon color="success" sx={{ fontSize: 18 }} />
                   </ListItem>
                 ))
