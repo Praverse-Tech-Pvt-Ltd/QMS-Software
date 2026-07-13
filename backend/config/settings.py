@@ -59,6 +59,9 @@ INSTALLED_APPS = [
     'laboratory',
     'batch_records',
     'reports',
+    # Phase 6 modules
+    'logbooks',
+    'stability',
 ]
 
 MIDDLEWARE = [

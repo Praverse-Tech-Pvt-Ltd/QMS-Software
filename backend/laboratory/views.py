@@ -1,13 +1,20 @@
+import hashlib
 import io
+from datetime import date, timedelta
+
 from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Sample, TestRequest, TestResult, COATemplate
-from .serializers import SampleSerializer, TestRequestSerializer, TestResultSerializer
-from shared.workflow import transition
+from .models import Sample, TestRequest, TestResult, COATemplate, Instrument, CalibrationRecord
+from .serializers import (
+    SampleSerializer, TestRequestSerializer, TestResultSerializer,
+    InstrumentSerializer, CalibrationRecordSerializer,
+)
+from shared.workflow import transition, verify_esignature
+from shared.models import ESignature
 
 
 def generate_coa_pdf(sample, test_results, template=None, site=None) -> io.BytesIO:
@@ -206,3 +213,65 @@ class TestRequestViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)
+
+
+class InstrumentViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = InstrumentSerializer
+
+    def get_queryset(self):
+        return Instrument.objects.filter(is_active=True).order_by('name')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, modified_by=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.save(modified_by=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='overdue')
+    def overdue(self, request):
+        threshold = date.today() + timedelta(days=30)
+        qs = self.get_queryset().filter(next_calibration_date__lte=threshold)
+        return Response(InstrumentSerializer(qs, many=True).data)
+
+    @action(detail=True, methods=['get', 'post'], url_path='calibrations')
+    def calibrations(self, request, pk=None):
+        instrument = self.get_object()
+
+        if request.method == 'GET':
+            qs = CalibrationRecord.objects.filter(instrument=instrument, is_active=True)
+            return Response(CalibrationRecordSerializer(qs, many=True).data)
+
+        esig_password = request.data.get('esig_password')
+        try:
+            verify_esignature(request.user, esig_password or '')
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+        serializer = CalibrationRecordSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        esig = ESignature.objects.create(
+            user=request.user,
+            password_hash=hashlib.sha256((esig_password or '').encode()).hexdigest(),
+            record_type='CalibrationRecord',
+            record_id=str(instrument.pk),
+            action='record_calibration',
+            meaning=f'I certify the calibration result recorded for {instrument.instrument_id} — {instrument.name}.',
+        )
+
+        record = serializer.save(
+            instrument=instrument,
+            performed_by=request.user,
+            esignature=esig,
+            created_by=request.user,
+            modified_by=request.user,
+        )
+
+        instrument.last_calibration_date = record.calibration_date
+        instrument.status = 'out_of_service' if record.result == 'fail' else 'active'
+        instrument.modified_by = request.user
+        instrument.save()  # re-derives next_calibration_date from calibration_frequency_days
+
+        return Response(CalibrationRecordSerializer(record).data, status=201)

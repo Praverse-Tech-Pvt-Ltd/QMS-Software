@@ -1,7 +1,9 @@
+from datetime import timedelta
+
 from django.db import models
 from django.conf import settings
 from simple_history.models import HistoricalRecords
-from shared.models import BaseModel
+from shared.models import BaseModel, ESignature
 from core.utils import generate_qms_id
 
 
@@ -163,3 +165,73 @@ class TestResult(BaseModel):
             )
         except Exception:
             pass
+
+
+class Instrument(BaseModel):
+    """Master instrument/equipment record for calibration tracking (Phase 6)."""
+    STATUS = [
+        ('active', 'Active'),
+        ('due', 'Calibration Due'),
+        ('overdue', 'Overdue'),
+        ('out_of_service', 'Out of Service'),
+    ]
+
+    instrument_id = models.CharField(max_length=30, unique=True, blank=True)
+    name = models.CharField(max_length=200)
+    model = models.CharField(max_length=200, blank=True)
+    manufacturer = models.CharField(max_length=200, blank=True)
+    location = models.CharField(max_length=200, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    calibration_frequency_days = models.IntegerField(default=365)
+    last_calibration_date = models.DateField(null=True, blank=True)
+    next_calibration_date = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS, default='active')
+
+    history = HistoricalRecords()
+
+    def save(self, *args, **kwargs):
+        if not self.instrument_id:
+            self.instrument_id = generate_qms_id(Instrument, 'instrument_id', 'INST')
+        if self.last_calibration_date and self.calibration_frequency_days:
+            self.next_calibration_date = self.last_calibration_date + timedelta(days=self.calibration_frequency_days)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.instrument_id} — {self.name}"
+
+    class Meta:
+        ordering = ['name']
+
+
+class CalibrationRecord(BaseModel):
+    """A single calibration event for an instrument."""
+    TYPES = [
+        ('internal', 'Internal'),
+        ('external', 'External (vendor)'),
+    ]
+    RESULTS = [
+        ('pass', 'Pass'),
+        ('fail', 'Fail'),
+        ('adjusted', 'Pass after adjustment'),
+    ]
+
+    instrument = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name='calibration_records')
+    calibration_date = models.DateField()
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='calibrations_performed',
+    )
+    calibration_type = models.CharField(max_length=20, choices=TYPES)
+    result = models.CharField(max_length=20, choices=RESULTS)
+    certificate_number = models.CharField(max_length=100, blank=True)
+    next_due_date = models.DateField()
+    esignature = models.ForeignKey(ESignature, on_delete=models.PROTECT)
+
+    history = HistoricalRecords()
+
+    def __str__(self):
+        return f"{self.instrument.instrument_id} calibrated {self.calibration_date} ({self.result})"
+
+    class Meta:
+        ordering = ['-calibration_date']

@@ -19,8 +19,10 @@ import ChangeCircleOutlinedIcon from "@mui/icons-material/ChangeCircleOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import ExpandLessOutlinedIcon from "@mui/icons-material/ExpandLessOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
-import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined"; 
-import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined"; 
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
@@ -259,6 +261,34 @@ export default function Sidebar() {
                 <ChangeCircleOutlinedIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Change Control" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Electronic Logbooks */}
+          {canView('logbooks') && (
+            <ListItemButton
+              selected={isActive("/logbooks")}
+              onClick={() => navigate("/logbooks")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/logbooks") ? "#6366F1" : "#858D96" }}>
+                <MenuBookOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Logbooks" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Stability Management */}
+          {canView('stability') && (
+            <ListItemButton
+              selected={isActive("/stability")}
+              onClick={() => navigate("/stability")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/stability") ? "#6366F1" : "#858D96" }}>
+                <TimelineOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Stability" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
           )}
 

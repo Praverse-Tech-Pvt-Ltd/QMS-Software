@@ -4,10 +4,23 @@ Generates a GMP-compliant remark draft for approvers.
 
 Phase 1: Stub — returns a structured placeholder based on context.
 Phase 3: Replace with real Claude API (claude-sonnet-4-6) call.
+Phase 6: Priority chain — LOCAL_LLM_URL (self-hosted, OpenAI-compatible) takes
+precedence over ANTHROPIC_API_KEY, which takes precedence over the template stub.
+Never blocks: any failure at one tier falls through to the next.
 """
+import logging
 import os
 
-STUB_MODE = not bool(os.environ.get('ANTHROPIC_API_KEY'))
+logger = logging.getLogger('nexgen.ai')
+
+LOCAL_LLM_URL = os.environ.get('LOCAL_LLM_URL', '')
+LOCAL_LLM_MODEL = os.environ.get('LOCAL_LLM_MODEL', 'local-model')
+ANTHROPIC_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+
+# Used by generate_quiz_from_sop(), which only supports the Anthropic path today —
+# kept scoped to ANTHROPIC_KEY so quiz generation's behavior is unaffected by
+# LOCAL_LLM_URL being set (see generate_quiz_from_sop docstring).
+STUB_MODE = not bool(ANTHROPIC_KEY)
 
 ROLE_CONTEXT = {
     'qa_executive': 'QA Executive reviewing for completeness and initial compliance',
@@ -57,6 +70,8 @@ MODULE_SOP_MAP = {
     'dms': ('SOP-QA-010', 'Document Management Procedure'),
     'laboratory': ('SOP-QC-001', 'Laboratory Testing and Batch Release Procedure'),
     'batch_records': ('SOP-PRD-001', 'Batch Production Record Procedure'),
+    'logbook': ('SOP-QA-011', 'Electronic Logbook Procedure'),
+    'stability': ('SOP-QC-002', 'Stability Study Procedure'),
 }
 
 
@@ -82,11 +97,19 @@ def generate_remark(
     """
     sop_ref, sop_name = MODULE_SOP_MAP.get(module, ('SOP-QA-000', 'QMS General Procedure'))
     role_context = ROLE_CONTEXT.get(approver_role, 'Reviewer')
+    sop_chunks = sop_chunks or []
+    fda_risk_flags = fda_risk_flags or []
 
-    if STUB_MODE:
-        return _stub_remark(module, record_id, approver_role, stage, risk_level, sop_ref, sop_name, role_context, fda_risk_flags or [])
+    if LOCAL_LLM_URL:
+        result = _local_remark(module, record_id, approver_role, stage, risk_level, summary, sop_ref, sop_name, role_context, sop_chunks, fda_risk_flags)
+        if result is not None:
+            return result
+        # Local model unavailable/failed — fall through to Anthropic, then stub.
 
-    return _claude_remark(module, record_id, approver_role, stage, risk_level, summary, sop_ref, sop_name, role_context, sop_chunks or [], fda_risk_flags or [])
+    if ANTHROPIC_KEY:
+        return _claude_remark(module, record_id, approver_role, stage, risk_level, summary, sop_ref, sop_name, role_context, sop_chunks, fda_risk_flags)
+
+    return _stub_remark(module, record_id, approver_role, stage, risk_level, sop_ref, sop_name, role_context, fda_risk_flags)
 
 
 def _stub_remark(module, record_id, approver_role, stage, risk_level, sop_ref, sop_name, role_context, fda_risk_flags):
@@ -114,12 +137,7 @@ def _stub_remark(module, record_id, approver_role, stage, risk_level, sop_ref, s
     }
 
 
-def _claude_remark(module, record_id, approver_role, stage, risk_level, summary, sop_ref, sop_name, role_context, sop_chunks, fda_risk_flags):
-    try:
-        import anthropic
-    except ImportError:
-        return _stub_remark(module, record_id, approver_role, stage, risk_level, sop_ref, sop_name, role_context, fda_risk_flags)
-
+def _build_prompts(module, record_id, stage, risk_level, summary, role_context, sop_chunks, fda_risk_flags):
     sop_context = '\n'.join(f'[SOP Chunk]: {chunk}' for chunk in sop_chunks[:3]) if sop_chunks else 'No SOP chunks available.'
     fda_context = '\n'.join(f'[FDA Risk]: {flag}' for flag in fda_risk_flags) if fda_risk_flags else ''
 
@@ -140,7 +158,58 @@ def _claude_remark(module, record_id, approver_role, stage, risk_level, summary,
         f'Summary: {summary}\n\nRelevant SOP:\n{sop_context}\n\n{fda_context}'
     )
 
-    client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+    return system_prompt, user_prompt
+
+
+def _local_remark(module, record_id, approver_role, stage, risk_level, summary, sop_ref, sop_name, role_context, sop_chunks, fda_risk_flags):
+    """
+    Calls a self-hosted, OpenAI-compatible LLM server (vLLM / llama.cpp) at LOCAL_LLM_URL.
+    Returns None on any failure so the caller falls through to Anthropic / stub — never raises.
+    """
+    try:
+        from openai import OpenAI
+    except ImportError:
+        logger.warning("openai package not installed — cannot reach LOCAL_LLM_URL")
+        return None
+
+    system_prompt, user_prompt = _build_prompts(
+        module, record_id, stage, risk_level, summary, role_context, sop_chunks, fda_risk_flags,
+    )
+
+    try:
+        client = OpenAI(base_url=f'{LOCAL_LLM_URL}/v1', api_key='local')
+        response = client.chat.completions.create(
+            model=LOCAL_LLM_MODEL,
+            max_tokens=400,
+            temperature=0.3,
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_prompt},
+            ],
+        )
+        remark_text = response.choices[0].message.content.strip()
+    except Exception as exc:
+        logger.warning("Local LLM at %s failed: %s", LOCAL_LLM_URL, exc)
+        return None
+
+    return {
+        'remark_draft': remark_text,
+        'sop_citations': [f'{sop_ref} — {sop_name}'],
+        'risk_flags': fda_risk_flags,
+    }
+
+
+def _claude_remark(module, record_id, approver_role, stage, risk_level, summary, sop_ref, sop_name, role_context, sop_chunks, fda_risk_flags):
+    try:
+        import anthropic
+    except ImportError:
+        return _stub_remark(module, record_id, approver_role, stage, risk_level, sop_ref, sop_name, role_context, fda_risk_flags)
+
+    system_prompt, user_prompt = _build_prompts(
+        module, record_id, stage, risk_level, summary, role_context, sop_chunks, fda_risk_flags,
+    )
+
+    client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
     message = client.messages.create(
         model='claude-sonnet-4-6',
         max_tokens=400,

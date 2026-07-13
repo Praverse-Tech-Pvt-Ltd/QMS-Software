@@ -54,6 +54,10 @@ urlpatterns = [
     path('api/v1/laboratory/', include('laboratory.urls')),
     path('api/v1/batch-records/', include('batch_records.urls')),
     path('api/v1/reports/', include('reports.urls')),
+
+    # Phase 6 modules
+    path('api/v1/logbooks/', include('logbooks.urls')),
+    path('api/v1/stability/', include('stability.urls')),
 ]
 
 if settings.DEBUG:

@@ -20,6 +20,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view", "create", "edit", "approve"],
     batch_records: ["view", "create", "edit", "approve", "close"],
     knowledge: ["view", "create", "edit", "delete"],
+    logbooks: ["view", "create", "edit", "delete"],
+    stability: ["view", "create", "edit", "approve", "close"],
   },
 
   "QA Head": {
@@ -41,6 +43,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view", "create", "edit", "approve"],
     batch_records: ["view", "create", "edit", "approve", "close"],
     knowledge: ["view", "create", "edit"],
+    logbooks: ["view", "create", "edit"],
+    stability: ["view", "create", "edit", "approve", "close"],
   },
 
   "QA Manager": {
@@ -62,6 +66,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view", "create", "edit"],
     batch_records: ["view", "create", "edit", "approve"],
     knowledge: ["view", "create", "edit"],
+    logbooks: ["view", "create", "edit"],
+    stability: ["view", "create", "edit"],
   },
 
   "QA Executive": {
@@ -83,6 +89,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view", "create"],
     batch_records: ["view", "create"],
     knowledge: ["view", "create"],
+    logbooks: ["view", "create"],
+    stability: ["view", "create"],
   },
 
   QA: {
@@ -104,6 +112,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view", "create", "edit"],
     batch_records: ["view", "create", "edit"],
     knowledge: ["view", "create"],
+    logbooks: ["view", "create", "edit"],
+    stability: ["view", "create", "edit"],
   },
 
   QC: {
@@ -125,6 +135,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view", "create", "edit"],
     batch_records: ["view"],
     knowledge: ["view"],
+    logbooks: ["view", "create"],
+    stability: ["view", "create", "edit"],
   },
 
   Production: {
@@ -146,6 +158,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view"],
     batch_records: ["view", "create", "edit"],
     knowledge: ["view"],
+    logbooks: ["view", "create"],
+    stability: ["view"],
   },
 
   Warehouse: {
@@ -167,6 +181,8 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view"],
     batch_records: ["view"],
     knowledge: ["view"],
+    logbooks: ["view", "create"],
+    stability: ["view"],
   },
 
   Viewer: {
@@ -188,5 +204,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     laboratory: ["view"],
     batch_records: ["view"],
     knowledge: ["view"],
+    logbooks: ["view"],
+    stability: ["view"],
   },
 };

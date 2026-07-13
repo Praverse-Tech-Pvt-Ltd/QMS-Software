@@ -59,7 +59,9 @@ export type ModuleKey =
   | "oos"
   | "laboratory"
   | "batch_records"
-  | "knowledge";
+  | "knowledge"
+  | "logbooks"
+  | "stability";
 
 export type PermissionAction =
   | "view"

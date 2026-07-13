@@ -18,7 +18,8 @@ class FDA483Observation(models.Model):
     )
     source_url = models.URLField(max_length=500, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    # pgvector embedding — added as TextField now; migration replaces with VectorField when pgvector installed
+    # Local sentence-transformers embedding (384 dim, see knowledge/sop_ingestion.py::embed_text),
+    # stored as JSON — the raw-SQL pgvector `embedding` column (migration 0002) is unused by the ORM.
     embedding_json = models.TextField(blank=True, help_text='JSON-serialized embedding vector')
 
     class Meta:
@@ -45,7 +46,8 @@ class SOPChunk(models.Model):
         related_name='sop_chunks',
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    # pgvector embedding stored as JSON for now
+    # Local sentence-transformers embedding (384 dim), stored as JSON — see
+    # knowledge/sop_ingestion.py::embed_text. Populated at ingestion time.
     embedding_json = models.TextField(blank=True)
 
     class Meta:
