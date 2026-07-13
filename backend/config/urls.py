@@ -26,6 +26,9 @@ urlpatterns = [
     # Auth
     path('api/auth/', include('accounts.urls')),
 
+    # Multi-site UI (Phase 6 Block 7)
+    path('api/v1/accounts/', include('accounts.site_urls')),
+
     # Existing modules
     path('api/dms/', include('dms.urls')),
     path('api/quality/', include('quality.urls')),

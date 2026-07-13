@@ -7,14 +7,16 @@ from django.shortcuts import get_object_or_404
 from .models import Audit, Finding, AuditResponse
 from .serializers import AuditSerializer, FindingSerializer, AuditResponseSerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class AuditViewSet(viewsets.ModelViewSet):
+class AuditViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = AuditSerializer
 
     def get_queryset(self):
-        return Audit.objects.filter(is_active=True).order_by('-created_at')
+        qs = Audit.objects.filter(is_active=True).order_by('-created_at')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)

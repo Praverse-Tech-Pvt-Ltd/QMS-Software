@@ -8,14 +8,16 @@ from rest_framework.response import Response
 from .models import StabilityProtocol, StabilityPullPoint
 from .serializers import StabilityProtocolSerializer, StabilityPullPointSerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class StabilityProtocolViewSet(viewsets.ModelViewSet):
+class StabilityProtocolViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = StabilityProtocolSerializer
 
     def get_queryset(self):
-        return StabilityProtocol.objects.filter(is_active=True).order_by('-created_at')
+        qs = StabilityProtocol.objects.filter(is_active=True).order_by('-created_at')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         protocol = serializer.save(created_by=self.request.user, modified_by=self.request.user)
@@ -45,7 +47,7 @@ class StabilityProtocolViewSet(viewsets.ModelViewSet):
         return Response(StabilityPullPointSerializer(qs, many=True).data)
 
 
-class StabilityPullPointViewSet(viewsets.ModelViewSet):
+class StabilityPullPointViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     """
     Read/update access to individual pull points — recording actual_date/status
     when a sample is pulled, linking the laboratory Sample, flagging OOT results,
@@ -57,7 +59,8 @@ class StabilityPullPointViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'patch', 'head', 'options']
 
     def get_queryset(self):
-        return StabilityPullPoint.objects.filter(is_active=True).order_by('scheduled_date')
+        qs = StabilityPullPoint.objects.filter(is_active=True).order_by('scheduled_date')
+        return self.scope_by_site(qs)
 
     def perform_update(self, serializer):
         serializer.save(modified_by=self.request.user)

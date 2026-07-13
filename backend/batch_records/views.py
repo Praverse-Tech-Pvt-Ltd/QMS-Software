@@ -6,14 +6,16 @@ from rest_framework.response import Response
 from .models import MasterBatchRecord, BatchProductionRecord
 from .serializers import MasterBatchRecordSerializer, BatchProductionRecordSerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class MasterBatchRecordViewSet(viewsets.ModelViewSet):
+class MasterBatchRecordViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = MasterBatchRecordSerializer
 
     def get_queryset(self):
-        return MasterBatchRecord.objects.filter(is_active=True)
+        qs = MasterBatchRecord.objects.filter(is_active=True)
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)
@@ -31,12 +33,13 @@ class MasterBatchRecordViewSet(viewsets.ModelViewSet):
         return Response(MasterBatchRecordSerializer(mbr).data)
 
 
-class BatchProductionRecordViewSet(viewsets.ModelViewSet):
+class BatchProductionRecordViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = BatchProductionRecordSerializer
 
     def get_queryset(self):
-        return BatchProductionRecord.objects.filter(is_active=True)
+        qs = BatchProductionRecord.objects.filter(is_active=True)
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)

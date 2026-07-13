@@ -1,13 +1,20 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Site
 
 User = get_user_model()
+
+class SiteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Site
+        fields = ['id', 'name', 'code', 'country', 'is_active']
+        read_only_fields = ['id']
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'role', 'department', 'employee_id']
+        fields = ['id', 'username', 'email', 'role', 'department', 'employee_id', 'site']
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
@@ -21,8 +28,10 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['role'] = self.user.role
         data['username'] = self.user.username
         data['department'] = self.user.department
+        data['site'] = self.user.site_id
+        data['site_name'] = self.user.site.name if self.user.site_id else None
         # data['refresh'] and data['access'] are already added by super()
-        
+
         return data
 
 class RegisterSerializer(serializers.ModelSerializer):

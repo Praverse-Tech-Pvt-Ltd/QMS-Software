@@ -63,7 +63,8 @@ export type ModuleKey =
   | "logbooks"
   | "stability"
   | "environmental"
-  | "recall";
+  | "recall"
+  | "site_management";
 
 export type PermissionAction =
   | "view"

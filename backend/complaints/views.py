@@ -10,14 +10,16 @@ from django.db.models.functions import TruncMonth
 from .models import Complaint, MDRReport
 from .serializers import ComplaintSerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class ComplaintViewSet(viewsets.ModelViewSet):
+class ComplaintViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = ComplaintSerializer
 
     def get_queryset(self):
-        return Complaint.objects.filter(is_active=True).order_by('-received_date')
+        qs = Complaint.objects.filter(is_active=True).order_by('-received_date')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)

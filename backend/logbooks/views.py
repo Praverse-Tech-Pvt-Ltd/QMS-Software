@@ -9,14 +9,16 @@ from .models import Logbook, LogbookEntry
 from .serializers import LogbookSerializer, LogbookEntrySerializer
 from shared.models import ESignature
 from shared.workflow import verify_esignature
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class LogbookViewSet(viewsets.ModelViewSet):
+class LogbookViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = LogbookSerializer
 
     def get_queryset(self):
-        return Logbook.objects.filter(is_active=True).order_by('name')
+        qs = Logbook.objects.filter(is_active=True).order_by('name')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)
@@ -67,7 +69,7 @@ class LogbookViewSet(viewsets.ModelViewSet):
         return Response(LogbookEntrySerializer(entry).data, status=201)
 
 
-class LogbookEntryViewSet(viewsets.ModelViewSet):
+class LogbookEntryViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     """
     Read/update access to individual entries — e.g. PATCH ai_remark_draft after
     the frontend fetches an AI-drafted remark for an abnormal entry. Entries are
@@ -78,7 +80,8 @@ class LogbookEntryViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'patch', 'head', 'options']
 
     def get_queryset(self):
-        return LogbookEntry.objects.filter(is_active=True).order_by('-entry_date', '-entry_time')
+        qs = LogbookEntry.objects.filter(is_active=True).order_by('-entry_date', '-entry_time')
+        return self.scope_by_site(qs)
 
     def perform_update(self, serializer):
         serializer.save(modified_by=self.request.user)

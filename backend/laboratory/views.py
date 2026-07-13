@@ -15,6 +15,7 @@ from .serializers import (
 )
 from shared.workflow import transition, verify_esignature
 from shared.models import ESignature
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
 def generate_coa_pdf(sample, test_results, template=None, site=None) -> io.BytesIO:
@@ -135,12 +136,13 @@ def generate_coa_pdf(sample, test_results, template=None, site=None) -> io.Bytes
     return buffer
 
 
-class SampleViewSet(viewsets.ModelViewSet):
+class SampleViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = SampleSerializer
 
     def get_queryset(self):
-        return Sample.objects.filter(is_active=True).order_by('-received_date')
+        qs = Sample.objects.filter(is_active=True).order_by('-received_date')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)
@@ -204,23 +206,25 @@ class SampleViewSet(viewsets.ModelViewSet):
         return response
 
 
-class TestRequestViewSet(viewsets.ModelViewSet):
+class TestRequestViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = TestRequestSerializer
 
     def get_queryset(self):
-        return TestRequest.objects.filter(is_active=True)
+        qs = TestRequest.objects.filter(is_active=True)
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)
 
 
-class InstrumentViewSet(viewsets.ModelViewSet):
+class InstrumentViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = InstrumentSerializer
 
     def get_queryset(self):
-        return Instrument.objects.filter(is_active=True).order_by('name')
+        qs = Instrument.objects.filter(is_active=True).order_by('name')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)

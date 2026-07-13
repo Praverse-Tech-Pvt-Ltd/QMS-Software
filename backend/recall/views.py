@@ -6,14 +6,16 @@ from rest_framework.response import Response
 from .models import RecallRecord
 from .serializers import RecallRecordSerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class RecallRecordViewSet(viewsets.ModelViewSet):
+class RecallRecordViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = RecallRecordSerializer
 
     def get_queryset(self):
-        return RecallRecord.objects.filter(is_active=True).order_by('-initiated_date')
+        qs = RecallRecord.objects.filter(is_active=True).order_by('-initiated_date')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)

@@ -11,14 +11,16 @@ from django.utils import timezone
 from .models import NCReport, HoldRecord, Disposition
 from .serializers import NCReportSerializer, DispositionSerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class NCViewSet(viewsets.ModelViewSet):
+class NCViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = NCReportSerializer
 
     def get_queryset(self):
-        return NCReport.objects.filter(is_active=True).order_by('-created_at')
+        qs = NCReport.objects.filter(is_active=True).order_by('-created_at')
+        return self.scope_by_site(qs)
 
     def perform_create(self, serializer):
         nc = serializer.save(created_by=self.request.user, modified_by=self.request.user)

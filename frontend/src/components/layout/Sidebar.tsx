@@ -25,6 +25,7 @@ import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 import AirOutlinedIcon from "@mui/icons-material/AirOutlined";
 import ReportGmailerrorredOutlinedIcon from "@mui/icons-material/ReportGmailerrorredOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
@@ -340,7 +341,7 @@ export default function Sidebar() {
 
           {/* Settings */}
           {canView('settings') && (
-            <ListItemButton 
+            <ListItemButton
               selected={isActive("/settings")}
               onClick={() => navigate("/settings")}
               sx={{ borderRadius: 2 }}
@@ -349,6 +350,20 @@ export default function Sidebar() {
                 <SettingsOutlinedIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Site Management (Phase 6 Block 7) */}
+          {canView('site_management') && (
+            <ListItemButton
+              selected={isActive("/admin/sites")}
+              onClick={() => navigate("/admin/sites")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/admin/sites") ? "#6366F1" : "#858D96" }}>
+                <BusinessOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Sites" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
           )}
         </List>

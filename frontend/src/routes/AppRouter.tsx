@@ -71,6 +71,7 @@ import StabilityDetailPage from "../pages/stability/StabilityDetailPage";
 import EnvironmentalPage from "../pages/environmental/EnvironmentalPage";
 import RecallListPage from "../pages/recall/RecallListPage";
 import RecallDetailPage from "../pages/recall/RecallDetailPage";
+import SiteManagementPage from "../pages/admin/SiteManagementPage";
 
 export default function AppRouter() {
   return (
@@ -233,6 +234,9 @@ export default function AppRouter() {
 
           {/* Settings */}
           <Route path="settings" element={<SettingsPage />} />
+
+          {/* Multi-site UI (Phase 6 Block 7) */}
+          <Route path="admin/sites" element={<RequirePermission moduleKey="site_management"><SiteManagementPage /></RequirePermission>} />
 
         </Route>
       </Route>
