@@ -92,3 +92,14 @@ class RecallAPITests(TestCase):
         self.client.post(f'/api/v1/recall/{recall_id}/transition/', {'action': 'completed'})  # no esig needed
         close_response = self.client.post(f'/api/v1/recall/{recall_id}/transition/', {'action': 'closed'})
         self.assertEqual(close_response.status_code, 400)
+
+    def test_closing_a_completed_recall_with_esig_succeeds(self):
+        response = self._create_recall()
+        recall_id = response.data['id']
+        self.client.post(f'/api/v1/recall/{recall_id}/transition/', {'action': 'active', 'esig_password': 'Secret123!'})
+        self.client.post(f'/api/v1/recall/{recall_id}/transition/', {'action': 'completed'})
+        close_response = self.client.post(f'/api/v1/recall/{recall_id}/transition/', {
+            'action': 'closed', 'esig_password': 'Secret123!',
+        })
+        self.assertEqual(close_response.status_code, 200)
+        self.assertEqual(close_response.data['status'], 'closed')

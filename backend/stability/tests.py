@@ -142,3 +142,24 @@ class StabilityAPITests(TestCase):
         pull_point.refresh_from_db()
         self.assertTrue(pull_point.oot_flag)
         self.assertEqual(pull_point.ai_remark_draft, 'AI-drafted OOT remark')
+
+    def test_pull_point_status_updates_correctly(self):
+        response = self._create_protocol()
+        protocol = StabilityProtocol.objects.get(id=response.data['id'])
+        pull_point = protocol.pull_points.get(time_point='0M')
+        self.assertEqual(pull_point.status, 'pending')
+
+        pulled_response = self.client.patch(f'/api/v1/stability/pull-points/{pull_point.id}/', {
+            'status': 'pulled', 'actual_date': '2026-01-01',
+        }, format='json')
+        self.assertEqual(pulled_response.status_code, 200)
+        pull_point.refresh_from_db()
+        self.assertEqual(pull_point.status, 'pulled')
+        self.assertEqual(str(pull_point.actual_date), '2026-01-01')
+
+        completed_response = self.client.patch(f'/api/v1/stability/pull-points/{pull_point.id}/', {
+            'status': 'completed',
+        }, format='json')
+        self.assertEqual(completed_response.status_code, 200)
+        pull_point.refresh_from_db()
+        self.assertEqual(pull_point.status, 'completed')
