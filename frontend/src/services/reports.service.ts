@@ -25,7 +25,28 @@ export interface APQRReport {
   created_at: string;
 }
 
+export type SPCMetric = "deviation_rate" | "capa_cycle_time" | "oos_rate" | "complaint_rate";
+
+export interface SPCData {
+  values: number[];
+  dates: string[];
+  mean: number;
+  ucl: number;
+  lcl: number;
+}
+
 export const reportsService = {
+  // Note: this endpoint uses the correct /v1/ prefix — the other calls in this
+  // service (below) omit it, a pre-existing mismatch against the real backend
+  // mount point (config/urls.py registers reports.urls under api/v1/reports/),
+  // left untouched here as out of scope for the Phase 6 SPC addition.
+  async getSPC(metric: SPCMetric, months = 12, product?: string): Promise<SPCData> {
+    const response = await api.get<SPCData>("/v1/reports/spc/", {
+      params: { metric, months, product },
+    });
+    return response.data;
+  },
+
   async getManagementReview(
     params?: { period_start?: string; period_end?: string; format?: "json" | "pdf" }
   ): Promise<ManagementReviewKPIs> {
