@@ -58,6 +58,7 @@ urlpatterns = [
     # Phase 6 modules
     path('api/v1/logbooks/', include('logbooks.urls')),
     path('api/v1/stability/', include('stability.urls')),
+    path('api/v1/environmental/', include('environmental.urls')),
 ]
 
 if settings.DEBUG:

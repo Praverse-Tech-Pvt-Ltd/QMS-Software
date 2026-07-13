@@ -23,6 +23,7 @@ import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
+import AirOutlinedIcon from "@mui/icons-material/AirOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
@@ -289,6 +290,20 @@ export default function Sidebar() {
                 <TimelineOutlinedIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Stability" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Environmental Monitoring */}
+          {canView('environmental') && (
+            <ListItemButton
+              selected={isActive("/environmental")}
+              onClick={() => navigate("/environmental")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/environmental") ? "#6366F1" : "#858D96" }}>
+                <AirOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Environmental" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
           )}
 

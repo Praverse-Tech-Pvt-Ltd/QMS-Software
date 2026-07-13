@@ -68,6 +68,7 @@ import LogbooksListPage from "../pages/logbooks/LogbooksListPage";
 import LogbookDetailPage from "../pages/logbooks/LogbookDetailPage";
 import StabilityListPage from "../pages/stability/StabilityListPage";
 import StabilityDetailPage from "../pages/stability/StabilityDetailPage";
+import EnvironmentalPage from "../pages/environmental/EnvironmentalPage";
 
 export default function AppRouter() {
   return (
@@ -202,6 +203,9 @@ export default function AppRouter() {
             <Route index element={<RequirePermission moduleKey="stability"><StabilityListPage /></RequirePermission>} />
             <Route path=":id" element={<RequirePermission moduleKey="stability"><StabilityDetailPage /></RequirePermission>} />
           </Route>
+
+          {/* Environmental Monitoring */}
+          <Route path="environmental" element={<RequirePermission moduleKey="environmental"><EnvironmentalPage /></RequirePermission>} />
 
           {/* /quality/* — PRD-specified paths (aliases alongside old paths) */}
           <Route path="quality">

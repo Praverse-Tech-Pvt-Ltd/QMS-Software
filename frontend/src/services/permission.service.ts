@@ -61,7 +61,8 @@ export type ModuleKey =
   | "batch_records"
   | "knowledge"
   | "logbooks"
-  | "stability";
+  | "stability"
+  | "environmental";
 
 export type PermissionAction =
   | "view"

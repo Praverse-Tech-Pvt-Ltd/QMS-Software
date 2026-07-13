@@ -22,6 +22,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view", "create", "edit", "delete"],
     logbooks: ["view", "create", "edit", "delete"],
     stability: ["view", "create", "edit", "approve", "close"],
+    environmental: ["view", "create", "edit", "approve", "close"],
   },
 
   "QA Head": {
@@ -45,6 +46,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view", "create", "edit"],
     logbooks: ["view", "create", "edit"],
     stability: ["view", "create", "edit", "approve", "close"],
+    environmental: ["view", "create", "edit", "approve", "close"],
   },
 
   "QA Manager": {
@@ -68,6 +70,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view", "create", "edit"],
     logbooks: ["view", "create", "edit"],
     stability: ["view", "create", "edit"],
+    environmental: ["view", "create", "edit"],
   },
 
   "QA Executive": {
@@ -91,6 +94,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view", "create"],
     logbooks: ["view", "create"],
     stability: ["view", "create"],
+    environmental: ["view", "create"],
   },
 
   QA: {
@@ -114,6 +118,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view", "create"],
     logbooks: ["view", "create", "edit"],
     stability: ["view", "create", "edit"],
+    environmental: ["view", "create", "edit"],
   },
 
   QC: {
@@ -137,6 +142,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view"],
     logbooks: ["view", "create"],
     stability: ["view", "create", "edit"],
+    environmental: ["view", "create", "edit"],
   },
 
   Production: {
@@ -160,6 +166,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view"],
     logbooks: ["view", "create"],
     stability: ["view"],
+    environmental: ["view"],
   },
 
   Warehouse: {
@@ -183,6 +190,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view"],
     logbooks: ["view", "create"],
     stability: ["view"],
+    environmental: ["view"],
   },
 
   Viewer: {
@@ -206,5 +214,6 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     knowledge: ["view"],
     logbooks: ["view"],
     stability: ["view"],
+    environmental: ["view"],
   },
 };

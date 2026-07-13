@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     # Phase 6 modules
     'logbooks',
     'stability',
+    'environmental',
 ]
 
 MIDDLEWARE = [
