@@ -1,9 +1,10 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useSnackbar } from "notistack";
 import {
   Box, Typography, Chip, Button, CircularProgress, Alert,
   Card, CardContent, Tabs, Tab, Grid, Divider, IconButton, Tooltip,
-  Table, TableBody, TableCell, TableHead, TableRow,
+  Table, TableBody, TableCell, TableHead, TableRow, TextField, Link,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import HistoryIcon from "@mui/icons-material/History";
@@ -55,6 +56,12 @@ export default function SampleDetailPage() {
   const [remarkDialogOpen, setRemarkDialogOpen] = useState(false);
   const [aiRemark, setAiRemark] = useState("");
   const [aiRemarkConfirmed, setAiRemarkConfirmed] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
+  const [resultDialogTarget, setResultDialogTarget] = useState<TestRequest | null>(null);
+  const [resultForm, setResultForm] = useState({ result_value: "", unit: "", notes: "" });
+  const [resultSubmitting, setResultSubmitting] = useState(false);
+  const [resultError, setResultError] = useState<string | null>(null);
+  const [oosBanner, setOosBanner] = useState<{ oosId: string } | null>(null);
 
   const load = async () => {
     if (!id) return;
@@ -93,6 +100,36 @@ export default function SampleDetailPage() {
     finally { setTransitioning(false); setEsigOpen(false); }
   };
 
+  const openResultDialog = (target: TestRequest) => {
+    setResultForm({ result_value: "", unit: "", notes: "" });
+    setResultError(null);
+    setResultDialogTarget(target);
+  };
+
+  const handleSubmitResult = async () => {
+    if (!id || !resultDialogTarget || !resultForm.result_value) return;
+    setResultSubmitting(true);
+    setResultError(null);
+    try {
+      const response = await laboratoryService.enterResult(id, {
+        test_request_id: resultDialogTarget.id,
+        result_value: resultForm.result_value,
+        unit: resultForm.unit,
+      });
+      setResultDialogTarget(null);
+      await load();
+      if (response.pass_fail === "fail" && response.oos_id) {
+        setOosBanner({ oosId: response.oos_id });
+      } else if (response.pass_fail === "pass") {
+        enqueueSnackbar("Result recorded — Pass", { variant: "success" });
+      }
+    } catch {
+      setResultError("Failed to record result. Please check the values and try again.");
+    } finally {
+      setResultSubmitting(false);
+    }
+  };
+
   const handleGenerateCOA = async () => {
     if (!id || !sample) return;
     setCoaGenerating(true);
@@ -122,12 +159,19 @@ export default function SampleDetailPage() {
   };
   const available = nextActions[sample.status] || [];
 
-  const allResults: TestResult[] = tests.flatMap((t) => t.results || []);
+  const allResults: TestResult[] = tests.flatMap((t) => t.results || (t.result ? [t.result] : []));
   const failCount = allResults.filter((r) => r.pass_fail === "fail").length;
+  const pendingTests = tests.filter((t) => !t.result && (!t.results || t.results.length === 0));
 
   return (
     <Box sx={{ p: 3 }}>
       {coaError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setCoaError(null)}>{coaError}</Alert>}
+      {oosBanner && (
+        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setOosBanner(null)}>
+          OOS investigation created. AI has drafted an initial remark.{" "}
+          <Link component={RouterLink} to={`/oos/${oosBanner.oosId}`}>View OOS record</Link>
+        </Alert>
+      )}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
         <IconButton onClick={() => navigate("/laboratory")}><ArrowBackIcon /></IconButton>
         <Box sx={{ flex: 1 }}>
@@ -197,6 +241,40 @@ export default function SampleDetailPage() {
       )}
 
       {tab === 1 && (
+        <>
+          {pendingTests.length > 0 && (
+            <Card sx={{ borderRadius: 3, mb: 3 }}>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
+                  Pending Test Requests ({pendingTests.length})
+                </Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700 }}>Test</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Due Date</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                      <TableCell align="right" />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pendingTests.map((t) => (
+                      <TableRow key={t.id} hover>
+                        <TableCell>{t.test_name}</TableCell>
+                        <TableCell>{t.due_date || "—"}</TableCell>
+                        <TableCell>{t.status_display || t.status}</TableCell>
+                        <TableCell align="right">
+                          <Button size="small" variant="outlined" onClick={() => openResultDialog(t)}>
+                            Enter Result
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         <Card sx={{ borderRadius: 3 }}>
           {allResults.length === 0 ? (
             <CardContent><Alert severity="info">No test results recorded yet.</Alert></CardContent>
@@ -240,6 +318,7 @@ export default function SampleDetailPage() {
             </Table>
           )}
         </Card>
+        </>
       )}
 
       {tab === 2 && (
@@ -271,6 +350,29 @@ export default function SampleDetailPage() {
             onClick={() => { setRemarkDialogOpen(false); setEsigOpen(true); }}
           >
             Continue to E-Signature
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!resultDialogTarget} onClose={() => setResultDialogTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Enter Result — {resultDialogTarget?.test_name}</DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 1 }}>
+          {resultError && <Alert severity="error">{resultError}</Alert>}
+          <TextField label="Result Value" type="number" fullWidth required autoFocus
+            value={resultForm.result_value}
+            onChange={(e) => setResultForm({ ...resultForm, result_value: e.target.value })} />
+          <TextField label="Unit" fullWidth
+            value={resultForm.unit}
+            onChange={(e) => setResultForm({ ...resultForm, unit: e.target.value })} />
+          <TextField label="Notes (optional)" fullWidth multiline minRows={2}
+            value={resultForm.notes}
+            onChange={(e) => setResultForm({ ...resultForm, notes: e.target.value })} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setResultDialogTarget(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleSubmitResult}
+            disabled={resultSubmitting || !resultForm.result_value}>
+            {resultSubmitting ? "Recording..." : "Record Result"}
           </Button>
         </DialogActions>
       </Dialog>

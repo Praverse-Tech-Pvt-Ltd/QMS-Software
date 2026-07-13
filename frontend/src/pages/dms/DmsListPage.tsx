@@ -9,7 +9,7 @@ import {
   IconButton,
   CircularProgress,
   Alert,
-  
+  Chip,
 } from "@mui/material";
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import FilterListOutlinedIcon from "@mui/icons-material/FilterListOutlined";
@@ -35,6 +35,7 @@ export default function DmsListPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [statusFilter, setStatusFilter] = useState("All");
+  const [reviewDueOnly, setReviewDueOnly] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState({ open: false, message: "" });
 
   useEffect(() => {
@@ -73,6 +74,15 @@ export default function DmsListPage() {
       navigate(`/dms/${targetId}`);
   };
 
+  const isReviewDue = (doc: DmsDocument) => {
+    if (!doc.next_review_date || String(doc.status).toUpperCase() !== "EFFECTIVE") return false;
+    const threshold = new Date();
+    threshold.setDate(threshold.getDate() + 30);
+    return new Date(doc.next_review_date) <= threshold;
+  };
+
+  const reviewDueCount = documents.filter(isReviewDue).length;
+
   // Client-side filtering
   const filteredDocs = documents.filter((doc) => {
       // Status Filter (Case Insensitive Safety)
@@ -82,6 +92,7 @@ export default function DmsListPage() {
               return false;
           }
       }
+      if (reviewDueOnly && !isReviewDue(doc)) return false;
       return true;
   });
 
@@ -133,6 +144,16 @@ export default function DmsListPage() {
               {s}
             </Button>
           ))}
+          {reviewDueCount > 0 && (
+            <Chip
+              label={`Review Due (${reviewDueCount})`}
+              size="small"
+              color={reviewDueOnly ? "warning" : "default"}
+              variant={reviewDueOnly ? "filled" : "outlined"}
+              onClick={() => setReviewDueOnly((v) => !v)}
+              sx={{ borderRadius: 3, fontWeight: 600, m: 0.5, cursor: "pointer" }}
+            />
+          )}
         </Stack>
       </Paper>
 

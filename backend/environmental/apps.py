@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class EnvironmentalConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'environmental'
+    verbose_name = 'Environmental Monitoring'

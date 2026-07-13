@@ -8,9 +8,10 @@ from django.db.models import Count
 from .models import Risk, Mitigation, ResidualRisk
 from .serializers import RiskSerializer, MitigationSerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class RiskViewSet(viewsets.ModelViewSet):
+class RiskViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = RiskSerializer
 
@@ -22,7 +23,7 @@ class RiskViewSet(viewsets.ModelViewSet):
             qs = qs.filter(category=category)
         if status:
             qs = qs.filter(status=status)
-        return qs.order_by('-created_at')
+        return self.scope_by_site(qs.order_by('-created_at'))
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)

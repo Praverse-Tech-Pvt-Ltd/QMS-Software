@@ -26,6 +26,9 @@ urlpatterns = [
     # Auth
     path('api/auth/', include('accounts.urls')),
 
+    # Multi-site UI (Phase 6 Block 7)
+    path('api/v1/accounts/', include('accounts.site_urls')),
+
     # Existing modules
     path('api/dms/', include('dms.urls')),
     path('api/quality/', include('quality.urls')),
@@ -54,6 +57,12 @@ urlpatterns = [
     path('api/v1/laboratory/', include('laboratory.urls')),
     path('api/v1/batch-records/', include('batch_records.urls')),
     path('api/v1/reports/', include('reports.urls')),
+
+    # Phase 6 modules
+    path('api/v1/logbooks/', include('logbooks.urls')),
+    path('api/v1/stability/', include('stability.urls')),
+    path('api/v1/environmental/', include('environmental.urls')),
+    path('api/v1/recall/', include('recall.urls')),
 ]
 
 if settings.DEBUG:

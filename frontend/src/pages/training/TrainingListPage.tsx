@@ -7,6 +7,8 @@ import {
   InputAdornment,
   Alert,
   CircularProgress,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
@@ -25,6 +27,7 @@ import {
 } from "../../services/training.service";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
+import TrainingCalendarView from "../../components/training/TrainingCalendarView";
 
 // Filter Options
 const STATUS_FILTERS = ["All", "Draft", "Active", "Obsolete"];
@@ -46,6 +49,7 @@ export default function TrainingListPage() {
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [tab, setTab] = useState(0);
 
   // Fetch Data
   useEffect(() => {
@@ -214,19 +218,6 @@ export default function TrainingListPage() {
     },
   ];
 
-  if (loading)
-    return (
-      <Box sx={{ p: 5, textAlign: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
-  if (error)
-    return (
-      <Box sx={{ p: 5 }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-
   return (
     <Box sx={{ p: 3, bgcolor: "#f8fafc", minHeight: "100vh" }}>
       {/* Header */}
@@ -263,6 +254,23 @@ export default function TrainingListPage() {
         </Button>
       </Box>
 
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: "1px solid #e2e8f0" }}>
+        <Tab label="Plans" />
+        <Tab label="Calendar" />
+      </Tabs>
+
+      {tab === 1 ? (
+        <TrainingCalendarView />
+      ) : loading ? (
+        <Box sx={{ p: 5, textAlign: "center" }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Box sx={{ p: 5 }}>
+          <Alert severity="error">{error}</Alert>
+        </Box>
+      ) : (
+        <>
       {/* Filters */}
       <Box
         sx={{
@@ -361,6 +369,8 @@ export default function TrainingListPage() {
             : undefined
         }
       />
+        </>
+      )}
 
       <PermissionDeniedDialog
         open={permissionDenied.open}

@@ -157,4 +157,26 @@ async completeTraining(
     const response = await api.post(`/training/assignments/${assignmentId}/submit-quiz/`, { answers });
     return response.data;
   },
+
+  /** month format: YYYY-MM. Returns assignments grouped by due_date. */
+  async getCalendar(month: string): Promise<Record<string, CalendarAssignment[]>> {
+    const response = await api.get<Record<string, CalendarAssignment[]>>("/training/calendar/", {
+      params: { month },
+    });
+    return response.data;
+  },
+
+  async downloadCertificate(assignmentId: number): Promise<Blob> {
+    const response = await api.get(`/training/assignments/${assignmentId}/certificate/`, {
+      responseType: "blob",
+    });
+    return response.data;
+  },
 };
+
+export interface CalendarAssignment {
+  id: number;
+  plan_title: string;
+  user: string;
+  status: string;
+}

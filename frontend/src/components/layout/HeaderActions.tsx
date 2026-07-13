@@ -8,6 +8,7 @@ import {
   Chip,
   Menu,
   MenuItem,
+  Select,
   InputAdornment,
   Avatar,
   Divider,
@@ -21,6 +22,7 @@ import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutline
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
@@ -32,7 +34,7 @@ import UserProfileCard from "../common/UserProfileCard";
 const ROLES = ["Admin", "QA", "QC", "Production", "Warehouse", "Viewer"] as const;
 
 function HeaderActions() {
-  const { role, setRole } = useRole();
+  const { role, setRole, siteId, setSiteId, sites } = useRole();
   const [scrolled, setScrolled] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   
@@ -115,7 +117,30 @@ function HeaderActions() {
 
         {/* Right Actions */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, ml: "auto" }}>
-          
+
+          {/* Site Selector (Phase 6 Block 7) */}
+          {sites.length > 0 && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mr: 1, borderRight: "1px solid #E9ECEF", pr: 2 }}>
+              <BusinessOutlinedIcon sx={{ color: "#858D96", fontSize: 18 }} />
+              <Select
+                size="small"
+                value={siteId ?? ""}
+                displayEmpty
+                onChange={(e) => setSiteId(e.target.value ? String(e.target.value) : null)}
+                sx={{
+                  minWidth: 140,
+                  fontSize: "0.8125rem",
+                  "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+                }}
+              >
+                <MenuItem value="">All Sites</MenuItem>
+                {sites.map((s) => (
+                  <MenuItem key={s.id} value={String(s.id)}>{s.code} — {s.name}</MenuItem>
+                ))}
+              </Select>
+            </Box>
+          )}
+
           {/* Role Switcher */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mr: 1, borderRight: "1px solid #E9ECEF", pr: 2 }}>
             <Typography variant="caption" sx={{ fontWeight: 700, color: "#858D96", whiteSpace: "nowrap", display: { xs: "none", md: "block"} }}>VIEW AS:</Typography>

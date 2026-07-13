@@ -7,6 +7,7 @@ import {
   ListItemText,
   Collapse,
   Divider,
+  Badge,
 } from "@mui/material";
 
 // --- Icons ---
@@ -19,15 +20,21 @@ import ChangeCircleOutlinedIcon from "@mui/icons-material/ChangeCircleOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import ExpandLessOutlinedIcon from "@mui/icons-material/ExpandLessOutlined";
 import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
-import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined"; 
-import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined"; 
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
+import AirOutlinedIcon from "@mui/icons-material/AirOutlined";
+import ReportGmailerrorredOutlinedIcon from "@mui/icons-material/ReportGmailerrorredOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
 import { permissionService } from "../../services/permission.service";
 import { transitions, motion } from "../../theme/motion";
+import { dmsService } from "../../services/dms.service";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -46,6 +53,15 @@ export default function Sidebar() {
 
   // Helper to safely check permissions
   const canView = (module: any) => role ? permissionService.can(role, module, 'view') : false;
+
+  // Review-due document count badge (Phase 6 Block 8)
+  const [reviewDueCount, setReviewDueCount] = useState(0);
+  useEffect(() => {
+    if (canView('dms')) {
+      dmsService.reviewDue().then((docs) => setReviewDueCount(docs.length)).catch(() => setReviewDueCount(0));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   return (
     <Box
@@ -169,7 +185,9 @@ export default function Sidebar() {
               }}
             >
               <ListItemIcon sx={{ minWidth: 36, color: isActive("/dms") ? "#6366F1" : "#858D96" }}>
-                <DescriptionOutlinedIcon fontSize="small" />
+                <Badge badgeContent={reviewDueCount} color="warning" max={99}>
+                  <DescriptionOutlinedIcon fontSize="small" />
+                </Badge>
               </ListItemIcon>
               <ListItemText primary="Document Management" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
@@ -262,6 +280,62 @@ export default function Sidebar() {
             </ListItemButton>
           )}
 
+          {/* Electronic Logbooks */}
+          {canView('logbooks') && (
+            <ListItemButton
+              selected={isActive("/logbooks")}
+              onClick={() => navigate("/logbooks")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/logbooks") ? "#6366F1" : "#858D96" }}>
+                <MenuBookOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Logbooks" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Stability Management */}
+          {canView('stability') && (
+            <ListItemButton
+              selected={isActive("/stability")}
+              onClick={() => navigate("/stability")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/stability") ? "#6366F1" : "#858D96" }}>
+                <TimelineOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Stability" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Environmental Monitoring */}
+          {canView('environmental') && (
+            <ListItemButton
+              selected={isActive("/environmental")}
+              onClick={() => navigate("/environmental")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/environmental") ? "#6366F1" : "#858D96" }}>
+                <AirOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Environmental" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Recall Management */}
+          {canView('recall') && (
+            <ListItemButton
+              selected={isActive("/recall")}
+              onClick={() => navigate("/recall")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/recall") ? "#6366F1" : "#858D96" }}>
+                <ReportGmailerrorredOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Recall" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
           {/* Reports */}
           {canView('reports') && (
             <ListItemButton
@@ -280,7 +354,7 @@ export default function Sidebar() {
 
           {/* Settings */}
           {canView('settings') && (
-            <ListItemButton 
+            <ListItemButton
               selected={isActive("/settings")}
               onClick={() => navigate("/settings")}
               sx={{ borderRadius: 2 }}
@@ -289,6 +363,20 @@ export default function Sidebar() {
                 <SettingsOutlinedIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Site Management (Phase 6 Block 7) */}
+          {canView('site_management') && (
+            <ListItemButton
+              selected={isActive("/admin/sites")}
+              onClick={() => navigate("/admin/sites")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/admin/sites") ? "#6366F1" : "#858D96" }}>
+                <BusinessOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Sites" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
           )}
         </List>

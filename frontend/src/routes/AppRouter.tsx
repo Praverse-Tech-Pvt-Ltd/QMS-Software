@@ -64,6 +64,14 @@ import BPRDetailPage from "../pages/batch-records/BPRDetailPage";
 import ManagementReviewPage from "../pages/management-reports/ManagementReviewPage";
 import APQRDetailPage from "../pages/management-reports/APQRDetailPage";
 import KnowledgePage from "../pages/knowledge/KnowledgePage";
+import LogbooksListPage from "../pages/logbooks/LogbooksListPage";
+import LogbookDetailPage from "../pages/logbooks/LogbookDetailPage";
+import StabilityListPage from "../pages/stability/StabilityListPage";
+import StabilityDetailPage from "../pages/stability/StabilityDetailPage";
+import EnvironmentalPage from "../pages/environmental/EnvironmentalPage";
+import RecallListPage from "../pages/recall/RecallListPage";
+import RecallDetailPage from "../pages/recall/RecallDetailPage";
+import SiteManagementPage from "../pages/admin/SiteManagementPage";
 
 export default function AppRouter() {
   return (
@@ -187,6 +195,27 @@ export default function AppRouter() {
           {/* Knowledge Base */}
           <Route path="knowledge" element={<RequirePermission moduleKey="knowledge"><KnowledgePage /></RequirePermission>} />
 
+          {/* Electronic Logbooks */}
+          <Route path="logbooks">
+            <Route index element={<RequirePermission moduleKey="logbooks"><LogbooksListPage /></RequirePermission>} />
+            <Route path=":id" element={<RequirePermission moduleKey="logbooks"><LogbookDetailPage /></RequirePermission>} />
+          </Route>
+
+          {/* Stability Management */}
+          <Route path="stability">
+            <Route index element={<RequirePermission moduleKey="stability"><StabilityListPage /></RequirePermission>} />
+            <Route path=":id" element={<RequirePermission moduleKey="stability"><StabilityDetailPage /></RequirePermission>} />
+          </Route>
+
+          {/* Environmental Monitoring */}
+          <Route path="environmental" element={<RequirePermission moduleKey="environmental"><EnvironmentalPage /></RequirePermission>} />
+
+          {/* Recall Management */}
+          <Route path="recall">
+            <Route index element={<RequirePermission moduleKey="recall"><RecallListPage /></RequirePermission>} />
+            <Route path=":id" element={<RequirePermission moduleKey="recall"><RecallDetailPage /></RequirePermission>} />
+          </Route>
+
           {/* /quality/* — PRD-specified paths (aliases alongside old paths) */}
           <Route path="quality">
             <Route path="deviations">
@@ -205,6 +234,9 @@ export default function AppRouter() {
 
           {/* Settings */}
           <Route path="settings" element={<SettingsPage />} />
+
+          {/* Multi-site UI (Phase 6 Block 7) */}
+          <Route path="admin/sites" element={<RequirePermission moduleKey="site_management"><SiteManagementPage /></RequirePermission>} />
 
         </Route>
       </Route>

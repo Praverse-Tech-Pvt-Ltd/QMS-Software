@@ -25,6 +25,9 @@ export interface ChangeRecord extends Omit<
     risk_notes: string;
     mitigation: string;
   };
+  /** Pre-filled Change Control Form content, applied server-side from the
+   * matching CCFTemplate (Phase 6 Block 11). Empty object if no template matched. */
+  filled_ccf?: Record<string, string>;
 }
 
 export const changeService = {

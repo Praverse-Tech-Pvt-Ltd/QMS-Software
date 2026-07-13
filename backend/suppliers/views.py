@@ -8,9 +8,10 @@ from rest_framework.views import APIView
 from .models import Supplier, QualificationRecord, ASLEntry
 from .serializers import SupplierSerializer, QualificationSerializer, ASLEntrySerializer
 from shared.workflow import transition
+from shared.site_scoping import SiteScopedQuerysetMixin
 
 
-class SupplierViewSet(viewsets.ModelViewSet):
+class SupplierViewSet(SiteScopedQuerysetMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = SupplierSerializer
 
@@ -22,7 +23,7 @@ class SupplierViewSet(viewsets.ModelViewSet):
             qs = qs.filter(category=category)
         if status:
             qs = qs.filter(status=status)
-        return qs.order_by('name')
+        return self.scope_by_site(qs.order_by('name'))
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, modified_by=self.request.user)

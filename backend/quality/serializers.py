@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.contenttypes.models import ContentType
 from core.models import AuditLog
 from accounts.serializers import UserSerializer
-from .models import Deviation, Capa, ChangeControl, CapaAction
+from .models import Deviation, Capa, ChangeControl, CapaAction, CCFTemplate
 
 class AuditLogSerializer(serializers.ModelSerializer):
     user_details = UserSerializer(source='user', read_only=True)
@@ -72,7 +72,7 @@ class ChangeControlSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChangeControl
         fields = '__all__'
-        read_only_fields = ['cc_id', 'created_at', 'status', 'initiator']
+        read_only_fields = ['cc_id', 'created_at', 'status', 'initiator', 'filled_ccf']
 
     def get_audit_trail(self, obj):
         from core.models import AuditLog
@@ -81,3 +81,10 @@ class ChangeControlSerializer(serializers.ModelSerializer):
         ct = ContentType.objects.get_for_model(obj)
         logs = AuditLog.objects.filter(content_type=ct, object_id=obj.id).order_by('-timestamp')
         return AuditLogSerializer(logs, many=True).data
+
+
+class CCFTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CCFTemplate
+        fields = ['id', 'change_category', 'name', 'template_fields', 'is_default', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']

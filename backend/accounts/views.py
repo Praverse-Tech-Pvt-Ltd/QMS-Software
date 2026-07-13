@@ -1,12 +1,43 @@
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
-from .serializers import CustomTokenObtainPairSerializer, RegisterSerializer
+from .models import Site
+from .serializers import CustomTokenObtainPairSerializer, RegisterSerializer, SiteSerializer
 
 User = get_user_model()
+
+
+class SiteViewSet(viewsets.ModelViewSet):
+    """
+    Site management (Phase 6 Block 7). Any authenticated user can list sites
+    (needed to populate the nav site selector); only Admin can create/edit —
+    matches the QA-staff-role-gating pattern already used elsewhere
+    (e.g. knowledge.views.SOPUploadView).
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = SiteSerializer
+    queryset = Site.objects.all().order_by('name')
+
+    def _is_admin(self, request):
+        return getattr(request.user, 'role', '') == 'Admin'
+
+    def create(self, request, *args, **kwargs):
+        if not self._is_admin(request):
+            return Response({'error': 'Only Admin can create sites'}, status=403)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if not self._is_admin(request):
+            return Response({'error': 'Only Admin can edit sites'}, status=403)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if not self._is_admin(request):
+            return Response({'error': 'Only Admin can edit sites'}, status=403)
+        return super().partial_update(request, *args, **kwargs)
 
 
 class CustomLoginView(TokenObtainPairView):

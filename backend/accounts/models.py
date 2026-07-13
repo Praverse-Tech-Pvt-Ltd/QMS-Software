@@ -37,6 +37,9 @@ class User(AbstractUser):
     
     department = models.CharField(max_length=100, blank=True)
     employee_id = models.CharField(max_length=20, unique=True, null=True)
+    site = models.ForeignKey(
+        Site, on_delete=models.SET_NULL, null=True, blank=True, related_name='users',
+    )
 
     def __str__(self):
         return f"{self.username} ({self.role})"

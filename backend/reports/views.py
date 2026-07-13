@@ -1,4 +1,7 @@
 import io
+import statistics
+from datetime import date, timedelta
+
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.views import APIView
@@ -8,6 +11,7 @@ from rest_framework import generics
 
 from .models import APQRReport
 from .serializers import APQRReportSerializer
+from core.utils import add_months
 
 
 def generate_management_review_pdf(data: dict, generated_by, period: str) -> io.BytesIO:
@@ -343,3 +347,90 @@ class APQRExportView(APIView):
             f'attachment; filename="APQR-{report.product}-{report.period_start}.pdf"'
         )
         return response
+
+
+class SPCView(APIView):
+    """
+    Statistical Process Control data for key quality metrics (Phase 6 Block 10).
+    GET /api/v1/reports/spc/?metric=deviation_rate&product=&months=12
+    """
+    permission_classes = [IsAuthenticated]
+
+    METRICS = ('deviation_rate', 'capa_cycle_time', 'oos_rate', 'complaint_rate')
+
+    def get(self, request):
+        metric = request.query_params.get('metric', 'deviation_rate')
+        if metric not in self.METRICS:
+            return Response({'error': f'metric must be one of {list(self.METRICS)}'}, status=400)
+
+        product = request.query_params.get('product') or None
+        try:
+            months = int(request.query_params.get('months', 12))
+        except ValueError:
+            return Response({'error': 'months must be an integer'}, status=400)
+        months = max(1, min(months, 60))
+
+        month_starts = []
+        cursor = date.today().replace(day=1)
+        for _ in range(months):
+            month_starts.append(cursor)
+            cursor = add_months(cursor, -1)
+        month_starts.reverse()
+
+        values = [self._compute_metric(metric, m, add_months(m, 1), product) for m in month_starts]
+        dates = [m.strftime('%Y-%m') for m in month_starts]
+
+        mean = statistics.mean(values) if values else 0.0
+        stdev = statistics.pstdev(values) if len(values) > 1 else 0.0
+        ucl = mean + 3 * stdev
+        lcl = max(0.0, mean - 3 * stdev)  # these metrics can't go negative
+
+        return Response({
+            'values': values,
+            'dates': dates,
+            'mean': round(mean, 2),
+            'ucl': round(ucl, 2),
+            'lcl': round(lcl, 2),
+        })
+
+    def _compute_metric(self, metric, start, end, product):
+        from datetime import datetime
+
+        from quality.models import Deviation, Capa, OOSInvestigation
+        from complaints.models import Complaint
+
+        # created_at/updated_at are DateTimeFields (USE_TZ=True) — compare against
+        # timezone-aware bounds, not naive dates, to avoid an incorrect comparison
+        # (and a RuntimeWarning) on any backend that isn't SQLite.
+        start_dt = timezone.make_aware(datetime.combine(start, datetime.min.time()))
+        end_dt = timezone.make_aware(datetime.combine(end, datetime.min.time()))
+
+        if metric == 'deviation_rate':
+            qs = Deviation.objects.filter(created_at__gte=start_dt, created_at__lt=end_dt)
+            if product:
+                # Deviation has no product field — department is the closest proxy,
+                # matching the convention already used by APQRGenerateView.
+                qs = qs.filter(department__icontains=product)
+            return qs.count()
+
+        if metric == 'oos_rate':
+            qs = OOSInvestigation.objects.filter(created_at__gte=start_dt, created_at__lt=end_dt)
+            if product:
+                qs = qs.filter(product__icontains=product)
+            return qs.count()
+
+        if metric == 'complaint_rate':
+            qs = Complaint.objects.filter(received_date__gte=start, received_date__lt=end, is_active=True)
+            if product:
+                qs = qs.filter(product__icontains=product)
+            return qs.count()
+
+        if metric == 'capa_cycle_time':
+            # Capa (legacy TimeStampedModel) has no dedicated closed_date field, so
+            # updated_at is used as a proxy for closure time on VERIFIED records —
+            # an approximation, not an exact cycle time.
+            qs = Capa.objects.filter(status='VERIFIED', updated_at__gte=start_dt, updated_at__lt=end_dt)
+            durations = [(c.updated_at.date() - c.created_at.date()).days for c in qs]
+            return round(sum(durations) / len(durations), 1) if durations else 0.0
+
+        return 0

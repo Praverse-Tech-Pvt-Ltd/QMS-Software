@@ -1,7 +1,8 @@
-import { Box, Typography, Grid, CircularProgress, Alert, Card, CardContent, Button, Chip } from "@mui/material";
+import { Box, Typography, Grid, CircularProgress, Alert, Card, CardContent, Button, Chip, Tabs, Tab } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import { useEffect, useState } from "react";
 import { reportsService, type ManagementReviewKPIs } from "../../services/reports.service";
+import SPCChart from "../../components/reports/SPCChart";
 
 interface KPICardProps {
   title: string;
@@ -36,6 +37,7 @@ export default function ManagementReviewPage() {
   const [kpis, setKPIs] = useState<ManagementReviewKPIs | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState(0);
 
   useEffect(() => {
     reportsService.getManagementReview()
@@ -71,8 +73,16 @@ export default function ManagementReviewPage() {
           Export PDF
         </Button>
       </Box>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: "1px solid #e2e8f0" }}>
+        <Tab label="Overview" />
+        <Tab label="SPC" />
+      </Tabs>
+
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {loading ? <CircularProgress /> : kpis ? (
+
+      {tab === 1 ? (
+        <SPCChart />
+      ) : loading ? <CircularProgress /> : kpis ? (
         <Grid container spacing={2}>
           <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <KPICard title="Deviations" total={kpis.deviations.total} open={kpis.deviations.open} overdue={kpis.deviations.overdue} color="#667eea" />

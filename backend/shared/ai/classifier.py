@@ -3,7 +3,32 @@ Algorithm A — Event Classifier
 Classifies a free-text quality event into event_type, sub_category, and initial risk_level.
 Phase 1: rule-based keyword matching.
 Phase 2: replace with scikit-learn logistic regression trained on labelled pharma events.
+Phase 6: transparent fine-tuned model hook — loads ml/models/classifier/ if present,
+falls back to the keyword map unchanged if it doesn't exist or fails to load. No model
+training happens in this phase; this is provisioning only.
 """
+from pathlib import Path
+
+_MODEL_PATH = Path(__file__).resolve().parents[3] / 'ml' / 'models' / 'classifier'
+_clf = None
+
+
+def _load_trained():
+    global _clf
+    if _clf is not None:
+        return _clf
+    if not _MODEL_PATH.exists():
+        return None
+    try:
+        from transformers import pipeline
+        _clf = pipeline(
+            'text-classification', model=str(_MODEL_PATH),
+            device=-1, truncation=True, max_length=256,
+        )
+        return _clf
+    except Exception:
+        return None
+
 
 KEYWORD_MAP = {
     'deviation': {
@@ -80,6 +105,39 @@ def classify_event(text: str) -> dict:
             'risk_level': str,       # Low | Medium | High | Critical
         }
     """
+    clf = _load_trained()
+    if clf:
+        try:
+            res = clf(text[:512])[0]
+            text_lower = text.lower()
+            event_type = res['label']
+            return {
+                'event_type': event_type,
+                'sub_category': _sub_category_for(event_type, text_lower),
+                'risk_level': _risk_level_for(text_lower),
+            }
+        except Exception:
+            pass  # fine-tuned model failed at inference — fall back transparently
+
+    return _keyword_classify(text)
+
+
+def _sub_category_for(event_type: str, text_lower: str) -> str:
+    sub_categories = KEYWORD_MAP.get(event_type, {}).get('sub_categories', {})
+    for sub, sub_kws in sub_categories.items():
+        if any(kw in text_lower for kw in sub_kws):
+            return sub
+    return 'general'
+
+
+def _risk_level_for(text_lower: str) -> str:
+    for level in ('Critical', 'High', 'Medium', 'Low'):
+        if any(kw in text_lower for kw in RISK_KEYWORDS[level]):
+            return level
+    return 'Medium'  # default
+
+
+def _keyword_classify(text: str) -> dict:
     text_lower = text.lower()
 
     event_type = 'unknown'
@@ -91,21 +149,9 @@ def classify_event(text: str) -> dict:
         if matches > best_match_count:
             best_match_count = matches
             event_type = etype
+            sub_category = _sub_category_for(etype, text_lower)
 
-            # Detect sub_category
-            for sub, sub_kws in config['sub_categories'].items():
-                if any(kw in text_lower for kw in sub_kws):
-                    sub_category = sub
-                    break
-            else:
-                sub_category = 'general'
-
-    # Risk level from keywords
-    risk_level = 'Medium'  # default
-    for level in ('Critical', 'High', 'Medium', 'Low'):
-        if any(kw in text_lower for kw in RISK_KEYWORDS[level]):
-            risk_level = level
-            break
+    risk_level = _risk_level_for(text_lower)
 
     return {
         'event_type': event_type,

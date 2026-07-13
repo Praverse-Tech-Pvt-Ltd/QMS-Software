@@ -1,13 +1,35 @@
 """
 SOP ingestion pipeline.
 Phase 1: text extraction + chunking (no embeddings yet).
-Phase 3: add OpenAI embedding call and store in pgvector column.
+Phase 6: local sentence-transformers embedding (all-MiniLM-L6-v2, 384 dim) —
+stored as JSON on `embedding_json`, matching the rest of this app (see
+knowledge/models.py — there is no ORM VectorField in use; the pgvector
+`embedding` columns added in migration 0002 are raw-SQL-only and unused).
 """
 import io
+import json
+import os
+
 from .models import SOPChunk
 
 CHUNK_SIZE = 500  # characters (~400-600 tokens)
 CHUNK_OVERLAP = 50
+
+_EMBED_MODEL_NAME = os.environ.get('LOCAL_EMBED_MODEL', 'all-MiniLM-L6-v2')
+_embed_model = None
+
+
+def _get_embed_model():
+    global _embed_model
+    if _embed_model is None:
+        from sentence_transformers import SentenceTransformer
+        _embed_model = SentenceTransformer(_EMBED_MODEL_NAME)
+    return _embed_model
+
+
+def embed_text(text: str) -> list[float]:
+    """Local embedding — no API cost, no network call, CPU-only. 384 dimensions."""
+    return _get_embed_model().encode(text, normalize_embeddings=True).tolist()
 
 
 def ingest_sop_file(file, sop_name: str, version: str, department: str, user, effective_date=None) -> int:
@@ -32,15 +54,23 @@ def ingest_sop_file(file, sop_name: str, version: str, department: str, user, ef
     chunks = _chunk_text(text)
     created = 0
     for chunk_text in chunks:
-        if len(chunk_text.strip()) > 50:  # skip very short chunks
+        stripped = chunk_text.strip()
+        if len(stripped) > 50:  # skip very short chunks
+            embedding_json = ''
+            try:
+                embedding_json = json.dumps(embed_text(stripped))
+            except Exception:
+                pass  # AI never blocks — SOP is still stored and searchable by text
+
             SOPChunk.objects.create(
                 sop_name=sop_name,
                 sop_version=version,
-                chunk_text=chunk_text.strip(),
+                chunk_text=stripped,
                 department=department,
                 effective_date=effective_date,
                 uploaded_by=user,
                 is_active=True,
+                embedding_json=embedding_json,
             )
             created += 1
 

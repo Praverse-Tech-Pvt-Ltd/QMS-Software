@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getAccessToken, setAccessToken, clearAccessToken } from "./tokenStore";
+import { getSelectedSite } from "./siteStore";
 
 const api = axios.create({
   baseURL: "http://127.0.0.1:8000/api",
@@ -11,6 +12,14 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Multi-site filtering (Phase 6 Block 7): auto-inject ?site=<id> on GET list
+  // calls when a site is selected, unless the caller already set one explicitly.
+  const siteId = getSelectedSite();
+  if (siteId && config.method === "get") {
+    config.params = { site: siteId, ...(config.params || {}) };
+  }
+
   return config;
 });
 

@@ -3,7 +3,6 @@ Celery tasks for knowledge base — FDA enforcement scraping and embedding backf
 """
 import json
 import logging
-import os
 import urllib.request
 
 from celery import shared_task
@@ -79,23 +78,15 @@ def embed_unembedded_observations():
     """
     Embed FDA483Observation records that have no embedding yet.
     Runs at 03:00 UTC (1 hour after scrape).
-    Requires OPENAI_API_KEY — degrades gracefully (never raises) if not set.
+
+    Phase 6: uses the local sentence-transformers model (knowledge.sop_ingestion.embed_text)
+    instead of the OpenAI embeddings API — no API key, no network call, no per-call cost.
 
     Note: the model's pgvector `embedding` column is raw SQL only (not an ORM field — see
     knowledge/migrations/0002_add_pgvector.py), so this writes to `embedding_json` instead,
     matching how the rest of this app currently reads/writes embeddings.
     """
-    api_key = os.environ.get('OPENAI_API_KEY')
-    if not api_key:
-        logger.warning("OPENAI_API_KEY not configured — skipping embedding task")
-        return {'skipped': True, 'reason': 'OPENAI_API_KEY not set'}
-
-    try:
-        import openai
-        client = openai.OpenAI(api_key=api_key)
-    except ImportError:
-        logger.error("openai package not installed")
-        return {'skipped': True, 'reason': 'openai not installed'}
+    from .sop_ingestion import embed_text
 
     unembedded = list(
         FDA483Observation.objects.filter(embedding_json='').values_list('id', flat=True)[:50]
@@ -107,11 +98,7 @@ def embed_unembedded_observations():
     for obs_id in unembedded:
         try:
             obs = FDA483Observation.objects.get(id=obs_id)
-            response = client.embeddings.create(
-                model='text-embedding-3-small',
-                input=obs.observation_text[:2000],
-            )
-            obs.embedding_json = json.dumps(response.data[0].embedding)
+            obs.embedding_json = json.dumps(embed_text(obs.observation_text[:2000]))
             obs.save(update_fields=['embedding_json'])
             embedded += 1
         except Exception as exc:

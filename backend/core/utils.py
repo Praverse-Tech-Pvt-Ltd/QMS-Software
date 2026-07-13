@@ -1,5 +1,15 @@
+import calendar
 import datetime
 from django.db.models import Max
+
+
+def add_months(start: datetime.date, months: int) -> datetime.date:
+    """Add calendar months to a date without pulling in a third-party dependency."""
+    month_index = start.month - 1 + months
+    year = start.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(start.day, calendar.monthrange(year, month)[1])
+    return datetime.date(year, month, day)
 
 def generate_qms_id(model_class, field_name, prefix):
     """
