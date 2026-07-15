@@ -7,6 +7,7 @@ import AuthGuard from "../components/auth/AuthGuard";
 import LoginPage from "../pages/auth/LoginPage";
 import SignupPage from "../pages/auth/SignupPage";
 import AccessDeniedPage from "../pages/auth/AccessDeniedPage";
+import ChangePasswordPage from "../pages/auth/ChangePasswordPage";
 
 // Dashboard & Daily Usage
 import DashboardPage from "../pages/dashboard/DashboardPage";
@@ -75,6 +76,8 @@ import SiteManagementPage from "../pages/admin/SiteManagementPage";
 import AnalystQualificationPage from "../pages/analyst-qualification/AnalystQualificationPage";
 import InventoryPage from "../pages/inventory/InventoryPage";
 import IntegrationsPage from "../pages/admin/IntegrationsPage";
+import RetentionPoliciesPage from "../pages/admin/RetentionPoliciesPage";
+import SCORMPlayerPage from "../pages/training/SCORMPlayerPage";
 
 export default function AppRouter() {
   return (
@@ -85,6 +88,8 @@ export default function AppRouter() {
       <Route path="/access-denied" element={<AccessDeniedPage />} />
 
       <Route element={<AuthGuard />}>
+        <Route path="/change-password" element={<ChangePasswordPage />} />
+
         <Route path="/" element={<AppLayout />}>
 
           {/* Dashboard */}
@@ -106,6 +111,7 @@ export default function AppRouter() {
             <Route path=":id" element={<RequirePermission moduleKey="training"><TrainingDetailPage /></RequirePermission>} />
             <Route path="matrix" element={<RequirePermission moduleKey="training_matrix"><TrainingMatrixPage /></RequirePermission>} />
             <Route path="employees/:id" element={<RequirePermission moduleKey="training_matrix"><EmployeeTrainingProfilePage /></RequirePermission>} />
+            <Route path="scorm/:assignmentId" element={<RequirePermission moduleKey="training"><SCORMPlayerPage /></RequirePermission>} />
           </Route>
 
           {/* Deviations */}
@@ -249,6 +255,9 @@ export default function AppRouter() {
 
           {/* ERP Integration hooks (Phase 7, admin only) */}
           <Route path="admin/integrations" element={<RequirePermission moduleKey="integrations"><IntegrationsPage /></RequirePermission>} />
+
+          {/* Record Retention Policy (Phase 8, admin only) */}
+          <Route path="admin/retention-policies" element={<RequirePermission moduleKey="retention_policies"><RetentionPoliciesPage /></RequirePermission>} />
 
         </Route>
       </Route>

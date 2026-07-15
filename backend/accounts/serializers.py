@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import Site
 
@@ -30,9 +31,36 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['department'] = self.user.department
         data['site'] = self.user.site_id
         data['site_name'] = self.user.site.name if self.user.site_id else None
+        data['must_change_password'] = self.user.must_change_password
         # data['refresh'] and data['access'] are already added by super()
 
         return data
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError('Current password is incorrect.')
+        return value
+
+    def validate_new_password(self, value):
+        user = self.context['request'].user
+        validate_password(value, user=user)
+        return value
+
+    def save(self):
+        from django.utils import timezone
+
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.password_changed_at = timezone.now()
+        user.must_change_password = False
+        user.save(update_fields=['password', 'password_changed_at', 'must_change_password'])
+        return user
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)

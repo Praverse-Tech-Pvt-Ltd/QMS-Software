@@ -57,4 +57,8 @@ app.conf.beat_schedule = {
         'task': 'inventory.tasks.alert_low_stock',
         'schedule': crontab(hour=9, minute=30),
     },
+    'check-password-expiry': {
+        'task': 'accounts.tasks.check_password_expiry',
+        'schedule': crontab(hour=1, minute=0),
+    },
 }

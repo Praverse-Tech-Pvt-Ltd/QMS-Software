@@ -14,7 +14,7 @@ const SEVERITY_MAP: Record<string, SeverityLevel> = {
 const COLUMNS: ColumnDef<ComplaintRecord>[] = [
   { field: "complaint_number", headerName: "Complaint #", width: 150 },
   { field: "title", headerName: "Title", width: 280 },
-  { field: "complaint_type", headerName: "Type", width: 130 },
+  { field: "complaint_type", headerName: "Type", width: 130, hideOnMobile: true },
   {
     field: "severity",
     headerName: "Severity",
@@ -27,7 +27,7 @@ const COLUMNS: ColumnDef<ComplaintRecord>[] = [
     width: 130,
     renderCell: (row) => <Chip label={row.status} size="small" sx={{ textTransform: "capitalize" }} />,
   },
-  { field: "response_deadline", headerName: "Deadline", width: 130 },
+  { field: "response_deadline", headerName: "Deadline", width: 130, hideOnMobile: true },
 ];
 
 export default function ComplaintsListPage() {

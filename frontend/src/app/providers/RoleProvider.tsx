@@ -13,6 +13,8 @@ type RoleContextType = {
   siteId: string | null;
   setSiteId: (siteId: string | null) => void;
   sites: Site[];
+  mustChangePassword: boolean;
+  setMustChangePassword: (value: boolean) => void;
 };
 
 const RoleContext = createContext<RoleContextType | null>(null);
@@ -24,6 +26,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [siteId, setSiteIdState] = useState<string | null>(() => getSelectedSite());
   const [sites, setSites] = useState<Site[]>([]);
+  const [mustChangePassword, setMustChangePasswordState] = useState<boolean>(
+    () => sessionStorage.getItem("qms_must_change_password") === "true"
+  );
+
+  const setMustChangePassword = (value: boolean) => {
+    sessionStorage.setItem("qms_must_change_password", String(value));
+    setMustChangePasswordState(value);
+  };
 
   const setSiteId = (newSiteId: string | null) => {
     setSelectedSite(newSiteId);
@@ -40,7 +50,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
           // Refresh failed — clear session
           sessionStorage.removeItem("qms_role");
           sessionStorage.removeItem("qms_user");
+          sessionStorage.removeItem("qms_must_change_password");
           setRoleState(null);
+          setMustChangePasswordState(false);
         }
       }
       setIsLoading(false);
@@ -54,6 +66,8 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     } else {
       sessionStorage.removeItem("qms_role");
       sessionStorage.removeItem("qms_user");
+      sessionStorage.removeItem("qms_must_change_password");
+      setMustChangePasswordState(false);
     }
     setRoleState(newRole);
   };
@@ -71,8 +85,11 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated]);
 
   const value = useMemo(
-    () => ({ role, setRole, isAuthenticated, isLoading, siteId, setSiteId, sites }),
-    [role, isAuthenticated, isLoading, siteId, sites]
+    () => ({
+      role, setRole, isAuthenticated, isLoading, siteId, setSiteId, sites,
+      mustChangePassword, setMustChangePassword,
+    }),
+    [role, isAuthenticated, isLoading, siteId, sites, mustChangePassword]
   );
 
   return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;

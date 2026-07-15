@@ -68,6 +68,9 @@ urlpatterns = [
     path('api/v1/analyst-qualification/', include('analyst_qualification.urls')),
     path('api/v1/inventory/', include('inventory.urls')),
     path('api/v1/integrations/', include('integrations.urls')),
+
+    # Phase 8 modules
+    path('api/v1/core/retention-policies/', include('core.retention_urls')),
 ]
 
 if settings.DEBUG:

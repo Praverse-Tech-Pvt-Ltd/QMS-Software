@@ -63,4 +63,7 @@ class InventoryUsageLogSerializer(serializers.ModelSerializer):
             'id', 'lot', 'lot_number', 'quantity_used', 'used_by', 'used_by_name',
             'used_date', 'purpose', 'linked_sample', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'used_by', 'created_at', 'updated_at']
+        # `lot` is supplied server-side by InventoryLotViewSet.usage() from the
+        # URL kwarg, not by the client — must be read-only or is_valid() fails
+        # on every POST to lots/:id/usage/ (missing required FK in the body).
+        read_only_fields = ['id', 'lot', 'used_by', 'created_at', 'updated_at']

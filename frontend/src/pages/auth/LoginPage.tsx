@@ -27,7 +27,7 @@ import { type UserRole } from "../../services/permission.service";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setRole } = useRole();
+  const { setRole, setMustChangePassword } = useRole();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +43,8 @@ export default function LoginPage() {
     try {
       const user = await authService.login(username, password);
       setRole(user.role as UserRole);
-      navigate("/", { replace: true });
+      setMustChangePassword(user.mustChangePassword);
+      navigate(user.mustChangePassword ? "/change-password" : "/", { replace: true });
     } catch (err: unknown) {
       console.error(err);
       setError("Invalid username or password");

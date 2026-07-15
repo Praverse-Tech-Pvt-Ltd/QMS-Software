@@ -28,6 +28,7 @@ export const ROLE_PERMISSIONS: PermissionMatrix = {
     analyst_qualification: ["view", "create", "edit", "approve"],
     inventory: ["view", "create", "edit", "approve"],
     integrations: ["view", "edit"],
+    retention_policies: ["view", "edit"],
   },
 
   "QA Head": {

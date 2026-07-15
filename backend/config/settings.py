@@ -137,11 +137,19 @@ SIMPLE_HISTORY_REVERT_DISABLED = True
 
 
 # Password validation
+# Phase 8 — 21 CFR Part 11 section 11.300: complexity/length/history validators
+# below supersede the stock MinimumLengthValidator/NumericPasswordValidator
+# (ComplexityValidator already requires a digit).
+PASSWORD_MIN_LENGTH = int(os.environ.get('PASSWORD_MIN_LENGTH', '8'))
+PASSWORD_EXPIRY_DAYS = int(os.environ.get('PASSWORD_EXPIRY_DAYS', '90'))
+PASSWORD_HISTORY_COUNT = int(os.environ.get('PASSWORD_HISTORY_COUNT', '5'))
+
 AUTH_PASSWORD_VALIDATORS = [
     { 'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator' },
-    { 'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator' },
     { 'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator' },
-    { 'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator' },
+    { 'NAME': 'accounts.password_validators.MinimumLengthValidator' },
+    { 'NAME': 'accounts.password_validators.ComplexityValidator' },
+    { 'NAME': 'accounts.password_validators.HistoryValidator' },
 ]
 
 

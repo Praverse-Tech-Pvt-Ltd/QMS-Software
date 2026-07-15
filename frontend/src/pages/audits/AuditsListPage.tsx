@@ -1,4 +1,4 @@
-import { Box, Button, Typography, Chip, CircularProgress, Alert } from "@mui/material";
+import { Box, Button, Typography, Chip, CircularProgress, Alert, useMediaQuery, useTheme } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,8 +17,8 @@ const COLUMNS: ColumnDef<AuditRecord>[] = [
       <Chip label={row.status} size="small" sx={{ textTransform: "capitalize" }} />
     ),
   },
-  { field: "planned_start", headerName: "Planned Start", width: 140 },
-  { field: "lead_auditor", headerName: "Lead Auditor", width: 160 },
+  { field: "planned_start", headerName: "Planned Start", width: 140, hideOnMobile: true },
+  { field: "lead_auditor", headerName: "Lead Auditor", width: 160, hideOnMobile: true },
 ];
 
 export default function AuditsListPage() {
@@ -26,6 +26,8 @@ export default function AuditsListPage() {
   const [rows, setRows] = useState<AuditRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     auditsService.list()
@@ -39,7 +41,8 @@ export default function AuditsListPage() {
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h5" fontWeight={700}>Audits</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate("/audits/new")}
-          sx={{ bgcolor: "#667eea", "&:hover": { bgcolor: "#5a6fd8" } }}>
+          size={isMobile ? "large" : "medium"}
+          sx={{ bgcolor: "#667eea", "&:hover": { bgcolor: "#5a6fd8" }, minHeight: isMobile ? 44 : undefined }}>
           New Audit
         </Button>
       </Box>

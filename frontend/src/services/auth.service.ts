@@ -5,6 +5,7 @@ import { setAccessToken, clearAccessToken, getAccessToken } from "./tokenStore";
 // Access token is NEVER stored in browser storage; it lives only in JS memory.
 const USER_KEY = "qms_user";
 const ROLE_KEY = "qms_role";
+const MUST_CHANGE_PASSWORD_KEY = "qms_must_change_password";
 
 export type SignupPayload = {
   fullName: string;
@@ -33,10 +34,12 @@ export const authService = {
       email,
       name: response.data.user_full_name || "QMS User",
       role: response.data.role || "Viewer",
+      mustChangePassword: !!response.data.must_change_password,
     };
     // User identity stored in sessionStorage (clears on tab close)
     sessionStorage.setItem(USER_KEY, JSON.stringify(userPayload));
     sessionStorage.setItem(ROLE_KEY, userPayload.role);
+    sessionStorage.setItem(MUST_CHANGE_PASSWORD_KEY, String(userPayload.mustChangePassword));
 
     return userPayload;
   },
@@ -57,6 +60,7 @@ export const authService = {
     clearAccessToken();
     sessionStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(ROLE_KEY);
+    sessionStorage.removeItem(MUST_CHANGE_PASSWORD_KEY);
     window.location.href = "/login";
   },
 
@@ -72,6 +76,18 @@ export const authService = {
 
   getRole() {
     return sessionStorage.getItem(ROLE_KEY);
+  },
+
+  getMustChangePassword() {
+    return sessionStorage.getItem(MUST_CHANGE_PASSWORD_KEY) === "true";
+  },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    await api.post("/auth/change-password/", {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+    sessionStorage.setItem(MUST_CHANGE_PASSWORD_KEY, "false");
   },
 
   // Called on app init to silently restore the access token via HttpOnly refresh cookie

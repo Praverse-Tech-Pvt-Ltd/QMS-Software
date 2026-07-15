@@ -87,14 +87,24 @@ export default function TrainingListPage() {
     navigate("/training/new");
   };
 
-  // Phase 7 — SCORM e-learning stub: no in-browser player yet, so launching just
-  // surfaces the package's external launch_url as a placeholder action.
-  const handleLaunchElearning = (plan: TrainingPlan) => {
-    const launchUrl = plan.scorm_module?.launch_url;
-    enqueueSnackbar(
-      `SCORM Player not yet integrated — use external link: ${launchUrl || "(no launch URL set)"}`,
-      { variant: "info" },
-    );
+  // Phase 8 — SCORM player: find the current user's assignment for this plan
+  // (getMyAssignments() only returns pending assignments for request.user) and
+  // navigate to the player keyed on that assignment's id.
+  const handleLaunchElearning = async (plan: TrainingPlan) => {
+    try {
+      const myAssignments = await trainingService.getMyAssignments();
+      const assignment = myAssignments.find((a) => a.plan === plan.id);
+      if (!assignment) {
+        enqueueSnackbar(
+          "No active assignment found for this training under your account.",
+          { variant: "warning" },
+        );
+        return;
+      }
+      navigate(`/training/scorm/${assignment.id}`);
+    } catch {
+      enqueueSnackbar("Failed to open the SCORM player.", { variant: "error" });
+    }
   };
 
   // Filter Logic

@@ -30,6 +30,7 @@ import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import SyncAltOutlinedIcon from "@mui/icons-material/SyncAltOutlined";
+import HistoryToggleOffOutlinedIcon from "@mui/icons-material/HistoryToggleOffOutlined";
 
 // --- Hooks & Config ---
 import { useLocation, useNavigate } from "react-router-dom";
@@ -422,6 +423,20 @@ export default function Sidebar() {
                 <SyncAltOutlinedIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Integrations" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
+            </ListItemButton>
+          )}
+
+          {/* Record Retention Policy (Phase 8, admin only) */}
+          {canView('retention_policies') && (
+            <ListItemButton
+              selected={isActive("/admin/retention-policies")}
+              onClick={() => navigate("/admin/retention-policies")}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 36, color: isActive("/admin/retention-policies") ? "#6366F1" : "#858D96" }}>
+                <HistoryToggleOffOutlinedIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Retention Policies" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
             </ListItemButton>
           )}
         </List>

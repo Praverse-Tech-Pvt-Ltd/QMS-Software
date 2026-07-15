@@ -5,7 +5,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from .models import Site
-from .serializers import CustomTokenObtainPairSerializer, RegisterSerializer, SiteSerializer
+from .serializers import (
+    ChangePasswordSerializer, CustomTokenObtainPairSerializer, RegisterSerializer, SiteSerializer,
+)
 
 User = get_user_model()
 
@@ -85,3 +87,15 @@ class RegisterView(generics.CreateAPIView):
 def list_employees(request):
     users = User.objects.all().values("id", "first_name", "last_name", "role", "department")
     return Response(list(users))
+
+
+class ChangePasswordView(generics.GenericAPIView):
+    """POST /api/auth/change-password/ — 21 CFR Part 11 section 11.300(b)."""
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"detail": "Password changed successfully."}, status=status.HTTP_200_OK)

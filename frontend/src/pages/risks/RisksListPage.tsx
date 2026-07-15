@@ -10,7 +10,7 @@ import RiskMatrix from "../../components/risk/RiskMatrix";
 const COLUMNS: ColumnDef<RiskRecord>[] = [
   { field: "risk_number", headerName: "Risk #", width: 130 },
   { field: "title", headerName: "Title", width: 280 },
-  { field: "risk_category", headerName: "Category", width: 130 },
+  { field: "risk_category", headerName: "Category", width: 130, hideOnMobile: true },
   {
     field: "risk_level",
     headerName: "Risk Level",

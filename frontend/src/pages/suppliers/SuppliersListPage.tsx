@@ -16,7 +16,7 @@ const COLUMNS: ColumnDef<SupplierRecord>[] = [
   { field: "supplier_code", headerName: "Code", width: 120 },
   { field: "name", headerName: "Supplier Name", width: 240 },
   { field: "category", headerName: "Category", width: 140 },
-  { field: "country", headerName: "Country", width: 110 },
+  { field: "country", headerName: "Country", width: 110, hideOnMobile: true },
   {
     field: "expiry_status",
     headerName: "Qualification",
@@ -29,7 +29,7 @@ const COLUMNS: ColumnDef<SupplierRecord>[] = [
       );
     },
   },
-  { field: "qualification_expiry", headerName: "Expiry", width: 120 },
+  { field: "qualification_expiry", headerName: "Expiry", width: 120, hideOnMobile: true },
 ];
 
 export default function SuppliersListPage() {

@@ -1,5 +1,88 @@
 # NexGen QMS — Build Overview
 
+## Phase 8 Changes (2026-07-15)
+
+Production hardening — no new modules. Corrects two assumptions the Phase 7
+spec got wrong that this repo already had right (`training.TrainingItem`
+doesn't exist, `dms.Document` is legacy `TimeStampedModel`), and closes the
+one real gap Phase 7 left open: its three new apps' tests were written but
+never executed against a real database. The user supplied a real Neon
+(`postgresql+pgvector`) `DATABASE_URL` this phase specifically to unblock
+that (stored in `backend/.env`, gitignored — never committed).
+
+### Tests (Block 1 — primary deliverable)
+- Full backend suite: **246 tests, all passing** against real Neon
+  Postgres+pgvector (`manage.py test`, ~9 minutes).
+- Phase 7 apps (`analyst_qualification`, `inventory`, `integrations`):
+  **38 tests passing, 91% coverage** (`--fail-under=80` gate cleared).
+- One real bug found and fixed by running against a real DB for the first
+  time: `InventoryUsageLogSerializer` declared `lot` as a required writable
+  field, but `InventoryLotViewSet.usage()` supplies `lot` server-side from
+  the URL kwarg — every `POST /v1/inventory/lots/:id/usage/` was failing
+  `serializer.is_valid()` before the view ever got a chance to inject it
+  (400 instead of 201). Fixed by adding `lot` to `read_only_fields` — the
+  test assertions were correct and were not touched, per the spec's explicit
+  "do not change test assertions" instruction.
+- `accounts`/`core` apps: 26 tests passing.
+
+### 21 CFR Part 11 Compliance
+- **Password policy (§11.300)**: `PasswordHistory` model,
+  `password_changed_at`/`must_change_password` on `User`. Three new
+  validators (`MinimumLengthValidator`, `ComplexityValidator`,
+  `HistoryValidator` in `accounts/password_validators.py`) **appended** to
+  the `AUTH_PASSWORD_VALIDATORS` list that already existed in
+  `config/settings.py` (dropped the now-redundant stock
+  `MinimumLengthValidator`/`NumericPasswordValidator`, kept
+  `UserAttributeSimilarityValidator`/`CommonPasswordValidator`). Daily
+  `check_password_expiry` Celery task (90-day default). Login response
+  includes `must_change_password`; `POST /api/auth/change-password/`
+  validates current password, runs the full validator chain including
+  history, clears the flag. Frontend redirects to `/change-password`
+  whenever the flag is set.
+- **Record retention (§11.10(c))**: `RetentionPolicy` model (plain config
+  table, not `BaseModel` — global, not per-site), 12 default policies seeded
+  via `seed_retention_policies` with CFR citations. `/admin/retention-policies`
+  (Admin-only, real backend enforcement via a per-method `_is_admin()` check
+  mirroring `accounts.views.SiteViewSet` — not the frontend-only pattern
+  `integrations.IntegrationConfigViewSet` used in Phase 7). Every edit writes
+  an `AuditLog` entry with the old/new `retention_years` diff. **Auto-deletion
+  not implemented** — this is policy-as-data plus an audit trail, not an
+  enforcement job.
+
+### SCORM Player
+- SCORM 1.2 LMS API shim at `frontend/public/scorm-api.js` (`LMSInitialize`,
+  `LMSGetValue`, `LMSSetValue`, `LMSCommit` → posts to
+  `/api/training/scorm-results/`, `LMSFinish`, error-string methods — all
+  return `'true'`/`'false'` strings per spec, not booleans).
+- `SCORMPlayerPage` at `/training/scorm/:assignmentId`, iframe-sandboxed
+  (`allow-scripts allow-same-origin allow-forms allow-popups`), serving the
+  package from `/media/scorm_packages/...`.
+- Training list's "Launch E-Learning" now navigates to the player instead of
+  showing a placeholder toast.
+
+### Mobile Responsive
+- **Sidebar/navigation was already responsive** going into this phase —
+  `AppLayout.tsx` already had a temporary `Drawer` on mobile (below `md`), a
+  permanent sidebar on desktop, and a working hamburger toggle. No new code
+  needed there, just verified.
+- `ModuleTable`'s `ColumnDef` gained an optional `hideOnMobile` flag, handled
+  once inside the shared component — cleaner than editing each of the 5
+  spec-named list pages individually, since all of them already route
+  through `ModuleTable` exclusively.
+- Forms were already using the `Grid size={{xs:12,...}}` v7 API consistently
+  (confirmed on `AuditDetailPage`/`SupplierDetailPage`) — no fixed-width
+  dialog containers found needing a fix.
+- Primary CTA buttons grow to 44px minimum height on mobile via
+  `useMediaQuery`.
+
+### Remaining
+- Retention auto-deletion job (policy exists as data + audit trail only)
+- ERP live: `pyrfc` + SAP SDK from customer
+- AI model training: separate workstream
+- GAMP5 validation: QA process task, can start now — Phase 8 code is complete
+
+---
+
 ## Phase 7 Changes (2026-07-13)
 
 3 new Django apps (`analyst_qualification`, `inventory`, `integrations`), PWA
@@ -79,15 +162,6 @@ a single pass afterward to avoid conflicting edits.
 - AI model training (separate workstream — infrastructure ready since Phase 6)
 - Password complexity + expiry enforcement
 - Record retention policy
-- Coverage on the 3 new Phase 7 apps was not measurable in this build
-  environment — no live Postgres (Docker Desktop couldn't start in this
-  sandbox; the `knowledge` app's `CREATE EXTENSION vector` migration also
-  needs `pgvector`, not present in a stock `postgres:15-alpine`). All static
-  checks pass (`manage.py check`, `makemigrations --check`, `tsc --noEmit`,
-  `npm run build`, localStorage grep); `manage.py test` and the
-  `coverage report --fail-under=80` gate need to be run against a real
-  Postgres+pgvector instance (e.g. Neon, per the existing dev setup) before
-  merging.
 
 ---
 
@@ -585,18 +659,14 @@ GET /api/v1/audit-trail/          — Export (PDF or Excel)
 
 ---
 
-## Known Remaining Gaps (post Phase 4)
+## Known Remaining Gaps (post Phase 8)
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| `TrainingAssignmentViewSet` missing `my-tasks` endpoint | High | Frontend calls `GET /api/training/assignments/my-tasks/` → 404 in production. Addressed in Phase 5. |
-| Laboratory AI integration | Medium | No AI on sample result entry or release remark. Phase 5. |
-| Batch Records AI integration | Medium | No AI on BPR step deviation or batch release remark. Phase 5. |
-| DMS AI remark advisory only | Low | `AIRemarkField` shown in DMS but not auto-injected into `WorkflowActionsPanel` transition reason — architectural constraint documented in Phase 4. |
-| `ANTHROPIC_API_KEY` required | Env config | AI remarks fall back to template text without key. |
-| `OPENAI_API_KEY` required | Env config | SOP embedding and FDA semantic search disabled without key. |
-| `DEFAULT_FROM_EMAIL` + SMTP | Env config | Email alerts fail silently until configured. |
-| `authService.signup()` is stub | Intentional | Users provisioned via Django admin. Documented. |
+| Retention auto-deletion | Medium | `RetentionPolicy` model + admin UI exist (Phase 8). No automated purge/archival job runs against `retention_years` yet — enforcement is policy-as-data only. |
+| ERP live connection | Low | Adapter pattern exists (Phase 7). Needs `pyrfc` + SAP NWRFC SDK from customer. |
+| AI model training | Separate workstream | Infrastructure ready since Phase 6. |
+| GAMP5 IQ/OQ/PQ | Process task | QA team, 7-10 working days. Start now — Phase 8 code is complete. |
 
 ---
 

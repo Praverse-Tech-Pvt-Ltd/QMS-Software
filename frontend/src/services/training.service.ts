@@ -47,6 +47,18 @@ export interface SCORMModule {
   completion_threshold?: number;
 }
 
+export interface SCORMResult {
+  id: string;
+  scorm_module: string;
+  assignment: number;
+  score: number | null;
+  completion_status: "passed" | "failed" | "incomplete" | "not_attempted";
+  completion_status_display?: string;
+  raw_data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface TrainingPlan extends Omit<Partial<WorkflowMeta>, "id"> {
   id: number;
   title: string;
@@ -185,6 +197,22 @@ async completeTraining(
     const response = await api.get(`/training/assignments/${assignmentId}/certificate/`, {
       responseType: "blob",
     });
+    return response.data;
+  },
+
+  /** Returns null (instead of throwing) when no SCORM result exists yet for this assignment. */
+  async getScormResult(assignmentId: string | number): Promise<SCORMResult | null> {
+    try {
+      const response = await api.get<SCORMResult>(`/training/assignments/${assignmentId}/scorm-result/`);
+      return response.data;
+    } catch (err: any) {
+      if (err?.response?.status === 404) return null;
+      throw err;
+    }
+  },
+
+  async getAssignment(assignmentId: string | number): Promise<TrainingAssignment> {
+    const response = await api.get<TrainingAssignment>(`/training/assignments/${assignmentId}/`);
     return response.data;
   },
 };

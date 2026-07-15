@@ -10,7 +10,7 @@ import SeverityBadge from "../../components/common/SeverityBadge";
 const COLUMNS: ColumnDef<NCRecord>[] = [
   { field: "nc_number", headerName: "NC #", width: 130 },
   { field: "title", headerName: "Title", width: 260 },
-  { field: "product_name", headerName: "Product", width: 140 },
+  { field: "product_name", headerName: "Product", width: 140, hideOnMobile: true },
   {
     field: "severity",
     headerName: "Severity",
@@ -21,6 +21,7 @@ const COLUMNS: ColumnDef<NCRecord>[] = [
     field: "is_repeat",
     headerName: "Repeat",
     width: 90,
+    hideOnMobile: true,
     renderCell: (row) => row.is_repeat ? (
       <WarningAmberIcon sx={{ color: "#EF4444", fontSize: 18 }} titleAccess="Repeat NC" />
     ) : null,

@@ -21,6 +21,8 @@ export interface ColumnDef<T = any> {
   width?: string | number;
   align?: "left" | "right" | "center";
   renderCell?: (row: T) => React.ReactNode; // Key for custom UI like Progress Bars
+  /** Hide this column on phone-width screens (below the `sm` breakpoint). */
+  hideOnMobile?: boolean;
 }
 
 interface ModuleTableProps {
@@ -78,14 +80,15 @@ export default function ModuleTable({
         <TableHead sx={{ bgcolor: "#F8F9FA" }}>
           <TableRow>
             {columns.map((col) => (
-              <TableCell 
-                key={String(col.field)} 
-                sx={{ 
-                    fontWeight: 700, 
-                    color: "#64748b", 
-                    fontSize: "0.75rem", 
+              <TableCell
+                key={String(col.field)}
+                sx={{
+                    fontWeight: 700,
+                    color: "#64748b",
+                    fontSize: "0.75rem",
                     textTransform: "uppercase",
-                    py: 2
+                    py: 2,
+                    display: col.hideOnMobile ? { xs: "none", sm: "table-cell" } : undefined,
                 }}
                 align={col.align || "left"}
                 width={col.width}
@@ -123,7 +126,11 @@ export default function ModuleTable({
                 }}
               >
                 {columns.map((col) => (
-                  <TableCell key={String(col.field)} align={col.align || "left"}>
+                  <TableCell
+                    key={String(col.field)}
+                    align={col.align || "left"}
+                    sx={{ display: col.hideOnMobile ? { xs: "none", sm: "table-cell" } : undefined }}
+                  >
                     {/* 1. Custom Render (Progress Bar, Links) */}
                     {col.renderCell ? (
                       col.renderCell(row)

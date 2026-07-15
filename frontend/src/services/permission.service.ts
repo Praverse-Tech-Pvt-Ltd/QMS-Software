@@ -67,7 +67,8 @@ export type ModuleKey =
   | "site_management"
   | "analyst_qualification"
   | "inventory"
-  | "integrations";
+  | "integrations"
+  | "retention_policies";
 
 export type PermissionAction =
   | "view"

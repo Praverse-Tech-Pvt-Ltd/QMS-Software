@@ -73,3 +73,22 @@ class AuditLog(models.Model):
         raise NotImplementedError(
             "AuditLog records cannot be deactivated. They are permanent."
         )
+
+
+class RetentionPolicy(models.Model):
+    """
+    Phase 8: Record Retention Policy admin config — global config table
+    (like integrations.IntegrationConfig), not a per-site regulated record,
+    so it is a plain models.Model rather than the shared BaseModel.
+    """
+    record_type = models.CharField(max_length=100, unique=True)
+    retention_years = models.IntegerField(default=10)
+    regulatory_basis = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name_plural = 'retention policies'
+
+    def __str__(self):
+        return f"{self.record_type} ({self.retention_years}y)"
