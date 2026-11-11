@@ -45,6 +45,13 @@ export default function Home({ user }: { user: DemoUser }) {
         </div>
       </section>
 
+      <div className="statstrip">
+        <button onClick={() => setState({ view: 'readiness' })}><b>{open.length}</b><span>open gaps</span></button>
+        <button onClick={() => setState({ view: 'records' })}><b>{st.events.filter(e => e.stage !== 'closed').length}</b><span>events in progress</span></button>
+        <button onClick={() => setState({ view: 'knowledge' })}><b>{st.docs.length}</b><span>documents indexed</span></button>
+        <button onClick={() => setState({ view: 'ask' })}><b>{st.aiLog.length}</b><span>AI outputs logged</span></button>
+      </div>
+
       <div className="grid-2">
         {user.role !== 'cto' && (
           <section className="panel">

@@ -30,7 +30,7 @@ export const USERS: DemoUser[] = [
 
 export const COMPANY = { name: 'Demo Pharma Ltd.', site: 'Vadodara — OSD & API site' }
 
-export type ViewKey = 'home' | 'ask' | 'knowledge' | 'readiness' | 'records' | 'studio' | 'filings' | 'governance'
+export type ViewKey = 'home' | 'ask' | 'knowledge' | 'readiness' | 'records' | 'studio' | 'filings' | 'governance' | 'compare'
 
 export const NAV: { key: ViewKey; label: string; hint: string; roles: RoleKey[] | 'all' }[] = [
   { key: 'home', label: 'Briefing', hint: 'Your day, read by the AI', roles: 'all' },
@@ -41,6 +41,7 @@ export const NAV: { key: ViewKey; label: string; hint: string; roles: RoleKey[] 
   { key: 'studio', label: 'Document studio', hint: 'BMR, triggers, 483 responses', roles: ['qa_exec', 'hod', 'qa_head', 'ra'] },
   { key: 'filings', label: 'Filings', hint: 'DMF, CEP, dossier status', roles: ['ra', 'qa_head', 'ceo'] },
   { key: 'governance', label: 'AI governance', hint: 'Logs, audit trail, access', roles: ['cto', 'qa_head'] },
+  { key: 'compare', label: 'How we compare', hint: 'Against Caliber and TrackWise', roles: 'all' },
 ]
 
 export const CAN_UPLOAD: RoleKey[] = ['qa_exec', 'qa_head', 'cto']

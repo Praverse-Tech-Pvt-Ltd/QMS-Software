@@ -9,6 +9,8 @@ import Readiness from './views/Readiness'
 import Records from './views/Records'
 import Studio from './views/Studio'
 import { Filings, Governance } from './views/Admin'
+import Compare from './views/Compare'
+import { readiness } from './lib/ai'
 
 function Login() {
   return (
@@ -50,11 +52,14 @@ function Login() {
 export default function App() {
   const st = useStore()
   const [switching, setSwitching] = useState(false)
+  const [quick, setQuick] = useState('')
+  const [askNonce, setAskNonce] = useState(0)
   const user = USERS.find(u => u.id === st.userId)
   if (!user) return <Login />
 
   const nav = NAV.filter(n => n.roles === 'all' || n.roles.includes(user.role))
   const view = nav.some(n => n.key === st.view) ? st.view : 'home'
+  const score = readiness(st.gaps).overall
   const queueCount = st.events.filter(e => STAGE_OWNER[e.stage] === user.role).length
 
   const switchTo = (u: DemoUser) => {
@@ -92,8 +97,19 @@ export default function App() {
         </div>
       </aside>
       <div className="main">
-        <div className="demobar">Demo · invented data · AI answers are rule-based stand-ins for the real model</div>
-        <div className="page" key={user.id + view}>
+        <header className="topbar">
+          <form className="quick" onSubmit={e => { e.preventDefault(); if (quick.trim()) { setState({ view: 'ask', askDraft: quick.trim() }); setQuick(''); setAskNonce(n => n + 1) } }}>
+            <span aria-hidden="true">⌕</span>
+            <input value={quick} onChange={e => setQuick(e.target.value)} placeholder="Ask anything about your procedures…" aria-label="Quick question" />
+          </form>
+          {user.role !== 'cto' && (
+            <button className={`pill ${score >= 85 ? 'ok' : score >= 70 ? 'warn' : 'bad'}`} onClick={() => setState({ view: 'readiness' })} title="Open inspection readiness">
+              <i />Readiness <b>{score}</b>
+            </button>
+          )}
+          <span className="demotag">Demo · invented data</span>
+        </header>
+        <div className="page" key={user.id + view + askNonce}>
           {view === 'home' && <Home user={user} />}
           {view === 'ask' && <Ask user={user} />}
           {view === 'knowledge' && <Knowledge user={user} />}
@@ -102,6 +118,7 @@ export default function App() {
           {view === 'studio' && <Studio user={user} />}
           {view === 'filings' && <Filings />}
           {view === 'governance' && <Governance />}
+          {view === 'compare' && <Compare />}
         </div>
       </div>
     </div>
