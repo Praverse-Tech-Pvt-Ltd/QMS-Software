@@ -1,385 +1,268 @@
-import {
-  Box,
-  Typography,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Collapse,
-  Divider,
-  Badge,
-} from "@mui/material";
+import { Box, Typography, List, ListItemButton, ListItemIcon, ListItemText, Collapse } from "@mui/material";
 
-// --- Icons ---
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
-import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import ChangeCircleOutlinedIcon from "@mui/icons-material/ChangeCircleOutlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import ExpandLessOutlinedIcon from "@mui/icons-material/ExpandLessOutlined";
-import ExpandMoreOutlinedIcon from "@mui/icons-material/ExpandMoreOutlined";
-import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
-import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
-import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
+import HeadsetMicOutlinedIcon from "@mui/icons-material/HeadsetMicOutlined";
+import BiotechOutlinedIcon from "@mui/icons-material/BiotechOutlined";
+import ReportGmailerrorredOutlinedIcon from "@mui/icons-material/ReportGmailerrorredOutlined";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
+import ChecklistOutlinedIcon from "@mui/icons-material/ChecklistOutlined";
 import TimelineOutlinedIcon from "@mui/icons-material/TimelineOutlined";
 import AirOutlinedIcon from "@mui/icons-material/AirOutlined";
-import ReportGmailerrorredOutlinedIcon from "@mui/icons-material/ReportGmailerrorredOutlined";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
+import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
+import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import InsightsOutlinedIcon from "@mui/icons-material/InsightsOutlined";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-// --- Hooks & Config ---
+import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
-import { permissionService } from "../../services/permission.service";
-import { transitions, motion } from "../../theme/motion";
+import { permissionService, type ModuleKey } from "../../services/permission.service";
 import { dmsService } from "../../services/dms.service";
+import { color, transition } from "../../theme/tokens";
 
-export default function Sidebar() {
+export const SIDEBAR_WIDTH = 248;
+
+type NavLink = {
+  label: string;
+  path: string;
+  icon: ReactNode;
+  module?: ModuleKey; // omitted = visible to every signed-in user
+  children?: { label: string; path: string; module?: ModuleKey }[];
+};
+
+type NavGroup = { title?: string; items: NavLink[] };
+
+// Every routed module appears here exactly once (see routes/AppRouter.tsx).
+const NAV: NavGroup[] = [
+  {
+    items: [
+      { label: "Dashboard", path: "/", icon: <DashboardOutlinedIcon />, module: "dashboard" },
+      { label: "My Tasks", path: "/tasks", icon: <AssignmentOutlinedIcon /> },
+    ],
+  },
+  {
+    title: "Quality events",
+    items: [
+      { label: "Deviations", path: "/deviations", icon: <ReportProblemOutlinedIcon />, module: "deviations" },
+      { label: "CAPA", path: "/capa", icon: <FactCheckOutlinedIcon />, module: "capa" },
+      { label: "Change Control", path: "/change-control", icon: <ChangeCircleOutlinedIcon />, module: "change" },
+      { label: "Non-Conformance", path: "/nonconformance", icon: <BlockOutlinedIcon />, module: "nonconformance" },
+      { label: "Complaints", path: "/complaints", icon: <HeadsetMicOutlinedIcon />, module: "complaints" },
+      { label: "OOS Investigations", path: "/oos", icon: <BiotechOutlinedIcon />, module: "oos" },
+      { label: "Recall", path: "/recall", icon: <ReportGmailerrorredOutlinedIcon />, module: "recall" },
+    ],
+  },
+  {
+    title: "Lab & production",
+    items: [
+      { label: "Laboratory", path: "/laboratory", icon: <ScienceOutlinedIcon />, module: "laboratory" },
+      { label: "Batch Records", path: "/batch-records", icon: <ChecklistOutlinedIcon />, module: "batch_records" },
+      { label: "Stability", path: "/stability", icon: <TimelineOutlinedIcon />, module: "stability" },
+      { label: "Environmental", path: "/environmental", icon: <AirOutlinedIcon />, module: "environmental" },
+      { label: "Logbooks", path: "/logbooks", icon: <MenuBookOutlinedIcon />, module: "logbooks" },
+    ],
+  },
+  {
+    title: "Documents & training",
+    items: [
+      { label: "Documents", path: "/dms", icon: <DescriptionOutlinedIcon />, module: "dms" },
+      {
+        label: "Training",
+        path: "/training",
+        icon: <SchoolOutlinedIcon />,
+        module: "training",
+        children: [
+          { label: "Training records", path: "/training" },
+          { label: "Training matrix", path: "/training/matrix", module: "training_matrix" },
+        ],
+      },
+      { label: "Knowledge Base", path: "/knowledge", icon: <AutoStoriesOutlinedIcon />, module: "knowledge" },
+    ],
+  },
+  {
+    title: "Oversight",
+    items: [
+      { label: "Audits", path: "/audits", icon: <GavelOutlinedIcon />, module: "audits" },
+      { label: "Risk Register", path: "/risks", icon: <WarningAmberOutlinedIcon />, module: "risks" },
+      { label: "Suppliers", path: "/suppliers", icon: <LocalShippingOutlinedIcon />, module: "suppliers" },
+      { label: "Management Review", path: "/management-review", icon: <InsightsOutlinedIcon />, module: "reports" },
+      { label: "Reports", path: "/reports", icon: <AssessmentOutlinedIcon />, module: "reports" },
+    ],
+  },
+  {
+    title: "Administration",
+    items: [
+      { label: "Settings", path: "/settings", icon: <SettingsOutlinedIcon />, module: "settings" },
+      { label: "Sites", path: "/admin/sites", icon: <BusinessOutlinedIcon />, module: "site_management" },
+    ],
+  },
+];
+
+const itemSx = {
+  minHeight: 32,
+  px: 1.25,
+  py: 0.5,
+  mb: "1px",
+  color: color.textSecondary,
+  transition: transition(),
+  "& .MuiListItemIcon-root": { minWidth: 28, color: color.textMuted, "& svg": { fontSize: 18 } },
+  "&:hover": { backgroundColor: "rgba(24, 26, 32, 0.05)", color: color.ink },
+  "&.Mui-selected, &.Mui-selected:hover": { backgroundColor: color.accentSoft, color: color.accent },
+  "&.Mui-selected .MuiListItemIcon-root": { color: color.accent },
+} as const;
+
+const labelProps = { fontSize: "0.8125rem", fontWeight: 500, color: "inherit", noWrap: true } as const;
+
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { role } = useRole();
 
-  // State for Training Accordion
-  const [trainingOpen, setTrainingOpen] = useState(
-    location.pathname.startsWith("/training"),
-  );
-
   const isActive = (path: string) =>
-    path === "/"
-      ? location.pathname === "/"
-      : location.pathname.startsWith(path);
+    path === "/" ? location.pathname === "/" : location.pathname === path || location.pathname.startsWith(`${path}/`);
 
-  // Helper to safely check permissions
-  const canView = (module: any) => role ? permissionService.can(role, module, 'view') : false;
+  const canView = (module?: ModuleKey) => (module ? (role ? permissionService.can(role, module, "view") : false) : true);
+
+  const [trainingOpen, setTrainingOpen] = useState(location.pathname.startsWith("/training"));
 
   // Review-due document count badge (Phase 6 Block 8)
   const [reviewDueCount, setReviewDueCount] = useState(0);
   useEffect(() => {
-    if (canView('dms')) {
+    if (canView("dms")) {
       dmsService.reviewDue().then((docs) => setReviewDueCount(docs.length)).catch(() => setReviewDueCount(0));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
+  const go = (path: string) => {
+    navigate(path);
+    onNavigate?.();
+  };
+
   return (
-    <Box
-      sx={{
-        width: 280,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: "#FAFBFC",
-        borderRight: "1px solid #E9ECEF",
-      }}
-    >
-      {/* --- 1. LOGO SECTION --- */}
-      <Box sx={{ px: 2, py: 2, borderBottom: "1px solid #E9ECEF" }}>
-        <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
-          <Box
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: 2,
-              bgcolor: "#6366F1",
-              color: "white",
-              display: "grid",
-              placeItems: "center",
-              fontWeight: 900,
-              fontSize: 18,
-              boxShadow: "0 2px 4px rgba(99, 102, 241, 0.2)"
-            }}
-          >
-            N
-          </Box>
-          <Box>
-            <Typography fontWeight={700} sx={{ lineHeight: 1.1, color: "#1A1D21", fontSize: "0.9375rem", letterSpacing: "-0.02em" }}>
-              NexGen Pharma
-            </Typography>
-            <Typography variant="caption" sx={{ letterSpacing: 0.5, color: "#858D96", fontWeight: 600, fontSize: "0.625rem" }}>
-              QUALITY SYSTEMS
-            </Typography>
-          </Box>
+    <Box sx={{ width: SIDEBAR_WIDTH, height: "100%", display: "flex", flexDirection: "column", bgcolor: color.sidebar }}>
+      <Box sx={{ px: 2, height: 56, display: "flex", alignItems: "center", gap: 1.25, borderBottom: `1px solid ${color.border}` }}>
+        <Box
+          aria-hidden
+          sx={{
+            width: 28,
+            height: 28,
+            borderRadius: "6px",
+            bgcolor: color.accent,
+            color: "#FFFFFF",
+            display: "grid",
+            placeItems: "center",
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          N
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontSize: "0.875rem", fontWeight: 600, color: color.ink, lineHeight: 1.2 }}>NexGen Pharma</Typography>
+          <Typography sx={{ fontSize: "0.6875rem", color: color.textMuted, lineHeight: 1.2 }}>Quality Management</Typography>
         </Box>
       </Box>
 
-      {/* --- 2. NAVIGATION --- */}
-      <Box sx={{ flex: 1, px: 2, py: 1.5, overflowY: "auto" }}>
-        <List dense sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-          
-          {/* Dashboard */}
-          {canView('dashboard') && (
-            <ListItemButton
-              selected={isActive("/")}
-              onClick={() => navigate("/")}
-              sx={{ 
-                borderRadius: 2,
-                minHeight: 38,
-                px: 2,
-                py: 0.75,
-                transition: transitions.sidebar.item,
-                "&.Mui-selected": {
-                  bgcolor: "#EEF2FF",
-                  borderLeft: "3px solid #6366F1",
-                },
-                "&:hover": {
-                  bgcolor: "#F3F4F6",
-                  transform: `translateX(${motion.distance.micro}px)`,
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/") ? "#6366F1" : "#858D96" }}>
-                <DashboardOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Dashboard" 
-                primaryTypographyProps={{ 
-                  fontWeight: isActive("/") ? 600 : 400,
-                  fontSize: "0.8125rem",
-                  color: isActive("/") ? "#1A1D21" : "#5C6370",
-                }} 
-              />
-            </ListItemButton>
-          )}
-
-          {/* My Tasks */}
-          <ListItemButton
-            selected={isActive("/tasks")}
-            onClick={() => navigate("/tasks")}
-            sx={{ 
-              borderRadius: 2,
-              minHeight: 38,
-              px: 2,
-              py: 0.75,
-              "&.Mui-selected": {
-                bgcolor: "#EEF2FF",
-                borderLeft: "3px solid #6366F1",
-              },
-            }}
-          >
-            <ListItemIcon sx={{ minWidth: 36, color: isActive("/tasks") ? "#6366F1" : "#858D96" }}>
-              <AssignmentOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText 
-              primary="My Tasks" 
-              primaryTypographyProps={{ 
-                fontWeight: isActive("/tasks") ? 600 : 400,
-                fontSize: "0.8125rem",
-              }} 
-            />
-          </ListItemButton>
-
-          {/* DMS */}
-          {canView('dms') && (
-            <ListItemButton
-              selected={isActive("/dms")}
-              onClick={() => navigate("/dms")}
-              sx={{ 
-                borderRadius: 2,
-                minHeight: 38,
-                "&.Mui-selected": {
-                  bgcolor: "#EEF2FF",
-                  borderLeft: "3px solid #6366F1",
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/dms") ? "#6366F1" : "#858D96" }}>
-                <Badge badgeContent={reviewDueCount} color="warning" max={99}>
-                  <DescriptionOutlinedIcon fontSize="small" />
-                </Badge>
-              </ListItemIcon>
-              <ListItemText primary="Document Management" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Training Accordion */}
-          {canView('training') && (
-            <>
-              <ListItemButton
-                onClick={() => setTrainingOpen((v) => !v)}
-                selected={isActive("/training")}
-                sx={{ borderRadius: 2, minHeight: 38 }}
-              >
-                <ListItemIcon sx={{ minWidth: 36, color: isActive("/training") ? "#6366F1" : "#858D96" }}>
-                  <SchoolOutlinedIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText primary="Training" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-                {trainingOpen ? <ExpandLessOutlinedIcon fontSize="small" /> : <ExpandMoreOutlinedIcon fontSize="small" />}
-              </ListItemButton>
-
-              <Collapse in={trainingOpen} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding sx={{ pl: 2 }}>
-                  <ListItemButton
-                    selected={location.pathname === "/training"}
-                    onClick={() => navigate("/training")}
-                    sx={{ borderRadius: 2, minHeight: 32 }}
-                  >
-                    <ListItemText primary="Training Records" primaryTypographyProps={{ fontSize: "0.75rem" }} />
-                  </ListItemButton>
-                  
-                  {canView('training_matrix') && (
-                    <ListItemButton
-                      selected={location.pathname === "/training/matrix"}
-                      onClick={() => navigate("/training/matrix")}
-                      sx={{ borderRadius: 2, minHeight: 32 }}
-                    >
-                      <ListItemText primary="Training Matrix" primaryTypographyProps={{ fontSize: "0.75rem" }} />
+      <Box component="nav" aria-label="Main" sx={{ flex: 1, overflowY: "auto", px: 1, py: 1.5 }}>
+        {NAV.map((group, gi) => {
+          const items = group.items.filter((i) => canView(i.module));
+          if (items.length === 0) return null;
+          return (
+            <Box key={group.title ?? gi} sx={{ mb: 1.5 }}>
+              {group.title && (
+                <Typography variant="overline" component="div" sx={{ px: 1.25, pb: 0.5, display: "block" }}>
+                  {group.title}
+                </Typography>
+              )}
+              <List disablePadding>
+                {items.map((item) => {
+                  if (item.children) {
+                    const children = item.children.filter((c) => canView(c.module));
+                    return (
+                      <Box key={item.path}>
+                        <ListItemButton
+                          sx={itemSx}
+                          selected={!trainingOpen && isActive(item.path)}
+                          onClick={() => setTrainingOpen((v) => !v)}
+                          aria-expanded={trainingOpen}
+                        >
+                          <ListItemIcon>{item.icon}</ListItemIcon>
+                          <ListItemText primary={item.label} slotProps={{ primary: labelProps }} />
+                          <ExpandMoreIcon
+                            sx={{
+                              fontSize: 18,
+                              color: color.textMuted,
+                              transform: trainingOpen ? "rotate(180deg)" : "none",
+                              transition: transition(["transform"]),
+                            }}
+                          />
+                        </ListItemButton>
+                        <Collapse in={trainingOpen} timeout={150} unmountOnExit>
+                          <List disablePadding>
+                            {children.map((c) => (
+                              <ListItemButton
+                                key={c.path}
+                                sx={{ ...itemSx, pl: 4.75 }}
+                                selected={location.pathname === c.path}
+                                onClick={() => go(c.path)}
+                              >
+                                <ListItemText primary={c.label} slotProps={{ primary: labelProps }} />
+                              </ListItemButton>
+                            ))}
+                          </List>
+                        </Collapse>
+                      </Box>
+                    );
+                  }
+                  const badge = item.path === "/dms" && reviewDueCount > 0 ? reviewDueCount : null;
+                  return (
+                    <ListItemButton key={item.path} sx={itemSx} selected={isActive(item.path)} onClick={() => go(item.path)}>
+                      <ListItemIcon>{item.icon}</ListItemIcon>
+                      <ListItemText primary={item.label} slotProps={{ primary: labelProps }} />
+                      {badge !== null && (
+                        <Box
+                          component="span"
+                          aria-label={`${badge} documents due for review`}
+                          sx={{
+                            ml: 1,
+                            px: 0.75,
+                            minWidth: 20,
+                            height: 18,
+                            borderRadius: "9px",
+                            bgcolor: color.warningSoft,
+                            color: color.warning,
+                            fontSize: "0.6875rem",
+                            fontWeight: 600,
+                            display: "inline-grid",
+                            placeItems: "center",
+                            fontVariantNumeric: "tabular-nums",
+                          }}
+                        >
+                          {badge > 99 ? "99+" : badge}
+                        </Box>
+                      )}
                     </ListItemButton>
-                  )}
-                </List>
-              </Collapse>
-            </>
-          )}
-
-          {/* Deviations */}
-          {canView('deviations') && (
-            <ListItemButton
-              selected={isActive("/deviations")}
-              onClick={() => navigate("/deviations")}
-              sx={{ 
-                borderRadius: 2,
-                "&.Mui-selected": {
-                  bgcolor: "#EEF2FF",
-                  borderLeft: "3px solid #6366F1",
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/deviations") ? "#6366F1" : "#858D96" }}>
-                <ReportProblemOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Deviations" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* CAPA */}
-          {canView('capa') && (
-            <ListItemButton
-              selected={isActive("/capa")}
-              onClick={() => navigate("/capa")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/capa") ? "#6366F1" : "#858D96" }}>
-                <FactCheckOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="CAPA" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Change Control */}
-          {canView('change') && (
-            <ListItemButton
-              selected={isActive("/change-control")}
-              onClick={() => navigate("/change-control")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/change-control") ? "#6366F1" : "#858D96" }}>
-                <ChangeCircleOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Change Control" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Electronic Logbooks */}
-          {canView('logbooks') && (
-            <ListItemButton
-              selected={isActive("/logbooks")}
-              onClick={() => navigate("/logbooks")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/logbooks") ? "#6366F1" : "#858D96" }}>
-                <MenuBookOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Logbooks" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Stability Management */}
-          {canView('stability') && (
-            <ListItemButton
-              selected={isActive("/stability")}
-              onClick={() => navigate("/stability")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/stability") ? "#6366F1" : "#858D96" }}>
-                <TimelineOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Stability" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Environmental Monitoring */}
-          {canView('environmental') && (
-            <ListItemButton
-              selected={isActive("/environmental")}
-              onClick={() => navigate("/environmental")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/environmental") ? "#6366F1" : "#858D96" }}>
-                <AirOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Environmental" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Recall Management */}
-          {canView('recall') && (
-            <ListItemButton
-              selected={isActive("/recall")}
-              onClick={() => navigate("/recall")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/recall") ? "#6366F1" : "#858D96" }}>
-                <ReportGmailerrorredOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Recall" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Reports */}
-          {canView('reports') && (
-            <ListItemButton
-              selected={isActive("/reports")}
-              onClick={() => navigate("/reports")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/reports") ? "#6366F1" : "#858D96" }}>
-                <AssessmentOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Reports" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          <Divider sx={{ my: 1, borderColor: "#E9ECEF" }} />
-
-          {/* Settings */}
-          {canView('settings') && (
-            <ListItemButton
-              selected={isActive("/settings")}
-              onClick={() => navigate("/settings")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/settings") ? "#6366F1" : "#858D96" }}>
-                <SettingsOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Settings" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-
-          {/* Site Management (Phase 6 Block 7) */}
-          {canView('site_management') && (
-            <ListItemButton
-              selected={isActive("/admin/sites")}
-              onClick={() => navigate("/admin/sites")}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 36, color: isActive("/admin/sites") ? "#6366F1" : "#858D96" }}>
-                <BusinessOutlinedIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Sites" primaryTypographyProps={{ fontSize: "0.8125rem" }} />
-            </ListItemButton>
-          )}
-        </List>
+                  );
+                })}
+              </List>
+            </Box>
+          );
+        })}
       </Box>
     </Box>
   );

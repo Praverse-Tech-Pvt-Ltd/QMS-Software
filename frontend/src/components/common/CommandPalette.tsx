@@ -179,8 +179,15 @@ export default function CommandPalette() {
       }
     };
 
+    // Lets the header search button open the palette without a synthetic key event.
+    const handleOpenRequest = () => setOpen(true);
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("qms:open-command-palette", handleOpenRequest);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("qms:open-command-palette", handleOpenRequest);
+    };
   }, []);
 
   // Close on Escape

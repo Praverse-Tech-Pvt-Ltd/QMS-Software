@@ -1,334 +1,274 @@
-import {
-  Box,
-  Button,
-  IconButton,
-  TextField,
-  Typography,
-  Badge,
-  Chip,
-  Menu,
-  MenuItem,
-  Select,
-  InputAdornment,
-  Avatar,
-  Divider,
-  List,
-} from "@mui/material";
+import { Box, Button, IconButton, Typography, Badge, Menu, MenuItem, Select, Avatar, Divider, List, Tooltip } from "@mui/material";
 
-// Icons
 import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
-import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
-import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
+import AssignmentIndOutlinedIcon from "@mui/icons-material/AssignmentIndOutlined";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, type ReactNode } from "react";
 import { useRole } from "../../app/providers/RoleProvider";
-import { permissionService } from "../../services/permission.service";
-import { transitions, shadows, motion } from "../../theme/motion";
+import { permissionService, type UserRole } from "../../services/permission.service";
+import { authService } from "../../services/auth.service";
 import CreateDocumentModal from "../common/CreateDocumentModal";
 import UserProfileCard from "../common/UserProfileCard";
+import { color, transition } from "../../theme/tokens";
 
 const ROLES = ["Admin", "QA", "QC", "Production", "Warehouse", "Viewer"] as const;
 
-function HeaderActions() {
-  const { role, setRole, siteId, setSiteId, sites } = useRole();
-  const [scrolled, setScrolled] = useState(false);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  
-  // Detect scroll for elevation effect
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-  
-  // --- Menu States ---
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const userOpen = Boolean(anchorEl);
+const selectSx = {
+  fontSize: "0.8125rem",
+  color: color.ink,
+  "& .MuiSelect-select": { py: "5px", pl: 1, pr: "28px !important" },
+  "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
+  "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: color.border },
+  bgcolor: "transparent",
+};
 
+function initialsOf(name: string) {
+  const parts = name.replace(/[^a-zA-Z ]/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+function HeaderActions({ menuButton }: { menuButton?: ReactNode }) {
+  const { role, setRole, siteId, setSiteId, sites } = useRole();
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notifyAnchorEl, setNotifyAnchorEl] = useState<null | HTMLElement>(null);
+  const userOpen = Boolean(anchorEl);
   const notifyOpen = Boolean(notifyAnchorEl);
 
-  // --- Handlers ---
   const handleUserMenuClose = useCallback(() => setAnchorEl(null), []);
   const handleNotifyMenuClose = useCallback(() => setNotifyAnchorEl(null), []);
 
-  const canCreateDocument = useMemo(
-    () => (role ? permissionService.can(role, "dms", "create") : false),
-    [role]
-  );
+  const canCreateDocument = useMemo(() => (role ? permissionService.can(role, "dms", "create") : false), [role]);
 
-  const handleOpenCreateModal = useCallback(() => setCreateModalOpen(true), []);
-  const handleCloseCreateModal = useCallback(() => setCreateModalOpen(false), []);
+  // Signed-in identity (set at login/signup). Falls back gracefully if missing.
+  const storedUser = authService.getUser() as { email?: string; name?: string } | null;
+  const displayName = storedUser?.name && storedUser.name !== "QMS User" ? storedUser.name : storedUser?.email || "Signed in";
+
+  const openSearch = () => window.dispatchEvent(new Event("qms:open-command-palette"));
 
   return (
-    <Box 
-      sx={{ 
-        px: 3, 
-        py: 1.5, 
-        borderBottom: "1px solid #E9ECEF", 
-        bgcolor: "#FFFFFF", 
-        position: "sticky", 
-        top: 0, 
+    <Box
+      component="header"
+      sx={{
+        height: 56,
+        px: { xs: 1.5, md: 3 },
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        borderBottom: `1px solid ${color.border}`,
+        bgcolor: color.surface,
+        position: "sticky",
+        top: 0,
         zIndex: 1100,
-        transition: transitions.fast,
-        boxShadow: scrolled ? shadows.card : "none",
       }}
     >
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
-        
-        {/* Search Bar */}
-        <Box sx={{ flex: 1, maxWidth: 500, display: { xs: "none", sm: "block" } }}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Search documents, records, and more..."
-            sx={{ 
-              "& .MuiOutlinedInput-root": { 
-                borderRadius: 2, 
-                bgcolor: "#FAFBFC",
-                transition: transitions.fast,
-                "& fieldset": { borderColor: "#E9ECEF" }, 
-                "&:hover fieldset": { borderColor: "#858D96" }, 
-                "&.Mui-focused fieldset": { 
-                  borderColor: "#6366F1", 
-                  borderWidth: 2, 
-                },
-                "&.Mui-focused": {
-                  bgcolor: "#FFFFFF",
-                  boxShadow: shadows.subtle,
-                },
-              } 
-            }}
-            InputProps={{ 
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchOutlinedIcon sx={{ color: "#858D96", fontSize: 20 }} />
-                </InputAdornment>
-              ) 
-            }}
-          />
+      {menuButton}
+
+      {/* Search: opens the command palette */}
+      <Box
+        component="button"
+        type="button"
+        onClick={openSearch}
+        aria-label="Search or jump to (Ctrl+K)"
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          flex: 1,
+          maxWidth: 420,
+          height: 34,
+          px: 1.25,
+          border: `1px solid ${color.border}`,
+          borderRadius: "6px",
+          bgcolor: color.canvas,
+          color: color.textMuted,
+          font: "inherit",
+          fontSize: "0.8125rem",
+          cursor: "pointer",
+          textAlign: "left",
+          transition: transition(),
+          "&:hover": { borderColor: color.borderStrong, color: color.textSecondary },
+        }}
+      >
+        <SearchOutlinedIcon sx={{ fontSize: 18 }} />
+        <Box component="span" sx={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          Search or jump to…
         </Box>
-
-        {/* Right Actions */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, ml: "auto" }}>
-
-          {/* Site Selector (Phase 6 Block 7) */}
-          {sites.length > 0 && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mr: 1, borderRight: "1px solid #E9ECEF", pr: 2 }}>
-              <BusinessOutlinedIcon sx={{ color: "#858D96", fontSize: 18 }} />
-              <Select
-                size="small"
-                value={siteId ?? ""}
-                displayEmpty
-                onChange={(e) => setSiteId(e.target.value ? String(e.target.value) : null)}
-                sx={{
-                  minWidth: 140,
-                  fontSize: "0.8125rem",
-                  "& .MuiOutlinedInput-notchedOutline": { border: "none" },
-                }}
-              >
-                <MenuItem value="">All Sites</MenuItem>
-                {sites.map((s) => (
-                  <MenuItem key={s.id} value={String(s.id)}>{s.code} — {s.name}</MenuItem>
-                ))}
-              </Select>
-            </Box>
-          )}
-
-          {/* Role Switcher */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mr: 1, borderRight: "1px solid #E9ECEF", pr: 2 }}>
-            <Typography variant="caption" sx={{ fontWeight: 700, color: "#858D96", whiteSpace: "nowrap", display: { xs: "none", md: "block"} }}>VIEW AS:</Typography>
-            {ROLES.map((r) => (
-              <Chip
-                key={r}
-                label={r}
-                size="small"
-                onClick={() => setRole(r as any)}
-                variant={role === r ? "filled" : "outlined"}
-                color={role === r ? "primary" : "default"}
-                sx={{ 
-                  fontWeight: 600, 
-                  borderRadius: 1.5, 
-                  height: 28, 
-                  borderColor: "#DFE2E6", 
-                  bgcolor: role === r ? "#EEF2FF" : "#FFFFFF", 
-                  color: role === r ? "#6366F1" : "#5C6370",
-                  transition: transitions.fast,
-                  cursor: "pointer",
-                  "&:hover": { 
-                    bgcolor: "#F3F4F6",
-                    transform: `translateY(-${motion.distance.micro}px)`,
-                  },
-                }}
-              />
-            ))}
-          </Box>
-
-          <IconButton 
-            size="small" 
-            sx={{ 
-              color: notifyOpen ? "#6366F1" : "#5C6370", 
-              bgcolor: notifyOpen ? "#EEF2FF" : "transparent",
-              transition: transitions.fast,
-              "&:hover": { bgcolor: "#F3F4F6" },
-            }}
-            onClick={(e) => setNotifyAnchorEl(e.currentTarget)}
-          >
-            <Badge variant="dot" color="error" overlap="circular">
-               <NotificationsNoneOutlinedIcon />
-            </Badge>
-          </IconButton>
-          
-          <IconButton 
-            size="small" 
-            sx={{ color: "#5C6370", "&:hover": { bgcolor: "#F3F4F6" }}}
-          >
-            <Badge badgeContent={3} color="primary" overlap="circular">
-              <ChatBubbleOutlineOutlinedIcon fontSize="small" />
-            </Badge>
-          </IconButton>
-
-          {canCreateDocument && (
-            <Button
-              variant="contained"
-              startIcon={<AddOutlinedIcon />}
-              onClick={handleOpenCreateModal}
-              sx={{ 
-                bgcolor: "#667eea", 
-                borderRadius: 2, 
-                textTransform: "none", 
-                fontWeight: 600, 
-                display: { xs: "none", md: "flex" }, 
-                boxShadow: "0 2px 8px rgba(102, 126, 234, 0.25)", 
-                transition: "all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)",
-                "&:hover": { 
-                  bgcolor: "#764ba2",
-                  transform: "translateY(-2px)",
-                } 
-              }}
-            >
-              Create
-            </Button>
-          )}
-
-           {/* User Profile Trigger */}
-           <Box
-             onClick={(e) => setAnchorEl(e.currentTarget)}
-             sx={{
-               display: "flex",
-               alignItems: "center",
-               gap: 1.5,
-               ml: 1,
-               px: 1.5,
-               py: 0.75,
-               borderRadius: 2,
-               cursor: "pointer",
-               border: "1px solid",
-               borderColor: userOpen ? "#6366F1" : "#e2e8f0",
-               bgcolor: userOpen ? "#f0f4ff" : "transparent",
-               transition: transitions.fast,
-               "&:hover": { bgcolor: "#f8fafc", borderColor: "#cbd5e1" },
-             }}
-           >
-             <Avatar
-               sx={{
-                 width: 36,
-                 height: 36,
-                 bgcolor: "#667eea",
-                 fontSize: "14px",
-                 fontWeight: 600,
-               }}
-             >
-               AP
-             </Avatar>
-             <Box sx={{ display: { xs: "none", lg: "block" } }}>
-               <Typography variant="body2" sx={{ fontWeight: 600, color: "#0f172a", lineHeight: 1.2 }}>
-                 Alexander Pierce
-               </Typography>
-               <Typography variant="caption" sx={{ color: "#64748b", display: "block", lineHeight: 1 }}>
-                 Chief Quality Officer
-               </Typography>
-             </Box>
-           </Box>
-
-           <Menu
-            anchorEl={anchorEl}
-            open={userOpen}
-            onClose={handleUserMenuClose}
-            PaperProps={{ 
-              elevation: 0, 
-              sx: { overflow: 'visible', mt: 2, borderRadius: 3, background: 'transparent' } 
-            }}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
-            <UserProfileCard
-              userName="Alexander Pierce"
-              userRole="Chief Quality Officer"
-              userInitials="AP"
-              tasksCount={12}
-              pendingCount={8}
-              approvedCount={32}
-              onClose={handleUserMenuClose}
-            />
-          </Menu>
-
-          {/* Notification Menu */}
-          <Menu
-            anchorEl={notifyAnchorEl}
-            open={notifyOpen}
-            onClose={handleNotifyMenuClose}
-            PaperProps={{ 
-              elevation: 16, 
-              sx: { width: 360, maxHeight: 480, mt: 1.5, borderRadius: 3, border: "1px solid #E9ECEF" } 
-            }}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
-            <Box sx={{ px: 3, py: 2.5, borderBottom: "1px solid #E9ECEF", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <Typography variant="subtitle2" fontWeight={600}>Notifications</Typography>
-              <Chip label="2 New" size="small" sx={{ bgcolor: "#FEE2E2", color: "#DC2626", fontWeight: 600 }} />
-            </Box>
-
-            <List disablePadding>
-              <MenuItem sx={{ py: 2, px: 3, gap: 1.5, whiteSpace: "normal" }}>
-                 <Avatar sx={{ bgcolor: "#EEF2FF", color: "#6366F1", width: 36, height: 36 }}>
-                   <AssignmentIndOutlinedIcon fontSize="small" />
-                 </Avatar>
-                 <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={600}>New SOP Assigned</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.8rem" }}>SOP-QA-001 requires review.</Typography>
-                 </Box>
-              </MenuItem>
-              <Divider component="li" />
-              <MenuItem sx={{ py: 2, px: 3, gap: 1.5, whiteSpace: "normal" }}>
-                 <Avatar sx={{ bgcolor: "#FEF3C7", color: "#B45309", width: 36, height: 36 }}>
-                   <WarningAmberRoundedIcon fontSize="small" />
-                 </Avatar>
-                 <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight={600}>Audit Reminder</Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.8rem" }}>Internal audit starts in 3 days.</Typography>
-                 </Box>
-              </MenuItem>
-            </List>
-            
-            <Box sx={{ p: 2, borderTop: "1px solid #E9ECEF", textAlign: "center" }}>
-              <Button size="small" fullWidth sx={{ textTransform: "none", fontWeight: 600 }}>
-                View All Notifications
-              </Button>
-            </Box>
-          </Menu>
-
+        <Box
+          component="kbd"
+          sx={{
+            display: { xs: "none", sm: "inline-block" },
+            px: 0.75,
+            py: "1px",
+            border: `1px solid ${color.border}`,
+            borderRadius: "4px",
+            bgcolor: color.surface,
+            fontFamily: "inherit",
+            fontSize: "0.6875rem",
+            color: color.textMuted,
+          }}
+        >
+          Ctrl K
         </Box>
       </Box>
 
-      <CreateDocumentModal open={createModalOpen} onClose={handleCloseCreateModal} />
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: "auto" }}>
+        {sites.length > 0 && (
+          <Box sx={{ display: { xs: "none", lg: "flex" }, alignItems: "center", gap: 0.25 }}>
+            <BusinessOutlinedIcon sx={{ color: color.textMuted, fontSize: 18 }} aria-hidden />
+            <Select
+              size="small"
+              value={siteId ?? ""}
+              displayEmpty
+              onChange={(e) => setSiteId(e.target.value ? String(e.target.value) : null)}
+              inputProps={{ "aria-label": "Site" }}
+              IconComponent={ExpandMoreIcon}
+              sx={{ ...selectSx, maxWidth: 200 }}
+            >
+              <MenuItem value="">All sites</MenuItem>
+              {sites.map((s) => (
+                <MenuItem key={s.id} value={String(s.id)}>
+                  {s.code} · {s.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
+        )}
+
+        {/* Role preview (demo/testing aid): compact select instead of six chips */}
+        <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5, pr: 1, mr: 0.5, borderRight: `1px solid ${color.border}` }}>
+          <Typography component="label" htmlFor="view-as-role" sx={{ fontSize: "0.75rem", color: color.textMuted, whiteSpace: "nowrap" }}>
+            View as
+          </Typography>
+          <Select
+            size="small"
+            value={role ?? ""}
+            onChange={(e) => setRole(e.target.value as UserRole)}
+            inputProps={{ id: "view-as-role" }}
+            IconComponent={ExpandMoreIcon}
+            sx={{ ...selectSx, fontWeight: 600 }}
+          >
+            {ROLES.map((r) => (
+              <MenuItem key={r} value={r}>
+                {r}
+              </MenuItem>
+            ))}
+          </Select>
+        </Box>
+
+        <Tooltip title="Notifications">
+          <IconButton aria-label="Notifications" onClick={(e) => setNotifyAnchorEl(e.currentTarget)} sx={notifyOpen ? { bgcolor: color.accentSoft, color: color.accent } : undefined}>
+            <Badge variant="dot" color="error" overlap="circular">
+              <NotificationsNoneOutlinedIcon sx={{ fontSize: 20 }} />
+            </Badge>
+          </IconButton>
+        </Tooltip>
+
+        {canCreateDocument && (
+          <Button variant="contained" startIcon={<AddOutlinedIcon />} onClick={() => setCreateModalOpen(true)} sx={{ display: { xs: "none", md: "inline-flex" }, ml: 0.5 }}>
+            New record
+          </Button>
+        )}
+
+        <Box
+          component="button"
+          type="button"
+          aria-label="Account menu"
+          aria-haspopup="menu"
+          aria-expanded={userOpen}
+          onClick={(e: React.MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget)}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            ml: 0.5,
+            pl: 0.5,
+            pr: 1,
+            height: 36,
+            border: "1px solid transparent",
+            borderRadius: "6px",
+            bgcolor: userOpen ? color.canvas : "transparent",
+            font: "inherit",
+            cursor: "pointer",
+            transition: transition(),
+            "&:hover": { bgcolor: color.canvas, borderColor: color.border },
+          }}
+        >
+          <Avatar sx={{ width: 28, height: 28, bgcolor: color.accentSoft, color: color.accent, fontSize: "0.75rem", fontWeight: 600 }}>
+            {initialsOf(displayName)}
+          </Avatar>
+          <Box sx={{ display: { xs: "none", lg: "block" }, textAlign: "left", minWidth: 0 }}>
+            <Typography sx={{ fontSize: "0.8125rem", fontWeight: 600, color: color.ink, lineHeight: 1.2, maxWidth: 160 }} noWrap>
+              {displayName}
+            </Typography>
+            <Typography sx={{ fontSize: "0.6875rem", color: color.textMuted, lineHeight: 1.2 }}>{role ?? ""}</Typography>
+          </Box>
+        </Box>
+
+        <Menu
+          anchorEl={anchorEl}
+          open={userOpen}
+          onClose={handleUserMenuClose}
+          slotProps={{ paper: { elevation: 0, sx: { overflow: "visible", mt: 1, border: 0, background: "transparent" } } }}
+          transformOrigin={{ horizontal: "right", vertical: "top" }}
+          anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        >
+          <UserProfileCard
+            userName={displayName}
+            userRole={role ?? ""}
+            userInitials={initialsOf(displayName)}
+            tasksCount={12}
+            pendingCount={8}
+            approvedCount={32}
+            onClose={handleUserMenuClose}
+          />
+        </Menu>
+
+        <Menu
+          anchorEl={notifyAnchorEl}
+          open={notifyOpen}
+          onClose={handleNotifyMenuClose}
+          slotProps={{ paper: { elevation: 8, sx: { width: 340, maxHeight: 460, mt: 1 } } }}
+          transformOrigin={{ horizontal: "right", vertical: "top" }}
+          anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        >
+          <Box sx={{ px: 2, py: 1.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <Typography variant="subtitle1">Notifications</Typography>
+            <Typography variant="caption">2 unread</Typography>
+          </Box>
+          <Divider />
+          <List disablePadding>
+            <MenuItem sx={{ py: 1.25, px: 2, gap: 1.5, whiteSpace: "normal", alignItems: "flex-start" }}>
+              <AssignmentIndOutlinedIcon sx={{ fontSize: 18, mt: "2px", color: color.accent }} />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle2">New SOP assigned</Typography>
+                <Typography variant="body2">SOP-QA-001 requires review.</Typography>
+              </Box>
+            </MenuItem>
+            <MenuItem sx={{ py: 1.25, px: 2, gap: 1.5, whiteSpace: "normal", alignItems: "flex-start" }}>
+              <WarningAmberRoundedIcon sx={{ fontSize: 18, mt: "2px", color: color.warning }} />
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="subtitle2">Audit reminder</Typography>
+                <Typography variant="body2">Internal audit starts in 3 days.</Typography>
+              </Box>
+            </MenuItem>
+          </List>
+          <Divider />
+          <Box sx={{ p: 1 }}>
+            <Button size="small" fullWidth>
+              View all notifications
+            </Button>
+          </Box>
+        </Menu>
+      </Box>
+
+      <CreateDocumentModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
     </Box>
   );
 }
