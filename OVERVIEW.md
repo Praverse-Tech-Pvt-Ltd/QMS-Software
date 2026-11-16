@@ -1,5 +1,16 @@
 # NexGen QMS — Build Overview
 
+## Phase 7 Kickoff (2026-11-11)
+
+Product blueprint: [docs/IPHARMA_QMS_BLUEPRINT.md](docs/IPHARMA_QMS_BLUEPRINT.md) (competitor gaps, iPharma AI brain,
+NexGen expert-in-the-loop Document Studio, filing tracker, inspection readiness, 483 data plan, sprint plan).
+
+- New `docstudio` app (`/api/v1/docstudio/`): dosage-form stage library (OSD tablet, API synthesis, sterile aseptic) ->
+  MBR skeleton generator + blocking/advisory validator -> draft `MasterBatchRecord`; data-driven regulatory-trigger
+  triage rules. Both rulesets are flagged `expert_reviewed: false` until Ashwani Shrivastav signs them off.
+  Never invents limits; critical stages force e-signature. 21 tests (206 total, all passing).
+- `backend/Tokens.txt` (a JWT) was tracked in git: untracked + ignored. Rotate that credential; it remains in history.
+
 ## Phase 6 Changes (2026-07-13)
 
 11 new/extended features plus local AI model infrastructure. 104 → 185 backend

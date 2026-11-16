@@ -56,6 +56,7 @@ urlpatterns = [
     # Phase 2 modules
     path('api/v1/laboratory/', include('laboratory.urls')),
     path('api/v1/batch-records/', include('batch_records.urls')),
+    path('api/v1/docstudio/', include('docstudio.urls')),
     path('api/v1/reports/', include('reports.urls')),
 
     # Phase 6 modules

@@ -64,6 +64,8 @@ INSTALLED_APPS = [
     'stability',
     'environmental',
     'recall',
+    # Phase 7 modules
+    'docstudio',
 ]
 
 MIDDLEWARE = [
