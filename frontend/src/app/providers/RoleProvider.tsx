@@ -22,6 +22,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     () => (sessionStorage.getItem("qms_role") as UserRole | null)
   );
   const [isLoading, setIsLoading] = useState(true);
+  const [hasToken, setHasToken] = useState(() => !!getAccessToken());
   const [siteId, setSiteIdState] = useState<string | null>(() => getSelectedSite());
   const [sites, setSites] = useState<Site[]>([]);
 
@@ -36,6 +37,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
     const tryRestore = async () => {
       if (role && !getAccessToken()) {
         const ok = await authService.silentRefresh();
+        setHasToken(!!getAccessToken());
         if (!ok) {
           // Refresh failed — clear session
           sessionStorage.removeItem("qms_role");
@@ -55,11 +57,16 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem("qms_role");
       sessionStorage.removeItem("qms_user");
     }
+    // Login/signup call setAccessToken() just before setRole(), so sync it here.
+    setHasToken(!!getAccessToken());
     setRoleState(newRole);
   };
 
   // Authenticated = role set AND access token in memory
-  const isAuthenticated = !!role && !!getAccessToken();
+  // hasToken is React state (not a render-time getAccessToken() call) because the
+  // React Compiler memoizes render expressions on their React inputs only — a read
+  // of the module-level token store would stay stale after silent refresh.
+  const isAuthenticated = !!role && hasToken;
 
   // Load the site list once authenticated, to populate the nav selector.
   useEffect(() => {

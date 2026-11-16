@@ -2,8 +2,12 @@ import axios from "axios";
 import { getAccessToken, setAccessToken, clearAccessToken } from "./tokenStore";
 import { getSelectedSite } from "./siteStore";
 
+// Host must match the frontend's host (localhost), or the browser treats the API as
+// cross-site and won't send the HttpOnly refresh cookie — sessions die on reload.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
+
 const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api",
+  baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
   withCredentials: true, // required to send/receive HttpOnly cookies for refresh token
 });
@@ -32,7 +36,7 @@ api.interceptors.response.use(
       original._retry = true;
       try {
         const { data } = await axios.post(
-          "http://127.0.0.1:8000/api/auth/token/refresh/",
+          `${API_BASE_URL}/auth/token/refresh/`,
           {},
           { withCredentials: true }
         );
