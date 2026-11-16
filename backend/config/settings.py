@@ -85,7 +85,11 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
+    "http://127.0.0.1:5173",
 ]
+# Frontend axios uses withCredentials (HttpOnly refresh-token cookie), so the
+# browser rejects every API call unless this header is sent.
+CORS_ALLOW_CREDENTIALS = True
 
 AUTH_USER_MODEL = 'accounts.User'
 
