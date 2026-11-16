@@ -1,143 +1,66 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { Box, CssBaseline, Drawer, IconButton } from "@mui/material";
+import { Box, Drawer, IconButton } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 
-import Sidebar from "./Sidebar";
+import Sidebar, { SIDEBAR_WIDTH } from "./Sidebar";
 import HeaderActions from "./HeaderActions";
 import CommandPalette from "../common/CommandPalette";
 import LoadingBar, { useLoadingBar } from "../common/LoadingBar";
-import ClickSpark from "../common/ClickSpark";
-
-const DRAWER_WIDTH = 280;
+import { color } from "../../theme/tokens";
 
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const loadingBar = useLoadingBar();
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
-
   return (
-    <ClickSpark
-      sparkColor="#667eea"
-      sparkSize={12}
-      sparkRadius={20}
-      sparkCount={8}
-      duration={500}
-      easing="ease-out"
-      extraScale={1.2}
-    >
-      <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: "#F7F8FA" }}>
-        <CssBaseline />
+    <Box sx={{ display: "flex", minHeight: "100vh", bgcolor: color.canvas }}>
+      <LoadingBar isLoading={loadingBar.isLoading} />
+      <CommandPalette />
 
-        {/* Global Components */}
-        <LoadingBar isLoading={loadingBar.isLoading} />
-        <CommandPalette />
+      {/* Mobile: temporary drawer */}
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        ModalProps={{ keepMounted: true }}
+        sx={{ display: { xs: "block", md: "none" }, "& .MuiDrawer-paper": { width: SIDEBAR_WIDTH, border: 0 } }}
+      >
+        <Sidebar onNavigate={() => setMobileOpen(false)} />
+      </Drawer>
 
-      {/* --- SIDEBAR NAVIGATION --- */}
+      {/* Desktop: fixed rail */}
       <Box
-        component="nav"
-        sx={{ 
-            width: { md: DRAWER_WIDTH }, 
-            flexShrink: { md: 0 } 
+        sx={{
+          display: { xs: "none", md: "block" },
+          width: SIDEBAR_WIDTH,
+          flexShrink: 0,
+          height: "100vh",
+          position: "sticky",
+          top: 0,
+          borderRight: `1px solid ${color.border}`,
         }}
       >
-        {/* Mobile Drawer (Temporary) */}
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }} 
-          sx={{
-            display: { xs: "block", md: "none" },
-            "& .MuiDrawer-paper": { 
-                boxSizing: "border-box", 
-                width: DRAWER_WIDTH,
-                bgcolor: "#FAFBFC",
-                borderRight: "1px solid #E9ECEF",
-            },
-          }}
-        >
-          <Sidebar />
-        </Drawer>
-
-        {/* Desktop Sidebar (Permanent) */}
-        <Box 
-            sx={{ 
-                display: { xs: "none", md: "block" },
-                width: DRAWER_WIDTH,
-                height: "100vh",
-                bgcolor: "#FAFBFC",
-                borderRight: "1px solid #E9ECEF",
-                position: "fixed",
-                top: 0,
-                left: 0,
-                overflowY: "auto",
-                overflowX: "hidden",
-                zIndex: 1000,
-                "&::-webkit-scrollbar": {
-                  width: "6px",
-                },
-                "&::-webkit-scrollbar-track": {
-                  bgcolor: "transparent",
-                },
-                "&::-webkit-scrollbar-thumb": {
-                  bgcolor: "#CBD5E0",
-                  borderRadius: "3px",
-                  "&:hover": {
-                    bgcolor: "#A0AEC0",
-                  },
-                },
-            }}
-        >
-           <Sidebar />
-        </Box>
+        <Sidebar />
       </Box>
 
-      {/* --- MAIN CONTENT AREA --- */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-        }}
-      >
-        {/* Mobile Header Toggle */}
-        <Box 
-            sx={{ 
-                display: { xs: "flex", md: "none" }, 
-                alignItems: "center",
-                p: 2, 
-                bgcolor: "#FFFFFF", 
-                borderBottom: "1px solid #E9ECEF",
-            }}
-        >
-           <IconButton onClick={handleDrawerToggle} edge="start" sx={{ mr: 2 }}>
-             <MenuIcon />
-           </IconButton>
-        </Box>
+      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <HeaderActions
+          menuButton={
+            <IconButton
+              aria-label="Open navigation"
+              onClick={() => setMobileOpen(true)}
+              sx={{ display: { xs: "inline-flex", md: "none" }, mr: 0.5 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          }
+        />
 
-        {/* Global Header */}
-        <HeaderActions />
-
-        {/* Page Content */}
-        <Box sx={{ 
-          flexGrow: 1, 
-          overflowX: "hidden",
-          p: { xs: 2, sm: 3, md: 4 },
-          maxWidth: "1600px",
-          mx: "auto",
-          width: "100%",
-        }}>
+        <Box sx={{ flexGrow: 1, px: { xs: 2, md: 3 }, py: { xs: 2, md: 3 }, maxWidth: 1600, width: "100%", mx: "auto" }}>
           <Outlet />
         </Box>
       </Box>
     </Box>
-    </ClickSpark>
   );
 }

@@ -1,394 +1,279 @@
-import {
-  Box,
-  Button,
-  Paper,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Chip,
-  TextField,
-   Grid,
-  CircularProgress,
-  Stack,
-  LinearProgress,
-} from "@mui/material";
-import SchoolIcon from '@mui/icons-material/School';
-import { useNavigate } from "react-router-dom";
-import { keyframes } from "@mui/system";
-import { shadows, transitions } from "../../theme/motion";
-import { useState, useEffect } from "react";
-
-import TrendingUpIcon from "@mui/icons-material/TrendingUp";
-import TrendingDownIcon from "@mui/icons-material/TrendingDown";
-import RemoveIcon from "@mui/icons-material/Remove";
-import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
-import SchoolOutlinedIcon from "@mui/icons-material/SchoolOutlined";
-import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
+import { Box, Button, Paper, Skeleton, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-// import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
-import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
+import TaskAltOutlinedIcon from "@mui/icons-material/TaskAltOutlined";
+import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { format, isBefore, parseISO, startOfDay } from "date-fns";
 
 import { useRole } from "../../app/providers/RoleProvider";
-import { permissionService } from "../../services/permission.service";
-import type { ModuleKey } from "../../services/permission.service";
-import PermissionDeniedDialog from "../../components/common/PermissionDeniedDialog";
+import { permissionService, type ModuleKey } from "../../services/permission.service";
 import { fetchDashboardStats, fetchMyTasks } from "../../services/api";
+import { color } from "../../theme/tokens";
 
-const pulse = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-`;
+type Counts = { open: number; overdue: number };
+type Stats = {
+  quality: { deviations: Counts; capas: Counts; change_controls: Counts; department_hotspots: { department: string; count: number }[] };
+  user: { pending_training: number; assigned_capas: number; total_tasks: number };
+};
+type Task = { id: string; type: string; title: string; status: string; due_date?: string | null; priority?: string };
+
+const EMPTY: Stats = {
+  quality: {
+    deviations: { open: 0, overdue: 0 },
+    capas: { open: 0, overdue: 0 },
+    change_controls: { open: 0, overdue: 0 },
+    department_hotspots: [],
+  },
+  user: { pending_training: 0, assigned_capas: 0, total_tasks: 0 },
+};
+
+const TASK_PATH: Record<string, string> = {
+  CAPA: "capa",
+  "Change Control": "change-control",
+  Training: "training",
+  Document: "dms",
+  Deviation: "deviations",
+};
+
+const ACTIONS: { label: string; path: string; module: ModuleKey }[] = [
+  { label: "Deviation", path: "/deviations/new", module: "deviations" },
+  { label: "CAPA", path: "/capa/new", module: "capa" },
+  { label: "Document", path: "/dms/new", module: "dms" },
+  { label: "Training", path: "/training/new", module: "training" },
+];
+
+function humanize(status: string) {
+  return status.charAt(0) + status.slice(1).toLowerCase().replace(/_/g, " ");
+}
+
+function dueInfo(due?: string | null) {
+  if (!due) return { text: "No due date", overdue: false };
+  const d = parseISO(due);
+  return { text: format(d, "d MMM yyyy"), overdue: isBefore(d, startOfDay(new Date())) };
+}
+
+/** One cell of the status strip: label, count, and an explicit overdue note. */
+function Metric({ label, value, overdue, onClick }: { label: string; value: number; overdue?: number; onClick: () => void }) {
+  return (
+    <Box
+      component="button"
+      type="button"
+      onClick={onClick}
+      sx={{
+        all: "unset",
+        boxSizing: "border-box",
+        cursor: "pointer",
+        px: 2,
+        py: 1.5,
+        display: "grid",
+        gap: 0.25,
+        transition: "background-color 160ms cubic-bezier(0.25, 1, 0.5, 1)",
+        "&:hover": { bgcolor: color.canvas },
+        "&:focus-visible": { outline: `2px solid ${color.accent}`, outlineOffset: -2 },
+      }}
+    >
+      <Typography variant="caption" component="span">
+        {label}
+      </Typography>
+      <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
+        <Typography component="span" sx={{ fontSize: "1.5rem", fontWeight: 600, color: color.ink, lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>
+          {value}
+        </Typography>
+        {overdue !== undefined && (
+          <Typography component="span" sx={{ fontSize: "0.75rem", fontWeight: 600, color: overdue > 0 ? color.error : color.textMuted }}>
+            {overdue > 0 ? `${overdue} overdue` : "none overdue"}
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
+function PanelHeader({ title, action }: { title: string; action?: React.ReactNode }) {
+  return (
+    <Box sx={{ px: 2, height: 48, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${color.border}` }}>
+      <Typography variant="h6" component="h2">
+        {title}
+      </Typography>
+      {action}
+    </Box>
+  );
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { role } = useRole();
-  const [permissionDenied, setPermissionDenied] = useState<{
-    open: boolean;
-    message: string;
-  }>({ open: false, message: "" });
   const [loading, setLoading] = useState(true);
-
-  const [stats, setStats] = useState({
-    quality: {
-      deviations: { open: 0, overdue: 0 },
-      capas: { open: 0, overdue: 0 },
-      change_controls: { open: 0, overdue: 0 },
-      department_hotspots: [] as { department: string; count: number }[],
-    },
-    user: {
-      pending_training: 0,
-      assigned_capas: 0,
-      total_tasks: 0,
-    },
-  });
-
-  const [recentTasks, setRecentTasks] = useState<any[]>([]);
-
-  // Handshake logic: Calculate dynamic completion rate for the UI
-  const trainingCompletion = stats.user.pending_training === 0 ? 100 : 75;
+  const [failed, setFailed] = useState(false);
+  const [stats, setStats] = useState<Stats>(EMPTY);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const [statsData, tasksData] = await Promise.all([
-          fetchDashboardStats(),
-          fetchMyTasks(),
-        ]);
-        setStats(statsData);
-        setRecentTasks(tasksData.slice(0, 5));
-      } catch (error) {
-        console.error("Failed to load dashboard data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadDashboardData();
+    Promise.all([fetchDashboardStats(), fetchMyTasks()])
+      .then(([s, t]) => {
+        setStats(s);
+        setTasks(t.slice(0, 8));
+      })
+      .catch((err) => {
+        console.error("Failed to load dashboard data", err);
+        setFailed(true);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleTaskClick = (id: string, type: string) => {
-    const pathMap: Record<string, string> = {
-      CAPA: "capa",
-      "Change Control": "change-control",
-      Training: "training",
-      Document: "dms",
-      Deviation: "deviations",
-    };
-    navigate(`/${pathMap[type] || "tasks"}/${id}`);
-  };
-
-  const handleQuickAction = (
-    path: string,
-    module: ModuleKey,
-    label: string,
-  ) => {
-    if (!role || !permissionService.can(role, module, "create")) {
-      setPermissionDenied({
-        open: true,
-        message: `Your role (${role || "Guest"}) does not have permission to create a new ${label}.`,
-      });
-      return;
-    }
-    navigate(path);
-  };
-
-  const kpis = [
-    {
-      label: "My Pending Tasks",
-      value: stats.user.total_tasks.toString().padStart(2, "0"),
-      change: "Active",
-      trend: "neutral",
-    },
-    {
-      label: "Open Deviations",
-      value: stats.quality.deviations.open.toString().padStart(2, "0"),
-      change:
-        stats.quality.deviations.overdue > 0
-          ? `${stats.quality.deviations.overdue} OVERDUE`
-          : "On Track",
-      trend: stats.quality.deviations.overdue > 0 ? "down" : "up",
-    },
-    {
-      label: "Pending Training",
-      value: stats.user.pending_training.toString().padStart(2, "0"),
-      change: stats.user.pending_training > 0 ? "Action Required" : "Compliant",
-      trend: stats.user.pending_training > 0 ? "down" : "up",
-    },
-    {
-      label: "Active CAPAs",
-      value: stats.quality.capas.open.toString().padStart(2, "0"),
-      change:
-        stats.quality.capas.overdue > 0
-          ? `${stats.quality.capas.overdue} OVERDUE`
-          : "Clean",
-      trend: stats.quality.capas.overdue > 0 ? "down" : "neutral",
-    },
-  ];
-
-  const trendIcon = (trend: string) => {
-    if (trend === "up")
-      return <TrendingUpIcon fontSize="small" sx={{ color: "#16a34a" }} />;
-    if (trend === "down")
-      return <TrendingDownIcon fontSize="small" sx={{ color: "#dc2626" }} />;
-    return <RemoveIcon fontSize="small" sx={{ color: "#9ca3af" }} />;
-  };
-
-  const allActions = [
-    { label: "New Doc", icon: <DescriptionOutlinedIcon />, path: "/dms/new", module: "dms" as ModuleKey },
-    { label: "Deviation", icon: <ReportProblemOutlinedIcon />, path: "/deviations/new", module: "deviations" as ModuleKey },
-    { label: "Training", icon: <SchoolOutlinedIcon />, path: "/training/new", module: "training" as ModuleKey },
-    { label: "CAPA", icon: <FactCheckOutlinedIcon />, path: "/capa/new", module: "capa" as ModuleKey },
-  ];
-
-  if (loading)
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", p: 10 }}>
-        <CircularProgress />
-      </Box>
-    );
+  const actions = ACTIONS.filter((a) => role && permissionService.can(role, a.module, "create"));
+  const q = stats.quality;
+  const hotspotMax = Math.max(1, ...q.department_hotspots.map((h) => h.count));
 
   return (
-    <Box sx={{ maxWidth: 1600, mx: "auto", p: 2 }}>
-      <Typography
-        variant="h4"
-        fontWeight={900}
-        mb={4}
-        color="text.primary"
-        letterSpacing="-0.5px"
+    <Box sx={{ display: "grid", gap: 2.5 }}>
+      <Box sx={{ display: "flex", alignItems: { xs: "flex-start", sm: "center" }, justifyContent: "space-between", gap: 2, flexWrap: "wrap" }}>
+        <Box>
+          <Typography variant="h4" component="h1">
+            Overview
+          </Typography>
+          <Typography variant="body2">{format(new Date(), "EEEE, d MMMM yyyy")}</Typography>
+        </Box>
+        {actions.length > 0 && (
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }} role="group" aria-label="Create new record">
+            {actions.map((a) => (
+              <Button key={a.label} variant="outlined" size="small" startIcon={<AddOutlinedIcon />} onClick={() => navigate(a.path)}>
+                {a.label}
+              </Button>
+            ))}
+          </Box>
+        )}
+      </Box>
+
+      {failed && (
+        <Paper sx={{ px: 2, py: 1.5, bgcolor: color.errorSoft, borderColor: color.errorSoft }}>
+          <Typography variant="body2" sx={{ color: color.error }}>
+            Some dashboard data couldn't be loaded. Figures below may be incomplete; refresh to try again.
+          </Typography>
+        </Paper>
+      )}
+
+      {/* Status strip */}
+      <Paper
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(5, 1fr)" },
+          "& > *:not(:last-child)": { borderRight: { md: `1px solid ${color.border}` } },
+          "& > *": { borderBottom: { xs: `1px solid ${color.border}`, md: 0 } },
+          overflow: "hidden",
+        }}
       >
-        Quality Dashboard Overview
-      </Typography>
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <Box key={i} sx={{ px: 2, py: 1.5 }}>
+              <Skeleton width="60%" height={16} />
+              <Skeleton width="40%" height={30} />
+            </Box>
+          ))
+        ) : (
+          <>
+            <Metric label="My open tasks" value={stats.user.total_tasks} onClick={() => navigate("/tasks")} />
+            <Metric label="Open deviations" value={q.deviations.open} overdue={q.deviations.overdue} onClick={() => navigate("/deviations")} />
+            <Metric label="Open CAPAs" value={q.capas.open} overdue={q.capas.overdue} onClick={() => navigate("/capa")} />
+            <Metric label="Open change controls" value={q.change_controls.open} overdue={q.change_controls.overdue} onClick={() => navigate("/change-control")} />
+            <Metric label="My pending training" value={stats.user.pending_training} onClick={() => navigate("/training/employees/my")} />
+          </>
+        )}
+      </Paper>
 
-      {/* KPI Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {kpis.map((kpi) => {
-          const isAlert =
-            kpi.change.includes("OVERDUE") || kpi.change.includes("Action");
-          return (
-            <Grid key={kpi.label} size={{ xs: 12, sm: 6, md: 3 }}>
-              <Paper
-                sx={{
-                  p: 3,
-                  borderRadius: 4,
-                  border: "1px solid #e2e8f0",
-                  boxShadow: shadows.card,
-                  height: "100%",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  fontWeight={700}
-                  sx={{ textTransform: "uppercase", fontSize: "0.7rem", letterSpacing: "0.5px" }}
-                >
-                  {kpi.label}
-                </Typography>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", mt: 1.5 }}>
-                  <Typography variant="h3" fontWeight={900} color={isAlert ? "error.main" : "text.primary"}>
-                    {kpi.value}
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 0.5,
-                      bgcolor: isAlert ? "#fef2f2" : "#f1f5f9",
-                      px: 1.5,
-                      py: 0.5,
-                      borderRadius: 2,
-                    }}
-                  >
-                    {!isAlert && trendIcon(kpi.trend)}
-                    <Typography variant="caption" fontWeight={800} color={isAlert ? "error.main" : "text.secondary"} sx={{ fontSize: "0.65rem" }}>
-                      {kpi.change}
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-            </Grid>
-          );
-        })}
-      </Grid>
-
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, lg: 8 }}>
-          <Stack spacing={3}>
-            {/* Task Table */}
-            <Paper sx={{ borderRadius: 4, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: shadows.card }}>
-              <Box sx={{ p: 3, borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="h6" fontWeight={800}>My Active Tasks</Typography>
-                <Button size="small" onClick={() => navigate("/tasks")} sx={{ textTransform: "none", fontWeight: 700 }}>
-                  View All
-                </Button>
-              </Box>
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 2fr) minmax(280px, 1fr)" }, gap: 2.5, alignItems: "start" }}>
+        {/* My tasks */}
+        <Paper sx={{ overflow: "hidden" }}>
+          <PanelHeader
+            title="My tasks"
+            action={
+              <Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => navigate("/tasks")}>
+                All tasks
+              </Button>
+            }
+          />
+          {loading ? (
+            <Box sx={{ p: 2 }}>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} height={32} />
+              ))}
+            </Box>
+          ) : tasks.length === 0 ? (
+            <Box sx={{ px: 3, py: 5, textAlign: "center", display: "grid", justifyItems: "center", gap: 0.75 }}>
+              <TaskAltOutlinedIcon sx={{ color: color.success, fontSize: 28 }} aria-hidden />
+              <Typography variant="subtitle1">You're all caught up</Typography>
+              <Typography variant="body2" sx={{ maxWidth: 360 }}>
+                Training, CAPAs and change controls assigned to you will appear here, soonest due first.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ overflowX: "auto" }}>
               <Table size="small">
-                <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>ID</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>TYPE</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>TITLE</TableCell>
-                    <TableCell sx={{ fontWeight: 800, fontSize: "0.75rem" }}>STATUS</TableCell>
+                    <TableCell>Reference</TableCell>
+                    <TableCell>Type</TableCell>
+                    <TableCell>Title</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell align="right">Due</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {recentTasks.map((t) => (
-                    <TableRow
-                      key={t.id}
-                      hover
-                      onClick={() => handleTaskClick(t.id, t.type)}
-                      sx={{ cursor: "pointer", transition: transitions.tableRow.hover }}
-                    >
-                      <TableCell sx={{ fontWeight: 700, color: "primary.main" }}>{t.id}</TableCell>
-                      <TableCell>
-                        <Chip label={t.type} size="small" sx={{ fontWeight: 600, fontSize: "0.65rem" }} />
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 300 }}>
-                        <Typography variant="body2" noWrap fontWeight={500}>{t.title}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={t.status}
-                          size="small"
-                          variant="outlined"
-                          color={t.status === "OVERDUE" ? "error" : "default"}
-                          sx={{ fontWeight: 700, fontSize: "0.65rem" }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {tasks.map((t) => {
+                    const due = dueInfo(t.due_date);
+                    return (
+                      <TableRow key={t.id} hover onClick={() => navigate(`/${TASK_PATH[t.type] || "tasks"}/${t.id}`)} sx={{ cursor: "pointer" }}>
+                        <TableCell sx={{ fontWeight: 600, color: color.accent, whiteSpace: "nowrap" }}>{t.id}</TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }}>{t.type}</TableCell>
+                        <TableCell sx={{ maxWidth: 320, color: color.ink }}>
+                          <Typography variant="body2" noWrap sx={{ color: "inherit" }}>
+                            {t.title}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }}>{humanize(t.status)}</TableCell>
+                        <TableCell align="right" sx={{ whiteSpace: "nowrap", color: due.overdue ? color.error : undefined, fontWeight: due.overdue ? 600 : undefined }}>
+                          {due.overdue ? `Overdue · ${due.text}` : due.text}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
-            </Paper>
-          </Stack>
-        </Grid>
+            </Box>
+          )}
+        </Paper>
 
-        <Grid size={{ xs: 12, lg: 4 }}>
-          <Stack spacing={3}>
-            {/* ✅ My Training Qualification Card */}
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                p: 3, 
-                borderRadius: 4, 
-                border: '1px solid #e2e8f0',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                boxShadow: shadows.card,
-              }}
-            >
-              <Stack spacing={2.5}>
-                <Stack direction="row" alignItems="center" spacing={1.5}>
-                  <Box sx={{ p: 1, bgcolor: 'primary.main', borderRadius: 2, display: 'flex' }}>
-                    <SchoolIcon sx={{ color: '#fff', fontSize: 20 }} />
+        {/* Deviations by department */}
+        <Paper sx={{ overflow: "hidden" }}>
+          <PanelHeader title="Open deviations by department" />
+          <Box sx={{ p: 2 }}>
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} height={28} />)
+            ) : q.department_hotspots.length === 0 ? (
+              <Typography variant="body2">No open deviations. Departments with open deviations are ranked here.</Typography>
+            ) : (
+              <Box component="ol" sx={{ m: 0, p: 0, listStyle: "none", display: "grid", gap: 1.25 }}>
+                {q.department_hotspots.map((h) => (
+                  <Box component="li" key={h.department || "unassigned"} sx={{ display: "grid", gap: 0.5 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                      <Typography variant="body2" sx={{ color: color.ink }} noWrap>
+                        {h.department || "Unassigned"}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: color.ink, fontVariantNumeric: "tabular-nums" }}>
+                        {h.count}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ height: 4, borderRadius: 2, bgcolor: color.border }} aria-hidden>
+                      <Box sx={{ height: "100%", width: `${(h.count / hotspotMax) * 100}%`, borderRadius: 2, bgcolor: color.accent }} />
+                    </Box>
                   </Box>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={800}>My Qualification</Typography>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                      {stats.user.pending_training} MODULES PENDING
-                    </Typography>
-                  </Box>
-                </Stack>
-
-                <Box>
-                  <Stack direction="row" justifyContent="space-between" mb={1}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={800}>CURRENT COMPLIANCE</Typography>
-                    <Typography variant="caption" fontWeight={900} color="primary.main">{trainingCompletion}%</Typography>
-                  </Stack>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={trainingCompletion} 
-                    sx={{ height: 8, borderRadius: 4, bgcolor: '#e2e8f0' }} 
-                  />
-                </Box>
-
-                <Button 
-                  variant="contained" 
-                  fullWidth
-                  endIcon={<ArrowForwardIcon />}
-                  onClick={() => navigate('/training/employees/my')}
-                  sx={{ borderRadius: 2, fontWeight: 800, textTransform: 'none', py: 1.2 }}
-                >
-                  Open Training Profile
-                </Button>
-              </Stack>
-            </Paper>
-
-            {/* Quick Actions */}
-            <Paper sx={{ p: 3, borderRadius: 4, border: "1px solid #e2e8f0", boxShadow: shadows.card }}>
-              <Typography variant="h6" fontWeight={800} mb={3}>Quick Actions</Typography>
-              <Grid container spacing={2}>
-                {allActions.map((action) => (
-                  <Grid size={{ xs: 6 }} key={action.label}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      onClick={() => handleQuickAction(action.path, action.module, action.label)}
-                      sx={{
-                        height: 110,
-                        flexDirection: "column",
-                        gap: 1.5,
-                        borderRadius: 3,
-                        textTransform: "none",
-                        border: "1px solid #e2e8f0",
-                        "&:hover": { bgcolor: "#f8fafc", borderColor: "primary.main" },
-                      }}
-                    >
-                      <Box sx={{ color: "primary.main" }}>{action.icon}</Box>
-                      <Typography variant="caption" fontWeight={800} color="text.primary">{action.label}</Typography>
-                    </Button>
-                  </Grid>
                 ))}
-              </Grid>
-            </Paper>
-
-            {/* AI Assistant Panel */}
-            <Paper sx={{ p: 3, borderRadius: 4, bgcolor: "#f5f3ff", border: "1px solid #ddd6fe", boxShadow: shadows.card }}>
-              <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
-                <AutoAwesomeOutlinedIcon sx={{ color: "#7c3aed" }} />
-                <Typography fontWeight={900} color="#5b21b6" variant="subtitle2">AI QUALITY ASSISTANT</Typography>
-                <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#10b981", animation: `${pulse} 2s infinite` }} />
               </Box>
-              <Typography variant="body2" color="#6d28d9" mb={2} sx={{ fontSize: "0.8rem" }}>
-                "Which departments have the highest overdue training rates this quarter?"
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="Ask AI about quality data..."
-                sx={{ bgcolor: "white", "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-              />
-            </Paper>
-          </Stack>
-        </Grid>
-      </Grid>
-
-      <PermissionDeniedDialog
-        open={permissionDenied.open}
-        onClose={() => setPermissionDenied({ open: false, message: "" })}
-        message={permissionDenied.message}
-      />
+            )}
+          </Box>
+        </Paper>
+      </Box>
     </Box>
   );
 }
